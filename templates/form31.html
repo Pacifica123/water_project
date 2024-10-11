@@ -1,0 +1,289 @@
+<form method="post" action="{{ url_for('frontend.add_data', template=selected_template) }}">
+
+<h3>Информация об организации</h3>
+<table border="1" cellpadding="5" cellspacing="0" style="margin-bottom: 20px;">
+    <tr>
+        <td><label for="organization_name">Наименование:</label></td>
+        <td>
+            <select id="organization_name" name="organization_name" required onchange="updateOrganizationDetails()">
+                <option value="">Выбрать организацию</option>
+                <option value="org1">Организация 1</option>
+                <option value="org2">Организация 2</option>
+                <option value="org3">Организация 3</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td><label for="postal_address">Почтовый адрес организации:</label></td>
+        <td><input type="text" id="postal_address" name="postal_address" readonly value="Заглушка для адреса"></td>
+    </tr>
+    <tr>
+        <td><label for="legal_form">Организационно-правовая форма:</label></td>
+        <td><input type="text" id="legal_form" name="legal_form" readonly value="Заглушка для ОПФ"></td>
+    </tr>
+    <tr>
+        <td><label for="inn">ИНН:</label></td>
+        <td><input type="text" id="inn" name="inn" readonly value="Заглушка для ИНН"></td>
+    </tr>
+    <tr>
+        <td><label for="basin_district">Бассейновый округ:</label></td>
+        <td>
+            <select id="basin_district" name="basin_district" required>
+                <option value="">Выбрать бассейновый округ</option>
+                <option value="district1">Бассейновый округ 1</option>
+                <option value="district2">Бассейновый округ 2</option>
+                <option value="district3">Бассейновый округ 3</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td><label for="region">Наименование субъекта РФ:</label></td>
+        <td><input type="text" id="region" name="region" readonly value="Заглушка для субъекта"></td>
+    </tr>
+</table>
+
+<h3>Гидрографическая информация</h3>
+<table border="1" cellpadding="5" cellspacing="0" style="margin-bottom: 20px;">
+    <tr>
+        <td><label for="hydrographic_unit">Наименование гидрографической единицы:</label></td>
+        <td>
+            <select id="hydrographic_unit" name="hydrographic_unit" required onchange="updateHydrographicCode()">
+                <option value="">Выбрать гидрографическую единицу</option>
+                <option value="unit1">Гидрографическая единица 1</option>
+                <option value="unit2">Гидрографическая единица 2</option>
+                <option value="unit3">Гидрографическая единица 3</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td><label for="hydrographic_code">Код гидрографической единицы:</label></td>
+        <td><input type="text" id="hydrographic_code" name="hydrographic_code" readonly value="Заглушка для кода"></td>
+    </tr>
+    <tr>
+        <td><label for="water_management_area">Водохозяйственный участок:</label></td>
+        <td>
+            <select id="water_management_area" name="water_management_area" required onchange="updateWaterManagementCode()">
+                <option value="">Выбрать водохозяйственный участок</option>
+                <option value="area1">Участок 1</option>
+                <option value="area2">Участок 2</option>
+                <option value="area3">Участок 3</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td><label for="water_management_code">Код водохозяйственного участка:</label></td>
+        <td><input type="text" id="water_management_code" name="water_management_code" readonly value="Заглушка для кода"></td>
+    </tr>
+</table>
+
+<h3>Информация о документации и водоучете</h3>
+<table border="1" cellpadding="5" cellspacing="0" style="margin-bottom: 20px;">
+    <tr>
+        <td><label for="decision_registration_number">Регистрационный № Договор пользования:</label></td>
+        <td>
+            <select id="decision_registration_number" name="decision_registration_number" required onchange="updateDecisionDates()">
+                <option value="">Выбрать № договор</option>
+                <option value="decision1">Договор 1</option>
+                <option value="decision2">Договор 2</option>
+                <option value="decision3">Договор 3</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td><label for="registration_date">Дата регистрации:</label></td>
+        <td><input type="date" id="registration_date" name="registration_date" readonly value="2024-01-01"></td>
+    </tr>
+    <tr>
+        <td><label for="expiration_date">Дата окончания:</label></td>
+        <td><input type="date" id="expiration_date" name="expiration_date" readonly value="2025-01-01"></td>
+    </tr>
+    <tr>
+        <td><label for="meter_brand">Марка прибора водоучета:</label></td>
+        <td>
+            <select id="meter_brand" name="meter_brand" required onchange="updateMeterDetails()">
+                <option value="">Выбрать марку</option>
+                <option value="brand1">Марка 1</option>
+                <option value="brand2">Марка 2</option>
+                <option value="brand3">Марка 3</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td><label for="last_verification_date">Дата последней поверки:</label></td>
+        <td><input type="date" id="last_verification_date" name="last_verification_date" readonly value="2023-01-01"></td>
+    </tr>
+    <tr>
+        <td><label for="verification_period">Периодичность поверки:</label></td>
+        <td><input type="text" id="verification_period" name="verification_period" readonly value="1 год"></td>
+    </tr>
+</table>
+
+
+
+
+<!-- Основная информация об объекте -->
+<h3>Основная информация об объекте</h3>
+<table border="1" cellpadding="5" cellspacing="0" style="margin-bottom: 20px;">
+    <thead>
+        <tr>
+            <th>Наименование водного объекта</th>
+            <th>Вид водного объекта</th>
+            <th>Код водного объекта</th>
+            <th>Категории качества воды</th>
+        </tr>
+    </thead>
+    <tbody id="water_objects_info_tbody">
+        <tr>
+            <td><input type="text" name="water_object_name[]" readonly value="Заглушка для водохозяйственного участка"></td>
+            <td>
+                <select name="water_object_type[]">
+                    <option value="20">20</option>
+                    <option value="21">21</option>
+                    <option value="30">30</option>
+                    <option value="31">31</option>
+                    <option value="40">40</option>
+                    <option value="60">60</option>
+                    <option value="61">61</option>
+                    <option value="80">80</option>
+                    <option value="81">81</option>
+                    <option value="82">82</option>
+                    <option value="83">83</option>
+                </select>
+            </td>
+            <td><input type="text" name="water_object_code[]" value="RFH/JGM/2333"></td>
+            <td>
+                <select name="water_quality_category[]">
+                    <option value="СК">СК</option>
+                    <option value="СД">СД</option>
+                    <option value="ШР">ШР</option>
+                    <option value="КР">КР</option>
+                    <option value="КД">КД</option>
+                    <option value="ЛВ">ЛВ</option>
+                    <option value="ТР">ТР</option>
+                    <option value="ТН">ТН</option>
+                    <option value="ТП">ТП</option>
+                    <option value="РВ">РВ</option>
+                    <option value="БД">БД</option>
+                    <option value="РС">РС</option>
+                </select>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<br>
+
+<!-- Географическое положение -->
+<h3>Географическое положение</h3>
+<table border="1" cellpadding="5" cellspacing="0" style="margin-bottom: 20px;">
+    <thead>
+        <tr>
+            <th>Номер водозабора</th>
+            <th>Северная широта</th>
+            <th>Восточная долгота</th>
+        </tr>
+    </thead>
+    <tbody id="water_objects_geo_tbody">
+        <tr>
+            <td><input type="number" name="release_number[]" min="1" required></td>
+            <td><input type="text" name="latitude[]" placeholder="54°20'00&quot;N" required></td>
+            <td><input type="text" name="longitude[]" placeholder="37°30'00&quot;E" required></td>
+        </tr>
+    </tbody>
+</table>
+
+<br>
+
+<!-- Параметры забора -->
+<h3>Параметры забора</h3>
+<table border="1" cellpadding="5" cellspacing="0">
+    <thead>
+        <tr>
+            <th>Объем допустимого водозабора, тыс. м3</th>
+            <th>Фактический объем забора, тыс. м3 - всего</th>
+            <th>1 квартал</th>
+            <th>2 квартал</th>
+            <th>3 квартал</th>
+        </tr>
+    </thead>
+    <tbody id="1water_objects_discharges_tbody">
+        <tr>
+            <td><input type="number" name="allowed_discharge_volume[]" min="0" step="0.01" required></td>
+            <td><input type="number" name="total_discharged_volume[]" min="0" step="0.01" required></td>
+            <td><input type="number" name="1quarter[]" min="0" step="0.01"></td>
+            <td><input type="number" name="2quarter[]" min="0" step="0.01"></td>
+            <td><input type="number" name="3quarter[]" min="0" step="0.01"></td>
+        </tr>
+    </tbody>
+</table>
+
+<br>
+
+<!-- Кнопки в одной линии с отступом -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; ">
+    <button type="button" onclick="addRow1()" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer;">Добавить строку</button>
+    <button type="submit" class="button" style="padding: 10px 20px; background-color: #008CBA; color: white; border: none; cursor: pointer; margin-left: 20px">Отправить</button>
+</div>
+
+<script>
+    function addRow1() {
+        // Добавление новой строки для первой таблицы
+        var infoTable = document.getElementById("water_objects_info_tbody");
+        var newRowInfo = infoTable.insertRow();
+        newRowInfo.innerHTML = `
+            <td><input type="text" name="water_object_name[]" readonly value="Заглушка для водохозяйственного участка"></td>
+            <td>
+                <select name="water_object_type[]">
+                    <option value="20">20</option>
+                    <option value="21">21</option>
+                    <option value="30">30</option>
+                    <option value="31">31</option>
+                    <option value="40">40</option>
+                    <option value="60">60</option>
+                    <option value="61">61</option>
+                    <option value="80">80</option>
+                    <option value="81">81</option>
+                    <option value="82">82</option>
+                    <option value="83">83</option>
+                </select>
+            </td>
+            <td><input type="text" name="water_object_code[]" value="RFH/JGM/2333"></td>
+            <td>
+                <select name="water_quality_category[]">
+                    <option value="СК">СК</option>
+                    <option value="СД">СД</option>
+                    <option value="ШР">ШР</option>
+                    <option value="КР">КР</option>
+                    <option value="КД">КД</option>
+                    <option value="ЛВ">ЛВ</option>
+                    <option value="ТР">ТР</option>
+                    <option value="ТН">ТН</option>
+                    <option value="ТП">ТП</option>
+                    <option value="РВ">РВ</option>
+                    <option value="БД">БД</option>
+                    <option value="РС">РС</option>
+                </select>
+            </td>`;
+
+        // Добавление новой строки для второй таблицы
+        var geoTable = document.getElementById("water_objects_geo_tbody");
+        var newRowGeo = geoTable.insertRow();
+        newRowGeo.innerHTML = `
+            <td><input type="number" name="release_number[]" min="1" required></td>
+            <td><input type="text" name="latitude[]" placeholder="54°20'00&quot;N" required></td>
+            <td><input type="text" name="longitude[]" placeholder="37°30'00&quot;E" required></td>`;
+
+// Добавление новой строки для третьей таблицы
+        var dischargeTable = document.getElementById("1water_objects_discharges_tbody");
+
+        var newRowDischarge = dischargeTable.insertRow();
+        newRowDischarge.innerHTML = `
+            <td><input type="number" name="allowed_discharge_volume[]" min="0" step="0.01" required></td>
+            <td><input type="number" name="total_discharged_volume[]" min="0" step="0.01" required></td>
+            <td><input type="number" name="1quarter[]" min="0" step="0.01"></td>
+            <td><input type="number" name="2quarter[]" min="0" step="0.01"></td>
+            <td><input type="number" name="3quarter[]" min="0" step="0.01"></td>`;
+
+    }
+</script>
+

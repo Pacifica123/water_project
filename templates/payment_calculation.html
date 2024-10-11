@@ -1,0 +1,245 @@
+<form method="post" action="{{ url_for('frontend.add_data', template=selected_template) }}">
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчет о фактических параметрах водопользования</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .header {
+            margin-bottom: 20px;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .header-info {
+            margin-top: 10px;
+        }
+        .header-info div {
+            margin-bottom: 5px;
+        }
+        .signatures {
+            margin-top: 10px;
+            text-align: right;
+            margin-left: 400px;
+        }
+        .signature {
+            margin-top: 20px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-title">Отчет о фактических параметрах осуществляемого водопользования, расчет суммы платы за пользование водным объектом за 1 квартал 2024 г.</div>
+        <div class="header-info">
+            <div><strong>ОАО "СКЗК"</strong> (наименование водопользователя)</div>
+            <div><strong>42-13.01.03.003-Р-ДХЮС-С-2019-02664/00</strong> (номер государственной регистрации договора в государственном водном реестре)</div>
+        </div>
+    </div>
+
+
+
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th rowspan="2">№ п/п</th>
+                <th rowspan="2">Показатель</th>
+                <th rowspan="2">Ед. изм.</th>
+                <th colspan="4">В том числе</th>
+                <th rowspan="2">Итого оплата за квартал, руб.</th>
+            </tr>
+            <tr>
+                <th>Установленные объемы ВП в кварта</th>
+                <th>Фактические объемы ВП в квартал</th>
+                <th>Фактические объемы ВП в пределах установленных объемов</th>
+                <th>Превышение установленных объемов ВП в квартале</th>
+            </tr>
+        </thead>
+        <tbody>
+         <tr>
+                <td contenteditable="true">1</td>
+                <td contenteditable="true" ><b>Параметры водопользования (объем забора (изъятия) воды, площадь акватории)</b></td>
+                <td contenteditable="true">тыс.м³</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td contenteditable="true">1.1</td>
+                <td contenteditable="true">Забор (изъятие) водных ресурсов из поверхностного водного объекта (Qн+Qп+Qн.o+Он.o.)</td>
+                <td contenteditable="true">тыс.м³</td>
+                <td contenteditable="true">6345.059</td>
+                <td contenteditable="true">5630.800</td>
+                <td contenteditable="true">5630.800</td>
+                <td contenteditable="true">0</td>
+                <td contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td contenteditable="true">1.1.1</td>
+                <td contenteditable="true">Забор (изъятие) водных ресурсов из поверхностного водного объекта (Qн.)</td>
+                <td contenteditable="true">тыс.м³</td>
+                <td contenteditable="true">1584.114</td>
+                <td contenteditable="true">1068.370</td>
+                <td contenteditable="true">1068.370</td>
+                <td contenteditable="true">0</td>
+                <td contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td contenteditable="true">1.1.2</td>
+                <td contenteditable="true">Забор (изъятие) водных ресурсов из поверхностного водного объекта (Qп.)</td>
+                <td contenteditable="true">тыс.м³</td>
+                <td contenteditable="true">4850.945</td>
+                <td contenteditable="true">4562.430</td>
+                <td contenteditable="true">4562.430</td>
+                <td contenteditable="true">0</td>
+                <td contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td contenteditable="true">2</td>
+                <td contenteditable="true"><b>Ставка платы</b></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td contenteditable="true">2.1</td>
+                <td contenteditable="true">За забор (изъятие) водных ресурсов из поверхностного водного объекта для водоснабжения населения (Сн.)</td>
+                <td contenteditable="true">руб/тыс.м³</td>
+                <td contenteditable="true">1094</td>
+                <td contenteditable="true">1094</td>
+                <td contenteditable="true">1094</td>
+                <td contenteditable="true">1094</td>
+                <td contenteditable="true"></td>
+            </tr>
+                     <tr>
+                <td contenteditable="true">2.2</td>
+                <td contenteditable="true">За забор (изъятие) водных ресурсов из поверхностного водного объекта (Сп.)</td>
+                <td contenteditable="true">руб/тыс.м³</td>
+                <td contenteditable="true">283</td>
+                <td contenteditable="true">283</td>
+                <td contenteditable="true">283</td>
+                <td contenteditable="true">283</td>
+                <td contenteditable="true"></td>
+            </tr>
+                    <tr>
+                <td contenteditable="true">2.3</td>
+                <td contenteditable="true">Повышающий коэффициент (применяется в случае отсутствия водоизмерительного прибора)</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true">1</td>
+                <td contenteditable="true">1</td>
+                <td contenteditable="true">1</td>
+                <td contenteditable="true">1</td>
+                <td contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td contenteditable="true">3</td>
+                <td contenteditable="true"><b>Размер платы</b></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+            </tr>
+                            <tr>
+                <td contenteditable="true">3.1</td>
+                <td contenteditable="true">За забор (изъятие) водных ресурсов из поверхностного водного объекта (п.3.2 + п.3.3)</td>
+                <td contenteditable="true">руб</td>
+                <td contenteditable="true">5 755 238,09</td>
+                <td contenteditable="true">5 293 647,13</td>
+                <td contenteditable="true">5 293 647,13</td>
+                <td contenteditable="true">0</td>
+                <td contenteditable="true">5 293 647,13</td>
+            </tr>
+                            <tr>
+                <td contenteditable="true">3.2</td>
+                <td contenteditable="true">За забор (изъятие) водных ресурсов из водного объекта для населения (Qн. Х Сн.)</td>
+                <td contenteditable="true">руб</td>
+                <td contenteditable="true">448 304,26</td>
+                <td contenteditable="true">302 348,71</td>
+                <td contenteditable="true">302 348,71</td>
+                <td contenteditable="true">0</td>
+                <td contenteditable="true">302 348,71</td>
+            </tr>
+         <tr>
+                <td contenteditable="true">3.3</td>
+                <td contenteditable="true">За забор (изъятие) водных ресурсов из водного объекта для предприятия (Qп. Х Сп.)</td>
+                <td contenteditable="true">руб</td>
+                <td contenteditable="true">5 306 933,83</td>
+                <td contenteditable="true">4 911 298,42</td>
+                <td contenteditable="true">4 911 298,42</td>
+                <td contenteditable="true">0</td>
+                <td contenteditable="true">4 911 298,42</td>
+            </tr>
+        </tbody>
+    </table>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; ">
+       <button class="btn" onclick="addRow()" style="background-color: #4CAF50; color: white; padding: 10px 20px; border: none; cursor: pointer;">Добавить строку</button>
+
+    <button class="btn" onclick="addColumn()" style="padding: 10px 20px; background-color: #008CBA; color: white; border: none; cursor: pointer; margin-left: 20px">Добавить столбец</button>
+    </div>
+
+        <div class="signatures">
+        <div class="signature">
+            Руководитель водопользователя: <span style="border-bottom: 1px solid black; padding-right: 100px;"></span> (подпись)
+        </div>
+        <div class="signature">
+            Главный бухгалтер: <span style="border-bottom: 1px solid black; padding-right: 100px;"></span> (подпись)
+        </div>
+    </div>
+
+    <script>
+        function addRow() {
+            const table = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+            const newRow = table.insertRow();
+            const columns = table.rows[0].cells.length;
+
+            for (let i = 0; i < columns; i++) {
+                const newCell = newRow.insertCell(i);
+                newCell.contentEditable = "true"; // Разрешаем редактирование в ячейках
+                newCell.innerHTML = i === 0 ? table.rows.length : ""; // Первый столбец — нумерация
+            }
+        }
+
+        function addColumn() {
+            const headerRow = document.querySelectorAll('#dataTable thead tr');
+            const bodyRows = document.querySelectorAll('#dataTable tbody tr');
+
+            // Добавляем заголовок для нового столбца
+            headerRow[0].insertCell(-1).outerHTML = <th>Новый столбец</th>;
+            headerRow[1].insertCell(-1).outerHTML = <th>Новый подзаголовок</th>;
+
+            // Добавляем новый столбец в каждую строку тела таблицы
+            bodyRows.forEach((row) => {
+                const newCell = row.insertCell(-1);
+                newCell.contentEditable = "true"; // Разрешаем редактирование в новой ячейке
+            });
+        }
+    </script>
+
+</body>
+</html>
