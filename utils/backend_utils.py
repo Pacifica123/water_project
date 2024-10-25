@@ -158,23 +158,39 @@ def extract_value_from_json(json_str: str, key: str) -> OperationResult:
 
 
 
-
-def serialize_to_json(obj: Any) -> str:
+def serialize_to_json(obj: Any) -> Any:
     """
     Сериализует объект в JSON-формат.
 
     :param obj: Объект, который нужно сериализовать.
-    :return: Строка в формате JSON.
+    :return: Строка в формате JSON или сериализуемый объект.
     """
-    # Проверка, является ли объект экземпляром класса
-    if hasattr(obj, '__dict__'):
-        # Извлечение атрибутов объекта
-        obj_dict = obj.__dict__
+    if isinstance(obj, list):
+        return [serialize_to_json(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: serialize_to_json(value) for key, value in obj.items()}
+    elif hasattr(obj, '__dict__'):
+        # Преобразуем объект в словарь, исключая не сериализуемые атрибуты
+        return {key: serialize_to_json(value) for key, value in obj.__dict__.items() if not isinstance(value, (set, bytes))}
     else:
-        raise ValueError("Переданный объект не является экземпляром класса.")
-
-    # Преобразование в JSON
-    return json.dumps(obj_dict, default=str)
+        # Для простых типов данных (строка, число и т.д.)
+        return obj
+# def serialize_to_json(obj: Any) -> str:
+#     """
+#     Сериализует объект в JSON-формат.
+#
+#     :param obj: Объект, который нужно сериализовать.
+#     :return: Строка в формате JSON.
+#     """
+#     # Проверка, является ли объект экземпляром класса
+#     if hasattr(obj, '__dict__'):
+#         # Извлечение атрибутов объекта
+#         obj_dict = obj.__dict__
+#     else:
+#         raise ValueError("Переданный объект не является экземпляром класса.")
+#
+#     # Преобразование в JSON
+#     return json.dumps(obj_dict, default=str)
 
 
 def print_entity_data(entity):
