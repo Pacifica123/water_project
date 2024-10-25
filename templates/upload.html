@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Upload Files{% endblock %}
+{% block content %}
+<div class="upload-page">
+    <div class="upload-form">
+        <h2>Загрузить файл</h2>
+        <form id="uploadForm" method="post" enctype="multipart/form-data">
+            <input type="file" id="fileInput" name="file">
+            <button type="submit" class="button">Загрузить</button>
+        </form>
+    </div>
+
+    <div class="file-preview" id="filePreview">
+        <h3 id="previewTitle">Предварительный просмотр:</h3>
+        <div id="previewContent"></div>
+    </div>
+</div>
+
+<style>
+.upload-page {
+    display: flex;
+    justify-content: space-between;
+    margin: 30px; /* Добавляем отступ */
+}
+.upload-form {
+    width: 2000px; /* Увеличиваем ширину формы загрузки */
+    height: auto;
+    margin-right: 1%;
+}
+.file-preview {
+    width: 2000px; /* Увеличиваем ширину предпросмотра */
+    border-left: 1px solid #ccc;
+    padding-left: 10px;
+}
+#previewContent embed, #previewContent img {
+    width: 1000px;
+    max-height: 2000px; /* Увеличиваем высоту предпросмотра */
+}
+</style>
+
+<script>
+document.getElementById('fileInput').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+
+    // Проверяем, что файл выбран
+    if (file) {
+        console.log('Файл выбран:', file);
+
+        const previewTitle = document.getElementById('previewTitle');
+        previewTitle.textContent = 'Предварительный просмотр: ' + file.name
+
+        const previewContent = document.getElementById('previewContent');
+        const fileReader = new FileReader();
+
+        // Проверка типа файла
+        if (file.type === 'application/pdf') {
+            console.log('Тип файла: PDF');
+            fileReader.onload = function(e) {
+                // Создаем элемент для предварительного просмотра PDF
+                const pdfEmbed = document.createElement('embed');
+                pdfEmbed.src = e.target.result;
+                pdfEmbed.type = 'application/pdf';
+                pdfEmbed.width = '1920px';
+                pdfEmbed.height = '600px';
+                previewContent.innerHTML = ''; // Очищаем предыдущий контент
+                previewContent.appendChild(pdfEmbed); // Добавляем PDF-превью
+            };
+            fileReader.readAsDataURL(file); // Читаем файл как URL данных
+
+        } else if (file.type.startsWith('image/')) {
+            // Если это изображение (JPEG, PNG и т.д.)
+            console.log('Тип файла: Изображение');
+            fileReader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                previewContent.innerHTML = ''; // Очищаем предыдущий контент
+                previewContent.appendChild(img); // Добавляем изображение-превью
+            };
+            fileReader.readAsDataURL(file);
+
+        } else {
+            // Если формат файла не поддерживается
+            previewContent.innerHTML = 'Этот тип файла не поддерживается для предварительного просмотра.';
+        }
+    } else {
+        console.log('Файл не выбран.');
+        document.getElementById('previewContent').innerHTML = 'Файл не выбран.';
+    }
+});
+</script>
+{% endblock %}

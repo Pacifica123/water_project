@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Добавить/Редактировать Пользователя{% endblock %}
+
+{% block content %}
+<div class="user-form">
+    <h2>{% if user %}Редактировать{% else %}Добавить{% endif %} Пользователя</h2>
+    <form method="POST" action="{{ url_for('frontend.save_user') }}">
+        <input type="hidden" name="user_id" value="{{ user.id if user else '' }}">
+        <div class="form-group">
+            <label for="last_name">Фамилия:</label>
+            <input type="text" id="last_name" name="last_name" value="{{ user.last_name if user else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="first_name">Имя:</label>
+            <input type="text" id="first_name" name="first_name" value="{{ user.first_name if user else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="middle_name">Отчество:</label>
+            <input type="text" id="middle_name" name="middle_name" value="{{ user.middle_name if user else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="birth_date">Дата рождения:</label>
+            <input type="date" id="birth_date" name="birth_date" value="{{ user.birth_date if user else '' }}" required>
+        </div>
+
+             {% if user %}
+        <!-- Скрытое поле для редактирования -->
+        <input type="hidden" id="username" name="username" value="{{ user.username }}">
+        <!-- Скрытое поле для редактирования -->
+        <input type="hidden" id="password" name="password" value="{{ user.password }}">
+        {% else %}
+        <div class="form-group">
+            <label for="username">Логин:</label>
+            <input type="text" id="username" name="username" value="{{ user.username if user else '' }}" required>
+        </div>
+           <div class="form-group">
+            <label for="password">Пароль:</label>
+            <input type="password" id="password" name="password" value="{{ user.password if user else '' }}" {% if not user %}required{% endif %}>
+        </div>
+        {% endif %}
+
+        <div class="form-group">
+            <label for="email">Электронная почта:</label>
+            <input type="email" id="email" name="email" value="{{ user.email if user else '' }}" required>
+        </div>
+        <div class="form-group">
+            <label for="is_admin">Администратор:</label>
+            <input type="checkbox" id="is_admin" name="is_admin" {% if user and user.is_admin %}checked{% endif %}>
+        </div>
+        <div class="form-group">
+            <button type="submit" style="background-color: #4CAF50;" class="button">{% if user %}Сохранить{% else %}Добавить{% endif %}</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+

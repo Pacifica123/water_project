@@ -1,0 +1,219 @@
+
+{% extends "base.html" %}
+
+{% block title %}Редактирование Справочников{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+    <h2>Редактирование справочников</h2>
+</div>
+<div class="container mt-3">
+    <form method="POST" class="mb-4">
+        <div class="form-group">
+            <label for="reference_select"><h4>Выберите таблицу:</h4></label>
+            <select id="reference_select" name="reference_select" class="form-control" onchange="this.form.submit()">
+                <option value="">-- Выберите --</option>
+                {% for key in references.keys() %}
+                    <option value="{{ references[key] }}" {% if selected_reference == references[key] %}selected{% endif %}>{{ key }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+<div class="container mt-3">
+    {% if selected_reference %}
+        <div id="table_data" class="mt-20">
+            {% if new_content %}
+                <h4>Данные таблицы:</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            {% for column in new_content[0].keys() %}
+                                <th class="{% if column == 'id' %}hidden-column{% endif %}">{{ column_translations.get(column, column) }}</th>
+                            {% endfor %}
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in new_content %}
+                            <tr>
+                                {% for key, value in record.items() %}
+                                    <td class="{% if key == 'id' %}hidden-column{% endif %}">{{ value }}</td>
+                                {% endfor %}
+                             <td>
+
+    <button class="btn btn-primary btn-sm"
+            data-toggle="modal"
+            data-target="#editModal"
+            data-id="{{ record.id }}"
+            data-data='{{record|tojson}}' style="background-color: #ffdb58; color:black; border-color: #ffdb58 ; " >Редактировать</button>
+ <form method="POST" action="{{ url_for('frontend.delete_record') }}" style="display:inline;">
+        <input type="hidden" name="reference_select" value="{{ selected_reference }}">
+        <input type="hidden" name="delete_id" value="{{ record.id }}">
+        <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+    </form>
+                            </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+<div class="text-right mt-3">
+                    <button class="btn btn-success"
+                            data-toggle="modal"
+                            data-target="#addModal" >Добавить запись</button>
+                </div>
+
+            {% else %}
+                <div class="alert alert-info" role="alert">
+                    <h4 class="alert-heading">Записи не найдены</h4>
+                    <p>В выбранной таблице нет данных для отображения.</p>
+                    <button class="btn btn-success" data-toggle="modal" data-target="#addModal">Добавить первую запись</button>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+
+
+
+
+<!-- Модальное окно для редактирования -->
+<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Редактировать запись</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm" method="POST" action="{{ url_for('frontend.update_record') }}">
+                    <input type="hidden" name="reference_select" value="{{ selected_reference }}">
+                    <input type="hidden" name="record_id" id="record_id">
+                    <input type="hidden" name="is_deleted" value="false">
+                    <!-- Динамическое создание полей -->
+                    <div id="dynamic_fields"></div>
+
+                    <button type="submit" class="btn btn-primary" style="background-color: #ffdb58; color:black; border-color: #ffdb58 ; ">Сохранить изменения</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Модальное окно для добавления новой записи -->
+<!-- Модальное окно для добавления новой записи -->
+<div class="modal fade" id="addModal" tabindex="-1" role="dialog" aria-labelledby="addModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addModalLabel">Добавить новую запись</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="addForm" method="POST" action="{{ url_for('frontend.add_record') }}">
+                    <input type="hidden" name="reference_select" value="{{ selected_reference }}">
+                    <!-- Динамическое создание полей -->
+                    <div id="dynamic_add_fields">
+                        {% if required_fields %}
+                            {% for field in required_fields %}
+                                {% if field not in unwanted_columns %}
+                                    <div class="form-group">
+                                        <label for="field_{{ field }}">{{ column_translations.get(field, field) }}</label>
+                                        <input type="text" class="form-control" id="field_{{ field }}" name="{{ field }}" value="">
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <p>Не удалось получить обязательные поля для добавления записи.</p>
+                        {% endif %}
+                    </div>
+                    <button type="submit" class="btn btn-success ">Добавить запись</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script>
+  var column_translations = {{ column_translations|tojson }};
+  $('#editModal').on('show.bs.modal', function (event) {
+    var button = $(event.relatedTarget);  // Кнопка, которая открыла модальное окно
+    var id = button.data('id');  // Получаем ID записи
+    var data = button.data('data');  // Получаем данные записи в формате JSON
+
+    console.log("ID записи:", id);
+    console.log("Данные записи:", data);
+
+    var modal = $(this);
+    modal.find('#record_id').val(id);  // Устанавливаем ID записи в скрытое поле
+
+    // Очищаем старые поля перед созданием новых
+    $('#dynamic_fields').empty();
+
+ if (data && Object.keys(data).length > 0) {
+    for (var key in data) {
+        if (data.hasOwnProperty(key) && key !== 'id') {
+            var field = `
+                <div class="form-group">
+                    <label for="field_${key}">${column_translations[key] || key}</label>
+                    <input type="text" class="form-control" id="field_${key}" name="${key}" value="${data[key]}">
+                </div>
+            `;
+            $('#dynamic_fields').append(field);
+        }
+    }
+ }
+    else {
+        // Если данных нет, показываем сообщение
+        $('#dynamic_fields').append('<p>Нет данных для редактирования.</p>');
+        console.log("Данные не были получены или пустые.");
+    }
+});
+
+// Открытие модального окна для добавления новой записи
+$('#addModal').on('show.bs.modal', function (event) {
+    var modal = $(this);
+
+    // Получаем структуру выбранной таблицы (например, через AJAX или из ранее полученных данных)
+    var tableStructure = {{ new_content[0]|tojson if new_content else '{}' }};  // Пример передачи данных
+
+
+    // Очищаем старые поля перед созданием новых
+    $('#dynamic_add_fields').empty();
+
+var unwantedColumns = ['code_type', 'created', 'document_path', 'pdf_path', 'is_deleted'];
+
+if (tableStructure) {
+   console.log(tableStructure)
+    for (var key in tableStructure) {
+        if (tableStructure.hasOwnProperty(key) && key !== 'id' && !unwantedColumns.includes(key)) {
+            var field = `
+                <div class="form-group">
+                    <label for="field_${key}">${column_translations[key] || key}</label>
+                    <input type="text" class="form-control" id="field_${key}" name="${key}" value="">
+                </div>
+            `;
+            $('#dynamic_add_fields').append(field);
+         }
+    }
+}
+     else {
+
+        // Если данных нет, показываем сообщение
+        $('#dynamic_add_fields').append('<p>Не удалось получить структуру таблицы для добавления записи.</p>');
+    }
+
+});
+</script>
+
+{% endblock %}

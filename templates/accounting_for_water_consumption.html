@@ -1,0 +1,142 @@
+<form method="post" action="{{ url_for('frontend.add_data', template=selected_template) }}">
+    <h3>Журнал учета водопотребления</h3>
+    
+    <!-- Блок информации об организациях и приборах -->
+    <div>
+        <label for="operating_organization">Наименование организации, эксплуатирующая водозаборные сооружения:</label>
+        <select id="operating_organization" name="operating_organization">
+            <option value="">Выбрать организацию</option>
+            {% for org in other_data.organisation %}
+                <option value="{{ org }}">{{ org.organisation_name }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="water_intake_organization">Наименование организации, осуществляющей забор воды:</label>
+        <select id="water_intake_organization" name="water_intake_organization">
+            <option value="">Выбрать организацию</option>
+           {% for org in other_data.organisation %}
+                <option value="{{ org }}">{{ org.organisation_name }}</option>
+            {% endfor %}
+        </select>
+
+        <h4>Пункт учета забора воды:</h4>
+        <label for="intake_point_name">Наименование пункта учета:</label>
+        <select id="intake_point_name" name="intake_point_name">
+            <option value="">Выбрать пункт учета</option>
+            {% for point in other_data.water_point %}
+                <option value="{{ point }}"> {{ point }} </option>
+            {% endfor %}
+        </select>
+
+        <label for="intake_point_coordinates">Координаты пункта:</label>
+        <input type="text" id="intake_point_coordinates" name="intake_point_coordinates" placeholder="54°20'00''N 37°30'00''E">
+
+        <h4>Приборы учета:</h4>
+        <label for="measurement_device">Наименование прибора:</label>
+        <select id="measurement_device" name="measurement_device">
+            <option value="">Выбрать прибор</option>
+            {% for dev in other_data.devices %}
+                <option value="{{ dev }}"> {{ dev }} </option>
+            {% endfor %}
+        </select>
+
+        <label for="water_source">Наименование водного объекта-водоисточника:</label>
+        <select id="water_source" name="water_source">
+            <option value="">Выбрать водоисточник</option>
+            {% for body in other_data.water_body %}
+                <option value="{{ body }}"> {{ body }} </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Таблица учета -->
+    <table id="water_consumption_table" border="1" cellpadding="5" cellspacing="0" style="margin-top: 20px;">
+        <thead>
+            <tr>
+                <th>Дата измерения</th>
+                <th>Измерительный прибор №1</th>
+                <th>Время работы (сут.)</th>
+                <th>Расход воды (м³/сут.)</th>
+                <th>Подпись</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><input type="date" name="measurement_date[]"></td>
+                <td><input type="text" name="device_reading[]" placeholder="Введите показание"></td>
+                <td><input type="number" name="operating_time[]" min="0" step="0.01" placeholder="Сут."></td>
+                <td><input type="number" name="water_consumption[]" min="0" step="0.01" placeholder="м³/сут."></td>
+                <td><input type="text" name="signature[]" placeholder="Подпись"></td>
+                <td><button type="button" onclick="removeRow(this)">Удалить</button></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Кнопки добавления -->
+    <div style="margin-top: 20px;">
+        <button type="button" onclick="addRow()">Добавить строку</button>
+        <button type="button" onclick="addColumn()">Добавить измерительный прибор</button>
+    </div>
+
+    <!-- Отправка формы -->
+    <div style="margin-top: 20px;">
+        <button type="submit">Отправить</button>
+    </div>
+</form>
+
+<script>
+   // Дебаговая проверка содержимого other_data
+
+
+    // Функция для добавления новой строки в таблицу
+    function addRow() {
+        var table = document.getElementById('water_consumption_table').getElementsByTagName('tbody')[0];
+        var newRow = table.insertRow();
+        var cols = table.rows[0].cells.length; // Общее количество колонок
+
+        // Генерация ячеек для новой строки
+        for (var i = 0; i < cols; i++) {
+            var newCell = newRow.insertCell(i);
+            if (i === 0) {
+                newCell.innerHTML = `<input type="date" name="measurement_date[]">`;
+            } else if (i === 1) {
+                newCell.innerHTML = `<input type="text" name="device_reading[]" placeholder="Введите показание">`;
+            } else if (i === 2) {
+                newCell.innerHTML = `<input type="number" name="operating_time[]" min="0" step="0.01" placeholder="Сут.">`;
+            } else if (i === 3) {
+                newCell.innerHTML = `<input type="number" name="water_consumption[]" min="0" step="0.01" placeholder="м³/сут.">`;
+            } else if (i === cols - 1) {
+                newCell.innerHTML = `<button type="button" onclick="removeRow(this)">Удалить</button>`;
+            } else {
+                // Для новых измерительных приборов
+                newCell.innerHTML = `<input type="text" name="device_reading[]" placeholder="Введите показание">`;
+            }
+        }
+    }
+
+    // Функция для добавления новой колонки (измерительного прибора)
+    function addColumn() {
+        var table = document.getElementById('water_consumption_table');
+        var newCellIndex = table.rows[0].cells.length - 4; // Индекс для добавления до времени и расхода
+        var deviceNumber = newCellIndex; // Определение номера прибора
+
+        // Добавление заголовка
+        var headerRow = table.rows[0];
+        var newHeader = headerRow.insertCell(newCellIndex);
+        newHeader.innerHTML = 'Измерительный прибор №' + deviceNumber;
+
+        // Добавление новых ячеек для всех строк
+        for (var i = 1; i < table.rows.length; i++) {
+            var newCell = table.rows[i].insertCell(newCellIndex);
+            newCell.innerHTML = `<input type="text" name="device_reading[]" placeholder="Введите показание">`;
+        }
+    }
+
+    // Функция для удаления строки
+    function removeRow(button) {
+        var row = button.parentNode.parentNode;
+        row.parentNode.removeChild(row);
+    }
+</script>
+
