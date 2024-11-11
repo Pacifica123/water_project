@@ -33,7 +33,7 @@ def login():
             # print(res.data)
             session['user'] = res.data
             user_data = session.get('user')
-            print(extract_value_from_json(user_data, 'username').data)
+            # print(extract_value_from_json(user_data, 'username').data)
             flash('Успешная авторизация', 'success')
             return redirect(url_for('frontend.dashboard'))
         else:

@@ -177,6 +177,22 @@ def serialize_to_json(obj: Any) -> Any:
         return obj
 
 
+def serialize_to_json_old(obj: Any) -> str:
+    """
+    Сериализует объект в JSON-формат.
+    :param obj: Объект, который нужно сериализовать.
+    :return: Строка в формате JSON.
+    """
+    # Проверка, является ли объект экземпляром класса
+    if hasattr(obj, '__dict__'):
+        # Извлечение атрибутов объекта
+        obj_dict = obj.__dict__
+    else:
+        raise ValueError("Переданный объект не является экземпляром класса.")
+    # Преобразование в JSON
+    return json.dumps(obj_dict, default=str)
+
+
 def print_entity_data(entity):
     """
     Функция для вывода данных всех полей записи сущности.

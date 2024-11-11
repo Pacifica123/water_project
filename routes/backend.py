@@ -13,7 +13,7 @@ from utils.backend_utils import (
     print_data_in_func, parce_year_and_quarter, check_quarter_data_exist,
     get_last_day, OperationResult, OperationStatus,
     print_entity_data, serialize_to_json, get_model_class_by_tablename,
-    get_required_fields, print_operation_result
+    get_required_fields, print_operation_result, serialize_to_json_old
 )
 
 backend = Blueprint('backend', __name__)
@@ -53,7 +53,7 @@ def backend_login(username: str, password: str) -> OperationResult:
     return OperationResult(
         status=OperationStatus.SUCCESS,
         msg="авторизация завершилась успешно",
-        data=serialize_to_json(employee)
+        data=serialize_to_json_old(employee)
     )
 
 def edit_or_add_employee(user_data) -> OperationResult:
