@@ -7,9 +7,9 @@
         <td>
             <select id="organization_name" name="organization_name" required onchange="updateOrganizationDetails()">
                 <option value="">Выбрать организацию</option>
-                <option value="org1">Организация 1</option>
-                <option value="org2">Организация 2</option>
-                <option value="org3">Организация 3</option>
+            {% for org in other_data.organisation %}
+                <option value="{{ org }}">{{ org.organisation_name }}</option>
+            {% endfor %}
             </select>
         </td>
     </tr>

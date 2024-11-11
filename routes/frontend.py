@@ -4,11 +4,11 @@ from sqlalchemy.testing import db
 
 from data.examples import reference_data, templates, column_translations, unwanted_columns
 from db.crudcore import update_record
-from routes.backend import add_data_form_surfacewaterwithdrawal, get_all_record_from, convert_to_dict, get_fdata_by_selected, backend_login, \
-    edit_or_add_employee, update_record_in, add_new_record, delete_record_from, delete_users, add_to
+from routes.backend import get_all_record_from, get_fdata_by_selected, backend_login, \
+    edit_or_add_employee, update_record_in, delete_record_from, delete_users, add_to
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import print_data_in_func, OperationStatus, extract_value_from_json, \
-    get_model_class_by_tablename, get_required_fields
+    get_model_class_by_tablename, convert_to_dict, get_required_fields
 from db.models import  Employees
 # from app import reference_data, templates, users
 
@@ -109,8 +109,8 @@ def edit_reference():
                 new_content = []
                 for record in records:
                     record_dict = convert_to_dict(record)
-                    for column in unwanted_columns:
-                        record_dict.pop(column, None)
+                    # for column in unwanted_columns:
+                    #     record_dict.pop(column, None)
                     new_content.append(record_dict)
 
                 required_fields = get_required_fields(entity_class)

@@ -175,22 +175,6 @@ def serialize_to_json(obj: Any) -> Any:
     else:
         # Для простых типов данных (строка, число и т.д.)
         return obj
-# def serialize_to_json(obj: Any) -> str:
-#     """
-#     Сериализует объект в JSON-формат.
-#
-#     :param obj: Объект, который нужно сериализовать.
-#     :return: Строка в формате JSON.
-#     """
-#     # Проверка, является ли объект экземпляром класса
-#     if hasattr(obj, '__dict__'):
-#         # Извлечение атрибутов объекта
-#         obj_dict = obj.__dict__
-#     else:
-#         raise ValueError("Переданный объект не является экземпляром класса.")
-#
-#     # Преобразование в JSON
-#     return json.dumps(obj_dict, default=str)
 
 
 def print_entity_data(entity):
@@ -318,3 +302,5 @@ def get_last_day(year, month):
             raise ValueError("Invalid month")
 
 
+def convert_to_dict(record):
+    return {column.name: getattr(record, column.name) for column in record.__table__.columns}

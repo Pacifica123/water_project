@@ -24,7 +24,7 @@
         <select id="intake_point_name" name="intake_point_name">
             <option value="">Выбрать пункт учета</option>
             {% for point in other_data.water_point %}
-                <option value="{{ point }}"> {{ point }} </option>
+                <option value="{{ point }}"> {{ point.latitude_longitude }} {{point.point_type}}</option>
             {% endfor %}
         </select>
 
@@ -36,7 +36,7 @@
         <select id="measurement_device" name="measurement_device">
             <option value="">Выбрать прибор</option>
             {% for dev in other_data.devices %}
-                <option value="{{ dev }}"> {{ dev }} </option>
+                <option value="{{ dev }}"> {{ dev.serial_number }} </option>
             {% endfor %}
         </select>
 
@@ -44,7 +44,7 @@
         <select id="water_source" name="water_source">
             <option value="">Выбрать водоисточник</option>
             {% for body in other_data.water_body %}
-                <option value="{{ body }}"> {{ body }} </option>
+                <option value="{{ body }}"> {{ body.code_body_id }} </option>
             {% endfor %}
         </select>
     </div>
