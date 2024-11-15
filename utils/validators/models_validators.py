@@ -2,8 +2,8 @@
 from datetime import datetime
 
 from db.crudcore import get_all_from_table
-from db.models import Codes, DeviceBrand, Organisation, Permissions, Standarts, Substances, SamplingLocation, WaterPool, \
-    ChemicalAnalysisProtocol, Devices
+from db.models import Codes, MetersBrandRef, Organisations, Permissions, StandartsRef, SubstancesRef, SamplingLocation, WaterPoolRef, \
+    ChemicalAnalysisProtocol, Meters
 from utils.backend_utils import OperationResult, OperationStatus, is_valid_date
 from utils.db_utils import is_valid_foreign_key
 
@@ -103,7 +103,7 @@ def device_brand_validate(data):
         errors.append("Название бренда не должно превышать 255 символов")
 
     # Проверка уникальности brand_name
-    finded = get_all_from_table(DeviceBrand)
+    finded = get_all_from_table(MetersBrandRef)
     if finded.status == OperationStatus.SUCCESS:
         brands = finded.data
     else:
@@ -148,7 +148,7 @@ def organisation_validate(data):
         errors.append("ИНН должен содержать 12 цифр")
 
     # Проверка уникальности organization_code и inn
-    finded = get_all_from_table(Organisation)
+    finded = get_all_from_table(Organisations)
     if finded.status == OperationStatus.SUCCESS:
         organisations = finded.data
     else:
@@ -245,7 +245,7 @@ def standarts_validate(data):
         errors.append("Путь к документу не должен превышать 255 символов")
 
     # Проверка уникальности document_path
-    finded = get_all_from_table(Standarts)
+    finded = get_all_from_table(StandartsRef)
     if finded.status == OperationStatus.SUCCESS:
         standards = finded.data
     else:
@@ -288,7 +288,7 @@ def substances_validate(data):
         errors.append("Максимально допустимая концентрация не может быть отрицательной")
 
     # Проверка уникальности name
-    finded = get_all_from_table(Substances)
+    finded = get_all_from_table(SubstancesRef)
     if finded.status == OperationStatus.SUCCESS:
         substances = finded.data
     else:
@@ -515,7 +515,7 @@ def water_pool_validate(data):
         errors.append("Название бассейна не должно превышать 255 символов")
 
     # Проверка уникальности pool_name
-    finded = get_all_from_table(WaterPool)
+    finded = get_all_from_table(WaterPoolRef)
     if finded.status == OperationStatus.SUCCESS:
         pools = finded.data
     else:
@@ -633,7 +633,7 @@ def devices_validate(data):
         errors.append("Дата следующей проверки некорректна или из будущего")
 
     # Проверка уникальности serial_number
-    finded = get_all_from_table(Devices)
+    finded = get_all_from_table(Meters)
     if finded.status == OperationStatus.SUCCESS:
         devices = finded.data
     else:

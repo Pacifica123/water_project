@@ -6,7 +6,7 @@ from flask import g
 from sqlalchemy import Date, DateTime, func
 from sqlalchemy.exc import NoResultFound, SQLAlchemyError, IntegrityError
 
-from db.models import Employees
+from db.models import User, UserRoles
 from utils.backend_utils import OperationResult, OperationStatus, print_data_in_func, get_required_fields, \
     get_model_class_by_tablename
 
@@ -17,17 +17,21 @@ def create_record_entity(entity_class, data: dict) -> bool:
     """
     Создает запись в базе данных для указанной сущности.
 
-    :param session: Сессия SQLAlchemy для работы с базой данных.
     :param entity_class: Класс сущности, в которую будет добавлена запись.
     :param data: Словарь с данными для создания записи.
     :return: True, если запись успешно создана, иначе False.
     """
     session = g.session
     try:
+        # Извлечение значения created_by из data или оставляем по умолчанию
+        created_by = data.get('created_by', "auto")
+
         # Создаем экземпляр сущности с переданными данными
-        record = entity_class(**data)
-        session.add(record)  # Добавляем запись в сессию
-        session.commit()  # Сохраняем изменения в базе данных
+        record_data = {**data, 'created_by': created_by}
+        record = entity_class(**record_data)
+
+        session.add(record)
+        session.commit()
         return True
     except IntegrityError:
         session.rollback()  # Откатываем изменения в случае ошибки
@@ -37,6 +41,30 @@ def create_record_entity(entity_class, data: dict) -> bool:
         session.rollback()  # Откатываем изменения в случае любой другой ошибки
         print(f"Ошибка при создании записи: {e}")
         return False
+# def create_record_entity(entity_class, data: dict) -> bool:
+#     """
+#     Создает запись в базе данных для указанной сущности.
+#
+#     :param session: Сессия SQLAlchemy для работы с базой данных.
+#     :param entity_class: Класс сущности, в которую будет добавлена запись.
+#     :param data: Словарь с данными для создания записи.
+#     :return: True, если запись успешно создана, иначе False.
+#     """
+#     session = g.session
+#     try:
+#         # Создаем экземпляр сущности с переданными данными
+#         record = entity_class(**data)
+#         session.add(record)  # Добавляем запись в сессию
+#         session.commit()  # Сохраняем изменения в базе данных
+#         return True
+#     except IntegrityError:
+#         session.rollback()  # Откатываем изменения в случае ошибки
+#         print(f"Ошибка: запись с данными {data} уже существует.")
+#         return False
+#     except Exception as e:
+#         session.rollback()  # Откатываем изменения в случае любой другой ошибки
+#         print(f"Ошибка при создании записи: {e}")
+#         return False
 
 
 def create_user(user_data) -> bool:
@@ -44,7 +72,11 @@ def create_user(user_data) -> bool:
     :return: True/False - прошла ли операция успешно
     """
     try:
-        Employees(
+        # Извлечение роли из входных данных, с установкой значения по умолчанию
+        role = user_data.get('role', UserRoles.EMPLOYEE)  # Установим роль по умолчанию на EMPLOYEE
+
+        # Создание нового пользователя
+        new_user = User(
             last_name=user_data.get('last_name'),
             first_name=user_data.get('first_name'),
             middle_name=user_data.get('middle_name'),
@@ -52,9 +84,12 @@ def create_user(user_data) -> bool:
             username=user_data.get('username'),
             email=user_data.get('email'),
             password=user_data.get('password'),
-            is_admin=user_data.get('is_admin'),
+            role=role,
             created=func.now()
-        ).save(g.session)
+        )
+
+        # Сохранение пользователя в базе данных
+        new_user.save(g.session)
         return True
     except Exception as e:
         print(f' ---> ОШИБКА БД: {e}')
@@ -137,18 +172,18 @@ def get_all_from_table(entity: Type[Any]) -> OperationResult:
         )
 
 
-def read_all_employees() -> List[Employees]:
+def read_all_employees() -> List[User]:
     try:
-        employees = g.session.query(Employees).all()
+        employees = g.session.query(User).all()
         return employees
     except Exception as e:
         print(f' ---> ОШИБКА БД: {e}')
         return []
 
 
-def find_employee_by_id(user_id: int) -> Optional[Employees]:
+def find_employee_by_id(user_id: int) -> Optional[User]:
     try:
-        employee = g.session.query(Employees).filter(Employees.id == user_id).one()
+        employee = g.session.query(User).filter(User.id == user_id).one()
         return employee
     except NoResultFound:
         return None
@@ -157,9 +192,9 @@ def find_employee_by_id(user_id: int) -> Optional[Employees]:
         return None
 
 
-def find_employee_by_email(email: str) -> Optional[Employees]:
+def find_employee_by_email(email: str) -> Optional[User]:
     try:
-        employee = g.session.query(Employees).filter(Employees.login == email).one()
+        employee = g.session.query(User).filter(User.login == email).one()
         return employee
     except NoResultFound:
         return None
@@ -168,11 +203,11 @@ def find_employee_by_email(email: str) -> Optional[Employees]:
         return None
 
 
-def find_employee_by_username(username: str) -> Optional[Employees]:
+def find_employee_by_username(username: str) -> Optional[User]:
     try:
-        employee = g.session.query(Employees).filter(
-            Employees.username == username,
-            Employees.is_deleted == False
+        employee = g.session.query(User).filter(
+            User.username == username,
+            User.is_deleted == False
         ).one()
         return employee
     except NoResultFound:
@@ -212,12 +247,21 @@ def update_record(entity_class, record_id, data: dict, required_fields: list = N
                         msg=f"Недостаточно данных для обновления. Отсутствует обязательное поле: {field}."
                     )
 
+        # Извлечение updated_by и установка текущего времени для updated_at
+        updated_by = data.get('updated_by')  # Получаем значение updated_by из данных
+        current_time = func.now()  # Текущее время
+
         for key, value in data.items():
             if hasattr(record, key):
                 setattr(record, key, value)
             else:
                 print(
                     f'\n ---> ПРЕДУПРЕЖДЕНИЕ: поле {key} было проигнорировано, т.к. отсутствует в сущности {entity_class.__name__}\n')
+
+        # Устанавливаем updated_by и updated_at
+        if updated_by is not None:
+            record.updated_by = updated_by  # Устанавливаем ответственного за изменение
+        record.updated_at = current_time  # Устанавливаем текущее время
 
         g.session.commit()
         return OperationResult(
@@ -277,12 +321,13 @@ def update_employee(username: str, data: dict) -> OperationResult:
 # - - - - - - - - - - - - - - - - - - - -
 # СЕКЦИЯ DELETE
 # - - - - - - - - - - - - - - - - - - - -
-def soft_delete_record(entity_class, record_id) -> OperationResult:
+def soft_delete_record(entity_class, record_id, deleted_by=None) -> OperationResult:
     """
     Универсальная функция для безопасного удаления записи из базы данных.
 
     :param entity_class: Класс сущности, которую нужно удалить.
     :param record_id: Идентификатор записи, которую нужно удалить.
+    :param deleted_by: Идентификатор пользователя, который удаляет запись.
     :return: OperationResult с результатом операции.
     """
     try:
@@ -292,6 +337,7 @@ def soft_delete_record(entity_class, record_id) -> OperationResult:
                 status=OperationStatus.DATABASE_ERROR,
                 msg=f"Запись с ID {record_id} не найдена в таблице {entity_class.__name__}."
             )
+
         try:
             # Пытаемся выполнить запрос, проверяя наличие связанных записей
             related_records = g.session.query(entity_class).filter(
@@ -306,15 +352,19 @@ def soft_delete_record(entity_class, record_id) -> OperationResult:
         except AttributeError:
             # Если атрибут 'foreign_key_field' не существует, просто пропускаем
             pass
-        except sqlalchemy.exc.SQLAlchemyError as e:
+        except SQLAlchemyError as e:
             # Обрабатываем другие исключения SQLAlchemy, если они возникнут
             return OperationResult(
                 status=OperationStatus.DATABASE_ERROR,
                 msg=f"Произошла ошибка при проверке связанных записей: {str(e)}"
             )
 
-        # Установка флага is_deleted в True
+        # Установка флага is_deleted в True и других полей
         record.is_deleted = True
+        record.deleted_at = func.now()  # Устанавливаем текущее время для deleted_at
+        if deleted_by is not None:
+            record.deleted_by = deleted_by  # Устанавливаем пользователя, который удаляет запись
+
         g.session.commit()
         return OperationResult(
             status=OperationStatus.SUCCESS,

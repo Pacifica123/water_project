@@ -7,7 +7,7 @@ from db.crudcore import (
     get_all_from_table, create_user, create_record_entity,
     update_employee, update_record, soft_delete_record
 )
-from db.models import SurfaceWaterWithdrawal, Codes, Permissions, Standarts, Employees
+from db.models import Codes, Permissions, StandartsRef, User
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import (
     print_data_in_func, parce_year_and_quarter, check_quarter_data_exist,

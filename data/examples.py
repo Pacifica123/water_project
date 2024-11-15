@@ -1,24 +1,24 @@
 # Пример справочников
 reference_data = {
-    'Марки приборов': 'device_brand',
+    'Марки приборов': 'meters_brand_ref',
     'Протокол химического анализа': 'chemical_analysis_protocol',
     'Концентраты': 'concentrates',
     'Коды': 'codes',
-    'История разрешений': 'permission_history',
+    # 'История разрешений': 'permission_history',
     'Приборы': 'devices',
-    'История приборов': 'devices_history',
-    'Организации': 'organisation',
+    # 'История приборов': 'devices_history',
+    'Организации': 'organisations',
     'Разрешения': 'permissions',
     'Связь точек и разрешений': 'point_permission_link',
     'Местоположение забора': 'sampling_location',
-    'Нормативы': 'standarts',
-    'Вещества': 'substances',
+    'Нормативы': 'standarts_ref',
+    'Вещества': 'substances_ref',
     'Забор поверхностной воды': 'surface_water_withdrawal',
-    'Водохозяйственный участок': 'water_area',
-    'Водный объект': 'water_body',
+    'Водохозяйственный участок': 'water_area_ref',
+    'Водный объект': 'water_object_ref',
     'Журнал водопотребление': 'water_consumption_log',
     'Точки забора/сброса': 'water_point',
-    'Водный бассейн': 'water_pool',
+    'Водный бассейн': 'water_pool_ref',
     'Степени очистки воды': 'water_treatment'
 }
 

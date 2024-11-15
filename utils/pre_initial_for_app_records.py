@@ -1,12 +1,14 @@
 from flask import g
 
-from db.models import Codes, Employees
+from db.models import Codes, User, UserRoles, WaterPoolRef, WaterAreaRef, CodeType
 
 
 def init_records(session):
     init_hydrograph_unit_recods(session)
     init_test_user(session)
-    ...
+    init_water_pool_records(session)
+    init_water_area_records(session)
+
 
 
 def init_hydrograph_unit_recods(session):
@@ -33,7 +35,7 @@ def init_hydrograph_unit_recods(session):
                 new_code = Codes(
                     code_symbol=code_symbol,
                     code_value=code_value,
-                    code_type='hydrographic_unit_code'
+                    code_type=CodeType.HYDROGRAPHIC_UNIT_CODE
                 )
                 new_code.save(session)  # Сохраняем запись в сессии
             else:
@@ -41,16 +43,126 @@ def init_hydrograph_unit_recods(session):
 
 
 def init_test_user(session):
-    emp = Employees(
-        last_name='test',
-        first_name='test',
+    emp = User(
+        last_name='A',
+        first_name='Af',
         birth_date='12.12.2012',
-        username='test',
-        email='test@test.test',
+        username='admin',
+        email='admin@test.test',
         password='123',
-        is_admin=True
+        role=UserRoles.ADMIN
     )
-    existing_code = session.query(Employees).filter_by(username=emp.username).first()
+    existing_code = session.query(User).filter_by(username=emp.username).first()
     if existing_code is None:
         emp.save(session)
 
+
+def init_water_pool_records(session):
+    data = [
+        'Балтийский бассейновый округ',
+        'Баренцево-Беломорский бассейновый округ',
+        'Двинско-Печорский бассейновый округ',
+        'Днепровский бассейновый округ',
+        'Донской бассейновый округ',
+        'Кубанский бассейновый округ',
+        'Западно-Каспийский бассейновый округ',
+        'Верхневолжский бассейновый округ',
+        'Окский бассейновый округ',
+        'Камский бассейновый округ',
+        'Нижневолжский бассейновый округ',
+        'Уральский бассейновый округ',
+        'Верхнеобский бассейновый округ',
+        'Иртышский бассейновый округ',
+        'Нижнеобский бассейновый округ',
+        'Ангаро-Байкальский бассейновый округ',
+        'Енисейский бассейновый округ',
+        'Ленский бассейновый округ',
+        'Анадыро-Колымский бассейновый округ',
+        'Амурский бассейновый округ',
+        'Крымский бассейновый округ'
+    ]
+
+    for pool_name in data:
+        # Проверяем, существует ли уже запись с таким названием
+        existing_pool = session.query(WaterPoolRef).filter_by(pool_name=pool_name).first()
+
+        if existing_pool is None:
+            # Создаем новый объект WaterPool и сохраняем его в базе данных
+            new_pool = WaterPoolRef(
+                pool_name=pool_name
+            )
+            new_pool.save(session)  # Сохраняем запись в сессии
+            print(f"Добавлен новый бассейн: {pool_name}")
+        else:
+            print(f"Запись с названием '{pool_name}' уже существует. Пропускаем.")
+
+def init_water_area_records(session):
+    data = {
+        '13.01.01.001': 'Бассейн озера Телецкое',
+        '13.01.01.002': 'Бия',
+        '13.01.01.003': 'Катунь',
+        '13.01.01.200': 'Бессточная территория между бассейнами рек Обь, Енисей и границей РФ с Монголией',
+        '13.01.02.001': 'Верховья реки Алей до Гилёвского гидроузла',
+        '13.01.02.002': 'Алей от Гилёвского гидроузла и до устья',
+        '13.01.02.003': 'Обь от слияния рек Бия и Катунь до города Барнаул, без реки Алей',
+        '13.01.02.004': 'Чумыш',
+        '13.01.02.005': 'Обь от города Барнаул до Новосибирского гидроузла, без реки Чумыш',
+        '13.01.02.006': 'Иня',
+        '13.01.02.007': 'Обь от Новосибирского гидроузла до впадения реки Чулым, без рек Иня и Томь',
+        '13.01.03.001': 'Кондома',
+        '13.01.03.002': 'Томь от истока до города Новокузнецк, без реки Кондома',
+        '13.01.03.003': 'Томь от города Новокузнецк до города Кемерово',
+        '13.01.03.004': 'Томь от города Кемерово и до устья',
+        '13.01.04.001': 'Чулым от истока до города Ачинск',
+        '13.01.04.002': 'Чулым от города Ачинск до водомерного поста в селе Зырянское',
+        '13.01.04.003': 'Чулым от водомерного поста в селе Зырянское и до устья',
+        '13.01.05.001': 'Обь от впадения реки Чулым до впадения реки Кеть',
+        '13.01.06.001': 'Кеть',
+        '13.01.07.001': 'Обь от впадения реки Кеть до впадения реки Васюган',
+        '13.01.08.001': 'Васюган',
+        '13.01.09.001': 'Обь от впадения реки Васюган до впадения реки Вах',
+        '13.01.10.001': 'Вах',
+        '13.01.11.001': 'Обь от впадения реки Вах до города Нефтеюганск',
+        '13.01.11.002': 'Обь от города Нефтеюганск до впадения реки Иртыш',
+        '13.02.00.001': 'Бассейн Кучукского озера',
+        '13.02.00.002': 'Бассейн Кулундинского озера',
+        '13.02.00.003': 'Водные объекты южнее бассейна реки Бурла без бассейнов озёр Кукучевского и Кулундинского',
+        '13.02.00.004': 'Бассейн Большого Топольного озера и реки Бурла',
+        '13.02.00.005':  'Бассейн озера Чаны и водные объекты до границы с бассейном реки Иртыш',
+        '13.02.00.006': 'Водные объекты между бассейнами озера Чаны и реки Омь'
+    }
+
+    # Получаем ID водного бассейна "Верхнеобский бассейновый округ"
+    water_pool_name = "Верхнеобский бассейновый округ"
+    water_pool = session.query(WaterPoolRef).filter_by(pool_name=water_pool_name).first()
+
+    if not water_pool:
+        print(f"Ошибка: Водный бассейн '{water_pool_name}' не найден.")
+        return
+
+    for code_symbol, area_name in data.items():
+        # Проверяем, существует ли уже запись с таким кодом
+        existing_code = session.query(Codes).filter_by(code_symbol=code_symbol).first()
+
+        if existing_code is None:
+            # Создаем новый объект Codes и сохраняем его в базе данных
+            new_code = Codes(
+                code_symbol=code_symbol,
+                code_value=area_name,
+                code_type=CodeType.WATER_AREA_CODE
+            )
+            new_code.save(session)  # Сохраняем запись в сессии
+
+            # Получаем ID только что созданного кода
+            code_id = new_code.id
+
+            # Создаем запись в WaterAreaRef
+            new_water_area_ref = WaterAreaRef(
+                code_area_id=code_id,
+                water_pool_id=water_pool.id
+            )
+            new_water_area_ref.save(session)  # Сохраняем запись в сессии
+            print(f"Добавлен новый участок: {area_name} с кодом {code_symbol}.")
+
+        else:
+            print(f"Запись с кодом '{code_symbol}' уже существует, пропускаем.")

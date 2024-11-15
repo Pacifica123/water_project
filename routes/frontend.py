@@ -9,7 +9,7 @@ from routes.backend import get_all_record_from, get_fdata_by_selected, backend_l
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import print_data_in_func, OperationStatus, extract_value_from_json, \
     get_model_class_by_tablename, convert_to_dict, get_required_fields
-from db.models import  Employees
+from db.models import  User
 # from app import reference_data, templates, users
 
 
@@ -95,6 +95,7 @@ def edit_results():
 def edit_reference():
     if 'user' in session:
         selected_reference = None
+        # selected_reference = request.form.get('reference_select')
         new_content = []
         required_fields = []
 

@@ -19,10 +19,10 @@ def load_from_stub():
             return json.load(f)
 
 
-def create_app():
+def create_app(delete_db=False):
     app = Flask(__name__)
     app.secret_key = LONG_KEY
-    engine = setup_database()
+    engine = setup_database(delete_db=delete_db)
 
     @app.before_request
     def before_request():
@@ -38,7 +38,7 @@ def create_app():
 
     return app
 
-
 if __name__ == '__main__':
-    app = create_app()
+    delete_db_flag = os.getenv('DELETE_DB', 'False') == 'True'
+    app = create_app(delete_db_flag)
     app.run(debug=True)

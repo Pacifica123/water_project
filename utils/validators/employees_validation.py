@@ -1,5 +1,5 @@
 from db.crudcore import get_all_from_table
-from db.models import Employees
+from db.models import User
 from utils.backend_utils import OperationStatus, OperationResult, is_valid_date, is_valid_email
 
 
@@ -23,7 +23,7 @@ def employee_validate(data):
     if not is_valid_email(data.get('email')):
         errors.append('Введенная почта не соответствует регулярному выражению')
 
-    finded = get_all_from_table(Employees)
+    finded = get_all_from_table(User)
     if finded.status == OperationStatus.SUCCESS:
         employees = finded.data
     else:
