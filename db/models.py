@@ -341,8 +341,12 @@ class User(Base):
     # organisation: Mapped['Organisations'] = relationship('Organisations', back_populates='users')  # если не заработает - убрать
 
 
-# Журнал учета водопотребления
 class WaterConsumptionLog(Base):
+        """
+    Журнал учета водопотребления (ОСНОВНАЯ ЗАПИСЬ)\n
+    -------------------------------------\n
+    Атрибуты:\n TODO
+    """
     __tablename__ = 'water_consumption_log'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -350,8 +354,6 @@ class WaterConsumptionLog(Base):
     consumption_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     treatment_level: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=False)
     exploitation_org_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), nullable=False)
-
-    # exploitation_org: Mapped["Organisations"] = relationship("Organisations", back_populates="water_consumption_logs")
 
 
 class History(Base):
