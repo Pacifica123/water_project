@@ -216,7 +216,42 @@ def find_employee_by_username(username: str) -> Optional[User]:
         print(f'\n ---> ОШИБКА БД: {e}\n')
         return None
 
+def get_all_by_foreign_key(entity: Type[Any], foreign_key_id: int, foreign_key_column: str) -> OperationResult:
+    """
+    Получение всех записей из указанной таблицы по значению внешнего ключа.
 
+    :param entity: Класс модели SQLAlchemy, соответствующий таблице.
+    :param foreign_key_id: Значение внешнего ключа для фильтрации записей.
+    :param foreign_key_column: Имя столбца внешнего ключа в модели.
+    :return: OperationResult с записями из таблицы или сообщением об ошибке.
+    """
+    print_data_in_func(entity, "get_all_by_foreign_key")
+    try:
+        # Формируем фильтр для запроса по внешнему ключу
+        filter_condition = getattr(entity, foreign_key_column) == foreign_key_id
+        records = g.session.query(entity).filter(filter_condition, entity.is_deleted == False).all()
+
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            data=records
+        )
+    except NoResultFound:
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg=f"Не найдено ни одной записи в {entity} по внешнему ключу {foreign_key_column} = {foreign_key_id}."
+        )
+    except SQLAlchemyError as e:
+        print(f' ---> ОШИБКА БД: {e}')
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg="Произошла ошибка при работе с БД."
+        )
+    except Exception as e:
+        print(f' ---> НЕОЖИДАННАЯ ОШИБКА: {e}')
+        return OperationResult(
+            status=OperationStatus.UNDEFINE_ERROR,
+            msg="Произошла неожиданная ошибка, не связанная с БД."
+        )
 # - - - - - - - - - - - - - - - - - - - -
 # СЕКЦИЯ UPDATE
 # - - - - - - - - - - - - - - - - - - - -

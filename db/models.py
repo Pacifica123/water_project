@@ -311,12 +311,14 @@ class WaterPoint(Base):
     Атрибуты:\n
       \n  - organisation_id (int): организация, связанной с точкой забора (ссылка на 'organisation').\n
       \n  - water_body_id (int): водный объект, к которому относится точка (ссылка на 'water_object_ref').\n
+      \n  - meter_id: прибор учета
       \n  - latitude_longitude (str): Географические координаты точки в формате "широта_долгота".\n
       \n  - point_type (str): Тип точки (например, "забор" или "сброс"), ограниченный 10 символами.
     """
     __tablename__ = 'water_point'
 
     organisation_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), nullable=False)
+    meter_id: Mapped[int] = mapped_column(ForeignKey('meters.id'), nullable=False)
     water_body_id: Mapped[int] = mapped_column(ForeignKey('water_object_ref.id'), nullable=False)
     latitude_longitude: Mapped[str] = mapped_column(String(100), nullable=False)
     point_type: Mapped[PermissionType] = mapped_column(String(20), nullable=False)
@@ -342,14 +344,13 @@ class User(Base):
 
 
 class WaterConsumptionLog(Base):
-        """
+    """
     Журнал учета водопотребления (ОСНОВНАЯ ЗАПИСЬ)\n
     -------------------------------------\n
     Атрибуты:\n TODO
     """
     __tablename__ = 'water_consumption_log'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
     consumption_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     treatment_level: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=False)

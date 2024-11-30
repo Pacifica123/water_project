@@ -1,4 +1,4 @@
-#!/home/noir/projects/flask_for_eco/myflaskapp/linuxvenv/bin/python
+#!/home/noir/Projects/leha/myflaskapp/linuxvenv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -53,7 +53,7 @@ def backend_login(username: str, password: str) -> OperationResult:
     return OperationResult(
         status=OperationStatus.SUCCESS,
         msg="авторизация завершилась успешно",
-        data=serialize_to_json_old(employee)
+        data=employee # БЫЛО : data=serialize_to_json_old(employee)
     )
 
 def edit_or_add_employee(user_data) -> OperationResult:

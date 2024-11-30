@@ -3,13 +3,16 @@ from sqlalchemy.sql.functions import user
 from sqlalchemy.testing import db
 
 from data.examples import reference_data, templates, column_translations, unwanted_columns
-from db.crudcore import update_record
+from db.crudcore import update_record, get_all_by_foreign_key, get_record_by_id
 from routes.backend import get_all_record_from, get_fdata_by_selected, backend_login, \
     edit_or_add_employee, update_record_in, delete_record_from, delete_users, add_to
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import print_data_in_func, OperationStatus, extract_value_from_json, \
-    get_model_class_by_tablename, convert_to_dict, get_required_fields
-from db.models import  User
+    get_model_class_by_tablename, convert_to_dict, get_required_fields, serialize_to_json_old
+from db.models import  User, Organisations
+import jwt
+import datetime
+from db.config import LONG_KEY
 
 api = Blueprint('api', __name__)
 
@@ -21,8 +24,17 @@ def rest_login():
     res = backend_login(username, password)
 
     if res.status == "success":
-        session['user'] = res.data
-        return jsonify({'status': 'success', 'message': 'Успешная авторизация', 'user': res.data}), 200
+
+        org = get_record_by_id(Organisations, res.data.organisation_id)
+        token = "blablabla"+username+"test"
+
+        return jsonify({
+                "token": token,
+                "user": serialize_to_json_old(res.data),
+                "org": serialize_to_json_old(org.data)
+                }), 200
+        # session['user'] = res.data
+        # return jsonify({'status': 'success', 'message': 'Успешная авторизация', 'user': res.data}), 200
     else:
         return jsonify({'status': 'error', 'message': res.message}), 401
 

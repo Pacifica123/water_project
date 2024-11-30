@@ -2,7 +2,7 @@ from flask import Flask,  Blueprint, request, jsonify, g, redirect, url_for, ses
 # from flask_sqlalchemy import SQLAlchemy
 import os
 import json
-
+from flask_cors import CORS
 from db.config import LONG_KEY
 from db.setup import setup_database, get_session
 from routes import register_routes
@@ -22,6 +22,8 @@ def load_from_stub():
 def create_app(delete_db=False):
     app = Flask(__name__)
     app.secret_key = LONG_KEY
+    CORS(app)
+    # app.config["SECRET_KEY"] = LONG_KEY
     engine = setup_database(delete_db=delete_db)
 
     @app.before_request
