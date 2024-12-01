@@ -26,13 +26,21 @@ def rest_login():
     if res.status == "success":
 
         org = get_record_by_id(Organisations, res.data.organisation_id)
-        token = "blablabla"+username+"test"
+        if org.status == "success":
+            token = "blablabla"+username+"test"
 
-        return jsonify({
-                "token": token,
-                "user": serialize_to_json_old(res.data),
-                "org": serialize_to_json_old(org.data)
-                }), 200
+            return jsonify({
+                    "token": token,
+                    "user": serialize_to_json_old(res.data),
+                    "org": serialize_to_json_old(org.data)
+                    }), 200
+        else:
+            token = "blablabla"+username+"test"
+
+            return jsonify({
+                    "token": token,
+                    "user": serialize_to_json_old(res.data),
+                    }), 200
         # session['user'] = res.data
         # return jsonify({'status': 'success', 'message': 'Успешная авторизация', 'user': res.data}), 200
     else:
