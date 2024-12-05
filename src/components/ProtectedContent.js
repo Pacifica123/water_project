@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+// import React, { useState, useEffect } from "react";
+import React, {useState} from "react"
 import "../App.css"; // Стили для дизайна, похожего на пример
 import WaterReportForm from "./WaterReportForm";
 import PaymentCalculationForm from "./PaymentCalculationForm";
+import Water from "./Water"
 
 function ProtectedContent({ onLogout }) {
 
@@ -11,8 +13,20 @@ function ProtectedContent({ onLogout }) {
   //   fullName: localStorage.getItem("user").last_name, // Заглушка для ФИО пользователя
   // });
   const userInfo = JSON.parse(localStorage.getItem("user"));
-  const orgInfo = JSON.parse(localStorage.getItem("org"));
+  const orgData = localStorage.getItem("org");
+  let orgInfo = {}; // Инициализируем orgInfo как пустой объект
 
+  if (orgData) {
+    try {
+      orgInfo = JSON.parse(orgData); // Пытаемся разобрать данные
+    } catch (error) {
+      console.error("Ошибка парсинга org:", error);
+      orgInfo = {}; // Устанавливаем пустой объект в случае ошибки
+    }
+  }
+
+  const token = localStorage.getItem('jwtToken');
+  console.log("токен - ", token);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -22,8 +36,8 @@ function ProtectedContent({ onLogout }) {
         return <WaterReportForm />;
       case "pynk":
           return <div>Форма:Пункт учета</div>;
-      case "consumptionLog":
-        return <div>Форма: Журнал учета водопотребления</div>;
+      case "Water":
+        return <Water />;
       case "paymentCalc":
         return <PaymentCalculationForm/>;
       case "resourceAccounting":
@@ -54,9 +68,9 @@ function ProtectedContent({ onLogout }) {
 function Header({ userInfo, onLogout, orgInfo }) {
   return (
     <header className="header">
-      <h1>Личный кабинет ({orgInfo.organisation_name})</h1>
+<h1>Личный кабинет ({orgInfo.organisation_name || 'Без организации'})</h1>
       <div className="header-right">
-        <span>{userInfo.last_name}</span>
+        <span>{userInfo.last_name} {userInfo.first_name} {userInfo.middle_name}</span>
         <button className="logout-button" onClick={onLogout}>Выход</button>
       </div>
     </header>
@@ -73,7 +87,7 @@ function Sidebar({ setActiveSection }) {
       <button onClick={() => setActiveSection("pynk")}>
        Пункт учета
       </button>
-      <button onClick={() => setActiveSection("consumptionLog")}>Журнал учета водопотребления</button>
+      <button onClick={() => setActiveSection("Water")}>Журнал учета водопотребления</button>
       <button onClick={() => setActiveSection("paymentCalc")}>Расчет суммы оплаты</button>
       <button onClick={() => setActiveSection("resourceAccounting")}>
         Учет объема забора водных ресурсов

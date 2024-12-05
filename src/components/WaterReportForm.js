@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import fetchWaterObjects from "../api/records.js"
 
 function WaterReportForm() {
   const [quarter, setQuarter] = useState(1);
@@ -7,6 +9,24 @@ function WaterReportForm() {
     { month: "февраль", fact: 0, population: 0, other: 0 },
     { month: "март", fact: 0, population: 0, other: 0 },
   ]);
+
+
+  useEffect(() => {
+    const loadWaterObjects = async () => {
+      try {
+        const objects = await fetchWaterObjects();
+        setWaterObjects(objects);
+        console.log("Полученные водные объекты:", objects);
+      } catch (error) {
+        // Обработка ошибки уже выполнена в fetchWaterObjects
+      }
+    };
+
+    loadWaterObjects(); // Загружаем водные объекты при монтировании компонента
+  }, []);
+
+  const [waterObjects, setWaterObjects] = useState([]); // Состояние для хранения водных объектов
+  const [selectedWaterObject, setSelectedWaterObject] = useState(null); // Состояние для выбранного водного объекта
 
   const quarters = {
     1: ["январь", "февраль", "март"],
@@ -50,6 +70,19 @@ function WaterReportForm() {
   return (
     <div className="water-report-form">
       <h2>Справка "Забор поверхностной воды за квартал"</h2>
+      <div className="water-selector">
+        <label>
+        Выберите водный объект:{" "}
+        <select value={selectedWaterObject} onChange={(e) => setSelectedWaterObject(e.target.value)}>
+          <option value="">Выберите объект</option>
+          {waterObjects.map((obj) => (
+            <option key={obj.code_obj_id.code_value} value={obj.code_obj_id.code_value}>
+            {obj.code_obj_id.code_value} - {obj.code_obj_id.code_symbol}
+            </option>
+          ))}
+        </select>
+        </label>
+      </div>
       <div className="quarter-selector">
         <label>
           Выберите квартал:{" "}
