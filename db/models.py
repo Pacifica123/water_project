@@ -111,6 +111,13 @@ class Codes(Base):
     code_value: Mapped[str] = mapped_column(String(255), nullable=False)
     code_type: Mapped[CodeType] = mapped_column(SQLAEnum(CodeType), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'code_symbol': self.code_symbol,
+            'code_value': self.code_value,
+        }
+
 
 class SubstancesRef(Base):
     """
@@ -125,6 +132,13 @@ class SubstancesRef(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     maximum_permissible_concentration: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'maximum_permissible_concentration': self.maximum_permissible_concentration,
+        }
 
 
 class StandartsRef(Base):
@@ -144,6 +158,13 @@ class StandartsRef(Base):
     value: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     document_path: Mapped[str] = mapped_column(String, nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'value': self.value,
+            'document_path': self.document_path,
+        }
+
 
 class Concentrates(Base):
     """
@@ -162,6 +183,12 @@ class Concentrates(Base):
     value: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     text: Mapped[str] = mapped_column(String(255), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'value': self.value,
+            'text': self.text,
+        }
 
 class MetersBrandRef(Base):
     """
@@ -174,6 +201,11 @@ class MetersBrandRef(Base):
 
     brand_name: Mapped[str] = mapped_column(String(255), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'brand_name': self.brand_name,
+        }
 
 
 class Meters(Base):
@@ -189,7 +221,14 @@ class Meters(Base):
     verification_interval: Mapped[int] = mapped_column(Integer, nullable=False)
     next_verification_date: Mapped[Date] = mapped_column(Date, nullable=False)
 
-
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'serial_number': self.serial_number,
+            'verification_date': self.verification_date,
+            'verification_interval': self.verification_interval,
+            'next_verification_date': self.next_verification_date,
+        }
 
 
 
@@ -213,6 +252,15 @@ class Organisations(Base):
     legal_form: Mapped[str] = mapped_column(String(100), nullable=False)
     inn: Mapped[str] = mapped_column(String(12), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'organisation_name': self.organisation_name,
+            'postal_address': self.postal_address,
+            'legal_form': self.legal_form,
+            'inn': self.inn,
+        }
+
 
 class OrgHUCLink(Base):
     """
@@ -223,6 +271,7 @@ class OrgHUCLink(Base):
 
     organisation_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), nullable=False)
     hydrographic_unit_code: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
+
 
 
 class Permissions(Base):
@@ -246,6 +295,14 @@ class Permissions(Base):
     permission_type: Mapped[PermissionType] = mapped_column(SQLAEnum(PermissionType), nullable=False)
     allowed_volume: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'permission_number': self.permission_number,
+            'registration_date': self.registration_date,
+            'permission_type': self.permission_type,
+            'allowed_volume': self.allowed_volume,
+        }
 
 class PointPermissionLink(Base):
     """
@@ -259,6 +316,13 @@ class PointPermissionLink(Base):
     actual_end_date: Mapped[Date] = mapped_column(Date, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'actual_start_date': self.actual_start_date,
+            'actual_end_date': self.actual_end_date,
+            'active': self.active,
+        }
 
 class WaterPoolRef(Base):
     """
@@ -272,6 +336,11 @@ class WaterPoolRef(Base):
     pool_name: Mapped[str] = mapped_column(String(50), nullable=False)
     # code_pool_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'pool_name': self.pool_name,
+        }
 
 class WaterAreaRef(Base):
     """
@@ -287,6 +356,11 @@ class WaterAreaRef(Base):
     code_area_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
     water_pool_id: Mapped[int] = mapped_column(ForeignKey('water_pool_ref.id'), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+
+        }
 
 class WaterObjectRef(Base):
     """
@@ -323,6 +397,12 @@ class WaterPoint(Base):
     latitude_longitude: Mapped[str] = mapped_column(String(100), nullable=False)
     point_type: Mapped[PermissionType] = mapped_column(String(20), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'latitude_longitude': self.latitude_longitude,
+            'point_type': self.point_type,
+        }
 
 # Сотрудники
 class User(Base):
@@ -341,6 +421,13 @@ class User(Base):
 
     # Связь с моделью Organisations
     # organisation: Mapped['Organisations'] = relationship('Organisations', back_populates='users')  # если не заработает - убрать
+    # def to_dict(self):
+    #     return {
+    #         'id': self.id,
+    #         'last_name': self.last_name,
+    #         'actual_end_date': self.actual_end_date,
+    #         'active': self.active,
+    #     }
 
 
 class WaterConsumptionLog(Base):

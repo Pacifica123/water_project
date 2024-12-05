@@ -22,7 +22,9 @@ def load_from_stub():
 def create_app(delete_db=False):
     app = Flask(__name__)
     app.secret_key = LONG_KEY
-    CORS(app)
+    CORS(app, supports_credentials=True)
+    app.config['SESSION_TYPE'] = 'filesystem'
+    # Session(app)
     # app.config["SECRET_KEY"] = LONG_KEY
     engine = setup_database(delete_db=delete_db)
 

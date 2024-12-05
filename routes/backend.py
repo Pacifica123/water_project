@@ -15,6 +15,7 @@ from utils.backend_utils import (
     print_entity_data, serialize_to_json, get_model_class_by_tablename,
     get_required_fields, print_operation_result, serialize_to_json_old
 )
+from utils.db_utils import replace_fks
 
 backend = Blueprint('backend', __name__)
 
@@ -77,11 +78,12 @@ def edit_or_add_employee(user_data) -> OperationResult:
 def edit_concrete_record(selected_model, selected_id, newdata) -> OperationResult:
     ...
 
+
 def get_all_record_from(tablename: str) -> OperationResult:
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
     res = get_all_from_table(cls)
     print_operation_result(res)
-    return res
+    return replace_fks(res, tablename)
 
 def add_to(tablename: str, data) -> OperationResult:
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))

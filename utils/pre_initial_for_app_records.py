@@ -38,8 +38,8 @@ def init_hydrograph_unit_recods(session):
                     code_type=CodeType.HYDROGRAPHIC_UNIT_CODE
                 )
                 new_code.save(session)  # Сохраняем запись в сессии
-            else:
-                print(f"Запись с code_symbol {code_symbol} уже существует. Пропускаем.")
+            # else:
+            #     print(f"Запись с code_symbol {code_symbol} уже существует. Пропускаем.")
 
 
 def init_test_user(session):
@@ -93,8 +93,8 @@ def init_water_pool_records(session):
             )
             new_pool.save(session)  # Сохраняем запись в сессии
             print(f"Добавлен новый бассейн: {pool_name}")
-        else:
-            print(f"Запись с названием '{pool_name}' уже существует. Пропускаем.")
+        # else:
+        #     print(f"Запись с названием '{pool_name}' уже существует. Пропускаем.")
 
 def init_water_area_records(session):
     data = {
@@ -164,5 +164,5 @@ def init_water_area_records(session):
             new_water_area_ref.save(session)  # Сохраняем запись в сессии
             print(f"Добавлен новый участок: {area_name} с кодом {code_symbol}.")
 
-        else:
-            print(f"Запись с кодом '{code_symbol}' уже существует, пропускаем.")
+        # else:
+        #     print(f"Запись с кодом '{code_symbol}' уже существует, пропускаем.")
