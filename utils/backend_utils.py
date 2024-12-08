@@ -54,6 +54,16 @@ def print_operation_result(result, func_name=None):
     print()
 
 
+def clear_fields(json_str, fields):
+    # Десериализуем JSON-строку в словарь
+    data = json.loads(json_str)
+    # Удаляем указанные поля
+    for field in fields:
+        data.pop(field, None)
+    # Сериализуем обратно в JSON-строку
+    return json.dumps(data)
+
+
 def get_required_fields(entity_class) -> list:
     """
     Извлечение обязательных полей из модели SQLAlchemy, исключая поле id.

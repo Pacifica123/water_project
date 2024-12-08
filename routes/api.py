@@ -8,12 +8,13 @@ from routes.backend import get_all_record_from, get_fdata_by_selected, backend_l
     edit_or_add_employee, update_record_in, delete_record_from, delete_users, add_to
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import print_data_in_func, OperationStatus, extract_value_from_json, \
-    get_model_class_by_tablename, convert_to_dict, get_required_fields, serialize_to_json_old
+    get_model_class_by_tablename, convert_to_dict, get_required_fields, serialize_to_json_old, clear_fields, print_entity_data
 from db.models import  User, Organisations
 import jwt
 import datetime
 from db.config import LONG_KEY
 from utils.validators.auth_validation import generateJWT, auth_validate
+import pprint
 
 api = Blueprint('api', __name__)
 
@@ -35,16 +36,15 @@ def rest_login():
 
             return jsonify({
                     "token": token,
-                    "user": serialize_to_json_old(res.data),
+                    "user": clear_fields(serialize_to_json_old(res.data), ["password", "role"]),
                     "org": serialize_to_json_old(org.data)
                     }), 200
         else:
-            # token = "blablabla"+username+"test"
 
 
             return jsonify({
                     "token": token,
-                    "user": serialize_to_json_old(res.data),
+                    "user": clear_fields(serialize_to_json_old(res.data), ["password", "role"]),
                     }), 200
         # session['user'] = res.data
         # return jsonify({'status': 'success', 'message': 'Успешная авторизация', 'user': res.data}), 200
@@ -121,8 +121,10 @@ def rest_edit_reference():
 
 @api.route('/api/update_record', methods=['POST'])
 def rest_update_record():
-    if 'user' not in session:
-        return jsonify({"error": "Unauthorized"}), 401
+    token = request.headers.get('tokenJWTAuthorization')
+    auth_res = auth_validate(token)
+    if auth_res.status != "success" :
+        return jsonify({"error": "Пользователь неавторизован"}), 401
 
     try:
         data = request.json
@@ -146,6 +148,43 @@ def rest_update_record():
             return jsonify({"message": "Record updated successfully"}), 200
         else:
             return jsonify({"error": f"{result.status}: {result.message}"}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api.route('/api/send_quarter', methods=['POST'])
+def send_quarter():
+    # Получаем токен из заголовков
+    token = request.headers.get('tokenJWTAuthorization')
+
+    # Проверяем авторизацию
+    auth_res = auth_validate(token)
+    if auth_res.status != "success":
+        return jsonify({"error": "Пользователь неавторизован"}), 401
+
+    try:
+        # Получаем данные из запроса
+        data = request.json
+        water_object = data.get('waterObject') #TODO : пункт учета
+        quarter = data.get('quarter')
+        report_data = data.get('data')
+
+        # Проверяем наличие обязательных параметров
+        if not water_object or not quarter or not report_data:
+            return jsonify({"error": "Отсутствуют обязательные параметры"}), 400
+
+        # Здесь вы можете добавить логику для обработки данных отчета
+        # result = save_quarter_data(water_object, quarter, report_data)
+        pprint.pprint(water_object)
+        pprint.pprint(quarter)
+        pprint.pprint(report_data)
+
+
+        if 1==1:
+            return jsonify({"message": "Данные успешно сохранены"}), 200
+        else:
+            return jsonify({"error": "Не удалось сохранить данные"}), 500
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
