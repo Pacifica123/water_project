@@ -4,6 +4,7 @@ import "../App.css"; // Стили для дизайна, похожего на 
 import WaterReportForm from "./WaterReportForm";
 import PaymentCalculationForm from "./PaymentCalculationForm";
 import Water from "./Water"
+import OrganizationInfo from "./OrganizationInfo"
 
 function ProtectedContent({ onLogout }) {
 
@@ -47,7 +48,7 @@ function ProtectedContent({ onLogout }) {
       case "personalInfo":
         return <div>Личная информация о себе</div>;
       case "organizationInfo":
-        return <div>Информация об организации</div>;
+        return <OrganizationInfo />;
       default:
         return <div>Выберите раздел</div>;
     }

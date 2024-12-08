@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import fetchWaterObjects from "../api/records.js"
+import {fetchWaterObjects, sendQuarterData }from "../api/records.js";
 
 function WaterReportForm() {
   const [quarter, setQuarter] = useState(1);
@@ -10,23 +10,20 @@ function WaterReportForm() {
     { month: "март", fact: 0, population: 0, other: 0 },
   ]);
 
+  const [waterObjects, setWaterObjects] = useState([]);
+  const [selectedWaterObject, setSelectedWaterObject] = useState(null);
 
   useEffect(() => {
     const loadWaterObjects = async () => {
       try {
         const objects = await fetchWaterObjects();
         setWaterObjects(objects);
-        console.log("Полученные водные объекты:", objects);
       } catch (error) {
-        // Обработка ошибки уже выполнена в fetchWaterObjects
+        console.error("Ошибка загрузки водных объектов", error);
       }
     };
-
-    loadWaterObjects(); // Загружаем водные объекты при монтировании компонента
+    loadWaterObjects();
   }, []);
-
-  const [waterObjects, setWaterObjects] = useState([]); // Состояние для хранения водных объектов
-  const [selectedWaterObject, setSelectedWaterObject] = useState(null); // Состояние для выбранного водного объекта
 
   const quarters = {
     1: ["январь", "февраль", "март"],
@@ -65,36 +62,55 @@ function WaterReportForm() {
     );
   };
 
+  const handleSubmit = async () => {
+    try {
+      const response = await sendQuarterData(selectedWaterObject, quarter, data);
+      console.log("Данные успешно отправлены", response);
+    } catch (error) {
+      console.error("Ошибка при отправке данных", error.message);
+    }
+  };
+
+
   const totals = calculateTotals();
 
   return (
     <div className="water-report-form">
+      <div className="content-container">
       <h2>Справка "Забор поверхностной воды за квартал"</h2>
-      <div className="water-selector">
-        <label>
-        Выберите водный объект:{" "}
-        <select value={selectedWaterObject} onChange={(e) => setSelectedWaterObject(e.target.value)}>
-          <option value="">Выберите объект</option>
-          {waterObjects.map((obj) => (
-            <option key={obj.code_obj_id.code_value} value={obj.code_obj_id.code_value}>
-            {obj.code_obj_id.code_value} - {obj.code_obj_id.code_symbol}
-            </option>
-          ))}
-        </select>
-        </label>
+      <div className="selectors">
+        <div className="selector-row">
+          <label>
+            Выберите водный объект: 
+            <select 
+              className="custom-select"
+              value={selectedWaterObject} 
+              onChange={(e) => setSelectedWaterObject(e.target.value)}
+            >
+              <option value="">Выберите объект</option>
+              {waterObjects.map((obj) => (
+                <option key={obj.code_obj_id.code_value} value={obj.code_obj_id.code_value}>
+                  {obj.code_obj_id.code_value} - {obj.code_obj_id.code_symbol}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Выберите квартал: 
+            <select 
+              className="custom-select"
+              value={quarter} 
+              onChange={handleQuarterChange}
+            >
+              <option value={1}>1 квартал</option>
+              <option value={2}>2 квартал</option>
+              <option value={3}>3 квартал</option>
+              <option value={4}>4 квартал</option>
+            </select>
+          </label>
+        </div>
       </div>
-      <div className="quarter-selector">
-        <label>
-          Выберите квартал:{" "}
-          <select value={quarter} onChange={handleQuarterChange}>
-            <option value={1}>1 квартал</option>
-            <option value={2}>2 квартал</option>
-            <option value={3}>3 квартал</option>
-            <option value={4}>4 квартал</option>
-          </select>
-        </label>
-      </div>
-      <table>
+<table className="data-table">
         <thead>
           <tr>
             <th>Дата</th>
@@ -110,28 +126,25 @@ function WaterReportForm() {
               <td>
                 <input
                   type="number"
+                  className="narrow-input"
                   value={row.fact}
-                  onChange={(e) =>
-                    handleInputChange(index, "fact", e.target.value)
-                  }
+                  onChange={(e) => handleInputChange(index, "fact", e.target.value)}
                 />
               </td>
               <td>
                 <input
                   type="number"
+                  className="narrow-input"
                   value={row.population}
-                  onChange={(e) =>
-                    handleInputChange(index, "population", e.target.value)
-                  }
+                  onChange={(e) => handleInputChange(index, "population", e.target.value)}
                 />
               </td>
               <td>
                 <input
                   type="number"
+                  className="narrow-input"
                   value={row.other}
-                  onChange={(e) =>
-                    handleInputChange(index, "other", e.target.value)
-                  }
+                  onChange={(e) => handleInputChange(index, "other", e.target.value)}
                 />
               </td>
             </tr>
@@ -144,6 +157,10 @@ function WaterReportForm() {
           </tr>
         </tbody>
       </table>
+       <div className="submit-button-container">
+      <button className="submit-button" onClick={handleSubmit}>Отправить</button>
+     </div>
+     </div>
     </div>
   );
 }

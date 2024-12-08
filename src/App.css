@@ -10,7 +10,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
-  background-color: #f5f5f5;
+  color: #ffffff;
+  background-color: #0087ff;
   border-bottom: 1px solid #ddd;
 }
 
@@ -37,6 +38,7 @@
 .main-layout {
   display: flex;
   flex: 1;
+  background-color: #f9f9f9;
 }
 
 .sidebar {
@@ -91,9 +93,7 @@
   background-color: #e6e6e6;
 }
 
-.water-report-form {
-  padding: 20px;
-}
+
 
 .quarter-selector {
   margin-bottom: 15px;
@@ -309,4 +309,110 @@ input {
 .water.button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
+}
+
+/* Стиль для справки забора поверхности воды */
+
+.water-report-form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh; /* Высота на весь экран */
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  
+}
+
+.content-container {
+  background-color: #f9f9f9; /* Светлый фон */
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Тень */
+  width: 80%; /* Опциональная ширина */
+  max-width: 1200px; /* Максимальная ширина */
+}
+
+.selectors {
+  margin-bottom: 20px;
+}
+
+.selector-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-select {
+  padding: 5px 10px;
+  font-size: 14px;
+  width: 200px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.data-table th,
+.data-table td {
+  border: 1px solid #ccc;
+  text-align: center;
+  padding: 5px;
+}
+
+.narrow-input {
+  width: 200px;
+  padding: 3px;
+}
+
+.submit-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.submit-button:hover {
+  background-color: #0056b3;
+}
+
+.submit-button-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px; /* Отступ сверху */
+}
+
+.organization-info {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.organization-info h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.info-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+
+.info-table td:first-child {
+  font-weight: bold;
+  background-color: #f1f1f1;
 }

@@ -31,4 +31,27 @@ const fetchWaterObjects = async () => {
   }
 };
 
-export default fetchWaterObjects;
+// export default fetchWaterObjects;
+
+const sendQuarterData = async (waterObject, quarter, data) => {
+  const token = localStorage.getItem('jwtToken');
+
+  try {
+    const response = await axios.post(`${API_BASE_URL}/send_quarter`, {
+      waterObject,
+      quarter,
+      data,
+    }, {
+      headers: {
+        'tokenJWTAuthorization': token // Передаем токен в заголовке
+      },
+      withCredentials: true
+    });
+
+    return response.data; // Возвращаем данные ответа
+  } catch (error) {
+    throw new Error("Ошибка при отправке данных: " + error.message);
+  }
+};
+
+export {sendQuarterData, fetchWaterObjects};

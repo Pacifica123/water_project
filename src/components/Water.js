@@ -1,6 +1,17 @@
 import React, { useState } from "react";
 
 const Water = () => {
+  const orgData = localStorage.getItem("org");
+  let orgInfo = {}; // Инициализируем orgInfo как пустой объект
+
+  if (orgData) {
+    try {
+      orgInfo = JSON.parse(orgData); // Пытаемся разобрать данные
+    } catch (error) {
+      console.error("Ошибка парсинга org:", error);
+      orgInfo = {}; // Устанавливаем пустой объект в случае ошибки
+    }
+  }
   const [currentStep, setCurrentStep] = useState(1);
     
   const hadleSubmit = () => {
@@ -28,9 +39,7 @@ const Water = () => {
             <div className="input-group">
               <label>
                 Наименование организации:
-                <select>
-                  <option value="">Выбрать организацию</option>
-                </select>
+               { " "+orgInfo.organisation_name || 'Без организации'}
               </label>
             </div>
             <div className="input-group">
