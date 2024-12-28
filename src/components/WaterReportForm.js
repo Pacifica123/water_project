@@ -77,11 +77,11 @@ function WaterReportForm() {
   return (
     <div className="water-report-form">
       <div className="content-container">
-      <h2>Справка "Забор поверхностной воды за квартал"</h2>
+      <h2>Ввод показаний "Забор поверхностной воды за квартал"</h2>
       <div className="selectors">
         <div className="selector-row">
           <label>
-            Выберите водный объект: 
+            Выберите точку забора:
             <select 
               className="custom-select"
               value={selectedWaterObject} 

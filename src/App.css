@@ -320,7 +320,7 @@ input {
   height: 50vh; /* Высота на весь экран */
   padding: 20px;
   font-family: Arial, sans-serif;
-  
+
 }
 
 .content-container {
@@ -333,17 +333,26 @@ input {
 }
 
 .selectors {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
 }
 
 .selector-row {
   display: flex;
-  gap: 20px;
+  gap: 30px;
   align-items: center;
   justify-content: center;
 }
 
+.selector-row  label{
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-right: 20px;
+}
+
 .custom-select {
+  margin-top: 8px;
   padding: 5px 10px;
   font-size: 14px;
   width: 200px;
@@ -385,34 +394,4 @@ input {
   display: flex;
   justify-content: center;
   margin-top: 20px; /* Отступ сверху */
-}
-
-.organization-info {
-  max-width: 600px;
-  margin: 20px auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  background-color: #f9f9f9;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.organization-info h2 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.info-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.info-table td {
-  padding: 10px;
-  border: 1px solid #ddd;
-}
-
-.info-table td:first-child {
-  font-weight: bold;
-  background-color: #f1f1f1;
 }

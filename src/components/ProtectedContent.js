@@ -5,6 +5,7 @@ import WaterReportForm from "./WaterReportForm";
 import PaymentCalculationForm from "./PaymentCalculationForm";
 import Water from "./Water"
 import OrganizationInfo from "./OrganizationInfo"
+import HistoryTable from "./HistoryTable"
 
 function ProtectedContent({ onLogout }) {
 
@@ -49,6 +50,8 @@ function ProtectedContent({ onLogout }) {
         return <div>Личная информация о себе</div>;
       case "organizationInfo":
         return <OrganizationInfo />;
+      case "history":
+        return <HistoryTable/>
       default:
         return <div>Выберите раздел</div>;
     }
@@ -96,7 +99,9 @@ function Sidebar({ setActiveSection }) {
       <button onClick={() => setActiveSection("wasteWater")}>Учет объема сброса сточных вод</button>
       <button onClick={() => setActiveSection("personalInfo")}>Личная информация</button>
       <button onClick={() => setActiveSection("organizationInfo")}>Информация об организации</button>
+      <button onClick={() => setActiveSection("history")}>История изменений</button>
     </div>
+
   );
 }
 
