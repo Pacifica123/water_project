@@ -118,6 +118,8 @@ def delete_users(tablename: str, users_id: int) -> OperationResult:
     return soft_delete_record(cls, users_id)
 
 # ====================== Data Processing Functions ======================
+def form_processing_to_entity(selected_template: str, form_data: any):
+    ...
 
 def get_fdata_by_selected(selected_template: str) -> OperationResult:
     """Возвращает необходимые данные для формы заполнения."""
@@ -141,6 +143,10 @@ def get_fdata_by_selected(selected_template: str) -> OperationResult:
             return OperationResult(result.status, f"Ошибка при получении данных из таблицы {table}", None)
 
     return OperationResult(OperationStatus.SUCCESS, "Данные успешно получены", all_data)
+
+
+def save_quarter_data(water_object, quarter, report_data):
+    ...
 
 # ====================== File Parsing Functions ======================
 

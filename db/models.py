@@ -3,6 +3,7 @@ from sqlalchemy import String, DateTime, Enum as SQLAEnum, func, ForeignKey, Tex
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Optional
 from enum import Enum as PyEnum
+from sqlalchemy import JSON
 
 
 class PermissionType(PyEnum):
@@ -445,9 +446,66 @@ class WaterConsumptionLog(Base):
 
 
 class History(Base):
+    """
+    Универсальная история записей\n
+    -------------------------------------\n
+    Атрибуты:\n TODO
+    """
     __tablename__ = 'history'
 
     table_name: Mapped[str] = mapped_column(String(255), nullable=False)  # Имя таблицы, в которой произошло изменение
     record_id: Mapped[int] = mapped_column(Integer, nullable=False)  # ID измененной записи
     change_date: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), nullable=False)  # Дата изменения
     comment: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+
+class PointMeterLink(Base):
+    """
+    Связка точки потребления и прибора, у точки м.б. нескоолько приборов\n
+    -------------------------------------\n
+    Атрибуты:\n TODO
+    """
+    __tablename__ = 'point_meter_link'
+
+    point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
+    meter_id: Mapped[int] = mapped_column(ForeignKey('meters.id'), nullable=False)
+
+
+# class RecordPML(PointMeterLink):
+#     """
+#     Запись измерения для PointMeterLink.
+#
+#     Атрибуты:
+#     - measurement_date: Дата измерения
+#     - value: Значение измерения
+#     """
+#     __tablename__ = 'measurement'
+#
+#     measurement_date: Mapped[DateTime] = mapped_column(nullable=False)  # дата измерения
+#     value: Mapped[float] = mapped_column(Float, nullable=False)  # значение измерения
+
+
+class RecordWCL(Base):
+    __tablename__ = 'record_wcl'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    measurement_date: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
+    operating_time_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    water_consumption_m3_per_day: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    meter_readings: Mapped[dict] = mapped_column(JSON)
+# class RecordWCL(WaterConsumptionLog):
+#     """
+#     Запись журнала учета водопотребления (наследник WaterConsumptionLog)\n
+#     -------------------------------------\n
+#     Атрибуты:\n
+#     - measurement_date: Дата измерения\n
+#     - point_meter_link_id: Ссылка на запись измерения для PointMeterLink\n
+#     - operating_time_days: Время работы измерительного прибора в сутках\n
+#     - water_consumption_m3_per_day: Расход воды (тыс.м3)\n
+#     """
+#     __tablename__ = 'record_wcl'
+#
+#     measurement_date: Mapped[DateTime] = mapped_column(nullable=False)  # дата измерения
+#     point_meter_link_id: Mapped[int] = mapped_column(ForeignKey('measurement.id'), nullable=False)  # ссылка на RecordPML НО НАДО НЕСКОЛЬКО СЮДА...
+#     operating_time_days: Mapped[float] = mapped_column(Float, nullable=False)  # время работы в сутках
+#     water_consumption_m3_per_day: Mapped[float] = mapped_column(Float, nullable=False)  # расход воды в м3/сут
