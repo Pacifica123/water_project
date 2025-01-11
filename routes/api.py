@@ -5,7 +5,7 @@ from sqlalchemy.testing import db
 from data.examples import reference_data, templates, column_translations, unwanted_columns
 from db.crudcore import update_record, get_all_by_foreign_key, get_record_by_id
 from routes.backend import get_all_record_from, get_fdata_by_selected, backend_login, \
-    edit_or_add_employee, update_record_in, delete_record_from, delete_users, add_to
+    edit_or_add_employee, update_record_in, delete_record_from, delete_users, add_to, form_processing_to_entity
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import print_data_in_func, OperationStatus, extract_value_from_json, \
     get_model_class_by_tablename, convert_to_dict, get_required_fields, serialize_to_json_old, clear_fields, print_entity_data
@@ -17,6 +17,7 @@ from utils.validators.auth_validation import generateJWT, auth_validate
 import pprint
 
 api = Blueprint('api', __name__)
+
 
 @api.route('/api/login', methods=['POST'])
 def rest_login():
@@ -166,25 +167,26 @@ def send_quarter():
     try:
         # Получаем данные из запроса
         data = request.json
-        water_object = data.get('waterObject') #TODO : пункт учета
-        quarter = data.get('quarter')
-        report_data = data.get('data')
-
-        # Проверяем наличие обязательных параметров
-        if not water_object or not quarter or not report_data:
-            return jsonify({"error": "Отсутствуют обязательные параметры"}), 400
+        # water_object = data.get('waterObject') #TODO : пункт учета
+        # quarter = data.get('quarter')
+        # report_data = data.get('data')
+        #
+        # # Проверяем наличие обязательных параметров
+        # if not water_object or not quarter or not report_data:
+        #     return jsonify({"error": "Отсутствуют обязательные параметры"}), 400
 
         # Здесь вы можете добавить логику для обработки данных отчета
         # result = save_quarter_data(water_object, quarter, report_data)
-        pprint.pprint(water_object)
-        pprint.pprint(quarter)
-        pprint.pprint(report_data)
-
-
-        if 1==1:
-            return jsonify({"message": "Данные успешно сохранены"}), 200
-        else:
-            return jsonify({"error": "Не удалось сохранить данные"}), 500
+        # pprint.pprint(water_object)
+        # pprint.pprint(quarter)
+        # pprint.pprint(report_data)
+        selected_form = data.get('selected_form')
+        res = form_processing_to_entity('send_quarter', data)
+        return jsonify(res);
+        # if 1==1:
+        #     return jsonify({"message": "Данные успешно сохранены"}), 200
+        # else:
+        #     return jsonify({"error": "Не удалось сохранить данные"}), 500
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

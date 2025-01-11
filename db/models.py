@@ -38,6 +38,24 @@ class UserRoles(PyEnum):
     REPORT_ADMIN = "report_admin"  # Администратор отчетов
     EMPLOYEE = "employee" # Сотрудник органиазции
 
+class ConsumersCategories(PyEnum):
+    ACTUAL = "actual"
+    POPULATION = "population"
+    OTHER = "other"
+
+class Month(PyEnum):
+    JANUARY = "январь"
+    FEBRUARY = "февраль"
+    MARCH = "март"
+    APRIL = "апрель"
+    MAY = "май"
+    JUNE = "июнь"
+    JULY = "июль"
+    AUGUST = "август"
+    SEPTEMBER = "сентябрь"
+    OCTOBER = "октябрь"
+    NOVEMBER = "ноябрь"
+    DECEMBER = "декабрь"
 
 class Base(DeclarativeBase):
     """
@@ -486,13 +504,34 @@ class PointMeterLink(Base):
 
 
 class RecordWCL(Base):
+    """
+    Конкретный экземпляр записи закрепленный законкретным журналом WaterConsumptionLog
+    """
     __tablename__ = 'record_wcl'
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    log_id: Mapped[int] = mapped_column(ForeignKey('water_consumption_log.id'))
     measurement_date: Mapped[DateTime] = mapped_column(DateTime, nullable=False)
     operating_time_days: Mapped[int] = mapped_column(Integer, nullable=False)
     water_consumption_m3_per_day: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     meter_readings: Mapped[dict] = mapped_column(JSON)
+
+
+class WaterConsumptionLogByCategories(Base):
+    category: Mapped[ConsumersCategories] = mapped_column(SQLAEnum(ConsumersCategories), nullable=False)
+    month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+
+# class WCLxPMLrecordLink(Base):
+#     """
+#     Связка записи журнала с Конкретным прибором, существующая по той причине что:
+#     - на одной точке водозабора может быть произвольное количество приборов
+#     - на одной и той же точке с течением времени гипотетически количество приборов может меняться
+#     """
+#     __tablename__ = 'wxprl'
+#
+#     point_meter_link_id: Mapped[int] = mapped_column(ForeignKey('point_meter_link.id'), nullable=False)
+#     record_wcl_id: Mapped[int] = mapped_column(ForeignKey('record_wcl.id'), nullable=False)
+
 # class RecordWCL(WaterConsumptionLog):
 #     """
 #     Запись журнала учета водопотребления (наследник WaterConsumptionLog)\n

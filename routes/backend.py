@@ -118,8 +118,20 @@ def delete_users(tablename: str, users_id: int) -> OperationResult:
     return soft_delete_record(cls, users_id)
 
 # ====================== Data Processing Functions ======================
-def form_processing_to_entity(selected_template: str, form_data: any):
-    ...
+def form_processing_to_entity(selected_template: str, form_data: Any) -> OperationResult:
+    match selected_template:
+        case "send_quarter":
+            return send_quarter(form_data)
+        case "accounting_for_water_consumption":
+            pass
+        case "excel_template_3.1":
+            pass
+        case "excel_template_3.2":
+            pass
+        case "Payment_calculation":
+            pass
+        case _:
+            raise ValueError(f"Unknown template: {selected_template}")
 
 def get_fdata_by_selected(selected_template: str) -> OperationResult:
     """Возвращает необходимые данные для формы заполнения."""
@@ -145,8 +157,36 @@ def get_fdata_by_selected(selected_template: str) -> OperationResult:
     return OperationResult(OperationStatus.SUCCESS, "Данные успешно получены", all_data)
 
 
-def save_quarter_data(water_object, quarter, report_data):
-    ...
+def send_quarter(form_data: any):
+    water_point_id = form_data["water_point_id"]
+    water_point_name = form_data["water_point_name"]
+    water_object_code = form_data["water_object_code"]
+    quarter = form_data["quarter"]
+    report_data = form_data["report_data"]
+
+    month_mapping = {
+        1: ["январь", "февраль", "март"],
+        2: ["апрель", "май", "июнь"],
+        3: ["июль", "август", "сентябрь"],
+        4: ["октябрь", "ноябрь", "декабрь"],
+    }
+
+    months = month_mapping.get(quarter, [])
+    if not months:
+        raise ValueError(f"Invalid quarter: {quarter}")
+
+    for month, data in zip(months, report_data):
+        for category, value in data.items():
+            entry = {
+                "category": category,
+                "month": month,
+                "value": value,
+            }
+            result = add_to(WaterConsumptionLogByCategories.__tablename__, entry)
+            if not result.success:
+                return result
+
+    return OperationResult(status=OperationStatus.SUCCESS, message="Данные успешно сохранены")
 
 # ====================== File Parsing Functions ======================
 
