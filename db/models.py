@@ -517,9 +517,12 @@ class RecordWCL(Base):
 
 
 class WaterConsumptionLogByCategories(Base):
+    __tablename__ = 'wcl_category'
+
     category: Mapped[ConsumersCategories] = mapped_column(SQLAEnum(ConsumersCategories), nullable=False)
     month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
+    # water_object_code = ... TODO
 
 # class WCLxPMLrecordLink(Base):
 #     """

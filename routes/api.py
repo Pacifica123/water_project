@@ -70,12 +70,14 @@ def rest_edit_reference():
     # if 'user' not in session:
     token = request.headers.get('tokenJWTAuthorization')
     auth_res = auth_validate(token)
-    if auth_res.status != "success" :
+    print(auth_res.status)
+    if auth_res.status != OperationStatus.SUCCESS:
         return jsonify({"error": "Пользователь неавторизован", "message": auth_res.data }), 401
 
     if request.method == 'GET':
         selected_reference = request.args.get('reference_select')
-        print(selected_reference)
+
+        print("Выбранный объект: ", selected_reference)
         if not selected_reference:
             return jsonify({"error": "Не выбран справочник"}), 400
 
@@ -85,6 +87,7 @@ def rest_edit_reference():
             records = get_all_record_from(selected_reference).data
             # new_content = [convert_to_dict(record) for record in records]
             # required_fields = get_required_fields(entity_class)
+            pprint.pprint(records)
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
@@ -167,6 +170,7 @@ def send_quarter():
     try:
         # Получаем данные из запроса
         data = request.json
+        pprint.pprint(data)
         # water_object = data.get('waterObject') #TODO : пункт учета
         # quarter = data.get('quarter')
         # report_data = data.get('data')
@@ -182,7 +186,9 @@ def send_quarter():
         # pprint.pprint(report_data)
         selected_form = data.get('selected_form')
         res = form_processing_to_entity('send_quarter', data)
-        return jsonify(res);
+        if res.status != OperationStatus.SUCCESS:
+            return jsonify({"error": str(res.message)}), 500
+        return jsonify("успешно"), 200;
         # if 1==1:
         #     return jsonify({"message": "Данные успешно сохранены"}), 200
         # else:

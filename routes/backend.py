@@ -7,7 +7,7 @@ from db.crudcore import (
     get_all_from_table, create_user, create_record_entity,
     update_employee, update_record, soft_delete_record
 )
-from db.models import Codes, Permissions, StandartsRef, User
+from db.models import Codes, Permissions, StandartsRef, User, WaterConsumptionLogByCategories, ConsumersCategories, Month
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import (
     print_data_in_func, parce_year_and_quarter, check_quarter_data_exist,
@@ -118,7 +118,7 @@ def delete_users(tablename: str, users_id: int) -> OperationResult:
     return soft_delete_record(cls, users_id)
 
 # ====================== Data Processing Functions ======================
-def form_processing_to_entity(selected_template: str, form_data: Any) -> OperationResult:
+def form_processing_to_entity(selected_template: str, form_data: any) -> OperationResult:
     match selected_template:
         case "send_quarter":
             return send_quarter(form_data)
@@ -158,35 +158,42 @@ def get_fdata_by_selected(selected_template: str) -> OperationResult:
 
 
 def send_quarter(form_data: any):
-    water_point_id = form_data["water_point_id"]
-    water_point_name = form_data["water_point_name"]
-    water_object_code = form_data["water_object_code"]
+    # water_point_id = form_data["water_point_id"]
+    # water_point_name = form_data["waterObject"][""]
+    water_object_code = form_data["waterObjectCode"]
     quarter = form_data["quarter"]
-    report_data = form_data["report_data"]
+    report_data = form_data["data"]
 
     month_mapping = {
-        1: ["январь", "февраль", "март"],
-        2: ["апрель", "май", "июнь"],
-        3: ["июль", "август", "сентябрь"],
-        4: ["октябрь", "ноябрь", "декабрь"],
+        1: [Month.JANUARY, Month.FEBRUARY, Month.MARCH],
+        2: [Month.APRIL, Month.MAY, Month.JUNE],
+        3: [Month.JULY, Month.AUGUST, Month.SEPTEMBER],
+        4: [Month.OCTOBER, Month.NOVEMBER, Month.DECEMBER],
     }
 
     months = month_mapping.get(quarter, [])
     if not months:
         raise ValueError(f"Invalid quarter: {quarter}")
+    # Создаем словарь для сопоставления категорий с их значениями
+    category_mapping = {
+        "fact": ConsumersCategories.ACTUAL,
+        "population": ConsumersCategories.POPULATION,
+        "other": ConsumersCategories.OTHER,
+    }
 
     for month, data in zip(months, report_data):
-        for category, value in data.items():
-            entry = {
-                "category": category,
-                "month": month,
-                "value": value,
-            }
-            result = add_to(WaterConsumptionLogByCategories.__tablename__, entry)
-            if not result.success:
-                return result
+        for category_key, value in data.items():
+            if category_key in category_mapping:
+                entry = {
+                    "category": category_mapping[category_key],
+                    "month": month,
+                    "value": value,
+                }
+                result = add_to(WaterConsumptionLogByCategories.__tablename__, entry)
+                if result.status != OperationStatus.SUCCESS:
+                    return result
 
-    return OperationResult(status=OperationStatus.SUCCESS, message="Данные успешно сохранены")
+    return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
 
 # ====================== File Parsing Functions ======================
 
