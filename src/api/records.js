@@ -33,12 +33,13 @@ const fetchWaterObjects = async () => {
 
 // export default fetchWaterObjects;
 
-const sendQuarterData = async (waterObject, quarter, data) => {
+const sendQuarterData = async (waterObjectCode, quarter, data) => {
   const token = localStorage.getItem('jwtToken');
 
   try {
+    console.log(waterObjectCode);
     const response = await axios.post(`${API_BASE_URL}/send_quarter`, {
-      waterObject,
+      waterObjectCode,
       quarter,
       data,
     }, {
