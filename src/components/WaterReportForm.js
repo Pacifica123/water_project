@@ -1,7 +1,8 @@
 // import React, { useState, useEffect } from "react";
 // import axios from "axios";
-import {fetchWaterObjects, sendQuarterData }from "../api/records.js";
-//
+import {fetchWaterObjects }from "../api/records.js";
+import sendFormData from "../api/add_records.js";
+
 // function WaterReportForm() {
 //   const [quarter, setQuarter] = useState(1);
 //   const [data, setData] = useState([
@@ -169,7 +170,6 @@ import {fetchWaterObjects, sendQuarterData }from "../api/records.js";
 
 
 import React, { useState, useEffect } from "react";
-import axios from "axios"; // Используем axios
 
 function WaterReportForm() {
   const [quarter, setQuarter] = useState(1);
@@ -245,7 +245,7 @@ function WaterReportForm() {
   };
     const handleSubmit = async () => {
       try {
-        const response = await sendQuarterData(selectedWaterObject, quarter, data);
+        const response = await sendFormData("send_quarter", {'waterObjectCode': selectedWaterObject, 'quarter': quarter, 'data': data});
         console.log("Данные успешно отправлены", response);
       } catch (error) {
         console.error("Ошибка при отправке данных", error.message);

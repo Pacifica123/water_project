@@ -36,12 +36,15 @@ const fetchWaterObjects = async () => {
 const sendQuarterData = async (waterObjectCode, quarter, data) => {
   const token = localStorage.getItem('jwtToken');
 
+
   try {
+    let send_form = 'send_quarter';
     console.log(waterObjectCode);
-    const response = await axios.post(`${API_BASE_URL}/send_quarter`, {
+    const response = await axios.post(`${API_BASE_URL}/send_form`, {
       waterObjectCode,
       quarter,
       data,
+      send_form
     }, {
       headers: {
         'tokenJWTAuthorization': token // Передаем токен в заголовке
