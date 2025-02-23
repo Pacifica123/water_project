@@ -177,7 +177,7 @@ def rest_update_record():
 
 
 @api.route('/api/send_form', methods=['POST'])
-def send_quarter():
+def send_to():
     # Получаем токен из заголовков
     token = request.headers.get('tokenJWTAuthorization')
 
@@ -200,4 +200,5 @@ def send_quarter():
 
 
     except Exception as e:
+        print(e)
         return jsonify({"error": str(e)}), 500

@@ -524,6 +524,22 @@ class WaterConsumptionLogByCategories(Base):
     value: Mapped[float] = mapped_column(Float, nullable=False)
     # water_object_code = ... TODO
 
+
+
+class WCLfor3132(Base):
+    __tablename__ = 'wcl_3132'
+
+    point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
+    # (есть в point) logtype:Mapped[WaterLogType] = mapped_column(SQLAEnum(PermissionType), nullable=False)
+    water_obj_id: Mapped[int] = mapped_column(ForeignKey('water_object_ref.id'), nullable=False)
+    coordinates: Mapped[str] = mapped_column(String(255), nullable=True)
+    code_type_water_obj_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
+    code_water_obj_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
+    code_category_quality: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=False)
+    # permission_id
+    month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+
 # class WCLxPMLrecordLink(Base):
 #     """
 #     Связка записи журнала с Конкретным прибором, существующая по той причине что:

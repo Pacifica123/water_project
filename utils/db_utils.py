@@ -1,6 +1,13 @@
 from db.crudcore import get_record_by_id
 from utils.backend_utils import OperationStatus, OperationResult, get_model_class_by_tablename
 from sqlalchemy.inspection import inspect
+import json
+import inspect
+from db.models import Base
+from sqlalchemy.orm import DeclarativeBase
+import pprint
+import importlib
+
 
 def is_valid_foreign_key(table_name, id) -> bool:
     result = get_record_by_id(get_model_class_by_tablename(table_name), id)
@@ -55,3 +62,50 @@ def replace_fks(operation_result: OperationResult, tablename: str) -> OperationR
         new_records.append(record_dict)  # Добавляем новый словарь в список
 
     return OperationResult(status=OperationStatus.SUCCESS, data=new_records)
+
+
+def recognize_model(data: any) -> OperationResult:
+    """
+    Универсальная функция для определения соответствующей модели по данным формы.
+    """
+    try:
+        if isinstance(data, str):  # Если пришел JSON в виде строки, пытаемся распарсить
+#             TODO на свое
+            try:
+                data = json.loads(data)
+            except json.JSONDecodeError:
+                return OperationResult(OperationStatus.VALIDATION_ERROR, "Неправильный JSON формат")
+        print("--- это не json ---")
+        if not isinstance(data, dict):
+            return OperationResult(OperationStatus.VALIDATION_ERROR, "Данные должны быть словарем для соответствия моделям")
+
+
+        # Получаем все классы моделей
+
+        try:
+            models_module = importlib.import_module('db.models')
+            models = [cls for _, cls in inspect.getmembers(models_module, inspect.isclass) if issubclass(cls, Base) and cls is not Base]
+        except Exception as e:
+            print(e)
+        # pprint.pprint(models[1])
+
+
+        try:
+            print(len(models))
+
+            for model in models:
+                try:
+                    model_fields = {col.name for col in model.__table__.columns}  # Получаем поля модели
+                    if model_fields.issuperset(data.keys()):  # Проверяем, совпадают ли ключи
+                        instance = model(**{k: v for k, v in data.items() if k in model_fields})
+
+                        pprint.pprint(instance)
+                        return OperationResult(OperationStatus.SUCCESS, "Модель распознана", instance)
+                except Exception:
+                    continue  # Игнорируем ошибки при попытке создания модели
+        except Exception as e:
+            print(e);
+        return OperationResult(OperationStatus.VALIDATION_ERROR, "Модель не распознана")
+
+    except Exception as e:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, f"Неизвестная ошибка: {str(e)}")

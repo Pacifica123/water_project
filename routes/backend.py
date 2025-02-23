@@ -9,7 +9,7 @@ from db.crudcore import (
     get_all_by_foreign_key
 )
 from db.models import (
-    Codes, Permissions, StandartsRef, User, WaterConsumptionLogByCategories, ConsumersCategories, Month, PointPermissionLink, PointMeterLink, Permissions, Meters, Organisations)
+    Codes, Permissions, StandartsRef, User, WaterConsumptionLogByCategories, ConsumersCategories, Month, PointPermissionLink, PointMeterLink, Permissions, Meters, Organisations, WCLfor3132)
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import (
     print_data_in_func, parce_year_and_quarter, check_quarter_data_exist,
@@ -17,7 +17,7 @@ from utils.backend_utils import (
     print_entity_data, serialize_to_json, get_model_class_by_tablename,
     get_required_fields, print_operation_result, serialize_to_json_old
 )
-from utils.db_utils import replace_fks
+from utils.db_utils import replace_fks, recognize_model
 import pprint
 
 backend = Blueprint('backend', __name__)
@@ -175,9 +175,9 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
         case "accounting_for_water_consumption":
             pass
         case "excel_template_3.1":
-            pass
+            return send_extempl31or32(form_data)
         case "excel_template_3.2":
-            pass
+            send_extempl31or32(form_data)
         case "Payment_calculation":
             pass
         case _:
@@ -248,9 +248,19 @@ def send_quarter(form_data: any):
     return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
 
 
-def send_extempl31() -> OperationResult:
+def send_extempl31or32(form_data: any) -> OperationResult:
+    # pprint.pprint(form_data)
+    table31or32 = form_data["table31or32"]
+    pprint.pprint(table31or32)
+    oprez = recognize_model(table31or32)
 
-    ...
+    print_operation_result(oprez, "send_extempl31or32")
+    # TODO : добавление в БД
+    return OperationResult(
+        status=OperationStatus.SUCCESS,
+        msg="yes!",
+        data=serialize_to_json(oprez.data)
+        )
 
 # ====================== File Parsing Functions ======================
 
