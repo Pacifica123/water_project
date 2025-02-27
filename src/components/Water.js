@@ -1,5 +1,7 @@
-import React, { useState } from "react";
-import "../css/Water.css"; // Подключаем стили
+import React, { useState, useEffect } from "react";
+import "../css/Water.css";
+
+import {fetchSingleTableData} from "../api/fetch_records"
 
 const Water = () => {
   const orgData = localStorage.getItem("org");
@@ -14,6 +16,37 @@ const Water = () => {
     }
   }
 
+  const waterPoints = {
+    "Пункт 1": "54°20′0″N 37°30′0″E",
+    "Пункт 2": "55°45′0″N 38°10′0″E"
+  };
+
+    const [Orgs, setObjects] = useState([]);
+    const [Points, setObjectsPoints] = useState([]);
+    const [Meters, setMeters] = useState([]);
+
+    useEffect(() => {
+      const loadData = async () => {
+        try {
+          const [orgs, points, meters] = await Promise.all([
+            fetchSingleTableData("organisations"),
+            fetchSingleTableData("water_point"),
+            fetchSingleTableData("meters")
+          ]);
+          setObjects(orgs || []);
+          setObjectsPoints(points || []);
+          setMeters(meters || [])
+        } catch (error) {
+          console.error("Ошибка загрузки данных", error);
+          setObjects([]);
+          setObjectsPoints([]);
+          setMeters([])
+        }
+      };
+      loadData();
+    }, []);
+
+
   const [formData, setFormData] = useState({
     organisationName: orgInfo.organisation_name || "",
     waterOrg: "",
@@ -24,8 +57,7 @@ const Water = () => {
     measurementDate: "",
     deviceNumber: "",
     workingTime: "",
-    waterUsage: "",
-    signature: ""
+    waterUsage: ""
   });
 
   const [completedSteps, setCompletedSteps] = useState({
@@ -35,42 +67,60 @@ const Water = () => {
     section4: false
   });
 
+  const [activeSection, setActiveSection] = useState(1);
+  const [manualNavigation, setManualNavigation] = useState(false);
+
+  /*const handleChange = (e) => {
+    const { name, value } = e.target;
+    let updatedFormData = { ...formData, [name]: value };
+
+    if (name === "controlPoint") {
+      updatedFormData.coordinates = waterPoints[value] || "";
+    }
+
+    // setFormData(updatedFormData);
+    setFormData({
+      ...formData,
+      controlPoint: e.target.value,
+      latitude_longitude: e.target.value // Обновляем latitude_longitude
+    });
+
+    checkCompletion(updatedFormData);
+  };*/
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-
-    // Проверяем заполнение текущего блока и скрываем его
-    switch (name) {
-      case "waterOrg":
-        if (value.trim() !== "") setCompletedSteps((prev) => ({ ...prev, section1: true }));
-        break;
-      case "controlPoint":
-      case "coordinates":
-        if (formData.controlPoint.trim() !== "" && formData.coordinates.trim() !== "")
-          setCompletedSteps((prev) => ({ ...prev, section2: true }));
-        break;
-      case "device":
-      case "waterSource":
-        if (formData.device.trim() !== "" && formData.waterSource.trim() !== "")
-          setCompletedSteps((prev) => ({ ...prev, section3: true }));
-        break;
-      case "measurementDate":
-      case "deviceNumber":
-      case "workingTime":
-      case "waterUsage":
-      case "signature":
-        if (
-          formData.measurementDate.trim() !== "" &&
-          formData.deviceNumber.trim() !== "" &&
-          formData.workingTime.trim() !== "" &&
-          formData.waterUsage.trim() !== "" &&
-          formData.signature.trim() !== ""
-        )
-          setCompletedSteps((prev) => ({ ...prev, section4: true }));
-        break;
-      default:
-        break;
+    let updatedFormData = { ...formData, [name]: value };
+    console.log(formData)
+    if (name === "controlPoint") {
+      updatedFormData.latitude_longitude = value; // Обновляем latitude_longitude
+      updatedFormData.coordinates = waterPoints[value] || "";
+      //updatedFormData.water_body_id.code_obj.code_value = value;
     }
+
+    setFormData(updatedFormData);
+    checkCompletion(updatedFormData);
+  };
+
+  const checkCompletion = (data) => {
+    let newCompletedSteps = { ...completedSteps };
+
+    newCompletedSteps.section1 = data.waterOrg.trim() !== "";
+    newCompletedSteps.section2 = data.controlPoint.trim() !== "";
+    newCompletedSteps.section3 = data.device.trim() !== "" && data.waterSource.trim() !== "";
+    newCompletedSteps.section4 = data.measurementDate.trim() !== "" && data.workingTime.trim() !== "" && data.waterUsage.trim() !== "";
+
+    setCompletedSteps(newCompletedSteps);
+
+    if (!manualNavigation) {
+      if (newCompletedSteps.section1 && activeSection === 1) setActiveSection(2);
+      if (newCompletedSteps.section2 && activeSection === 2) setActiveSection(3);
+      if (newCompletedSteps.section3 && activeSection === 3) setActiveSection(4);
+    }
+  };
+
+  const handleStepClick = (step) => {
+    setActiveSection(step);
+    setManualNavigation(true);
   };
 
   const handleSubmit = () => {
@@ -79,124 +129,140 @@ const Water = () => {
 
   return (
     <div className="water-container">
-      <div className="steps">
-        <div className={`step ${completedSteps.section1 ? "completed" : ""}`}>1</div>
-        <div className={`step ${completedSteps.section2 ? "completed" : ""}`}>2</div>
-        <div className={`step ${completedSteps.section3 ? "completed" : ""}`}>3</div>
-        <div className={`step ${completedSteps.section4 ? "completed" : ""}`}>4</div>
+    <div className="steps">
+    {[1, 2, 3, 4].map((step) => (
+      <div
+      key={step}
+      className={`step ${completedSteps[`section${step}`] ? "completed" : ""} ${activeSection === step ? "active" : ""}`}
+      onClick={() => handleStepClick(step)}
+      >
+      {step}
       </div>
+    ))}
+    </div>
 
-      <div className="form-container">
-        {/* Раздел 1 */}
-        {!completedSteps.section1 && (
-          <div className="form-step">
-            <h2>Журнал учета водопотребления</h2>
-            <div className="input-group">
-              <label>Наименование организации: {formData.organisationName || "Без организации"}</label>
-            </div>
-            <div className="input-group">
-              <label>
-                Наименование организации (забор воды):
-                <select name="waterOrg" value={formData.waterOrg} onChange={handleChange}>
-                  <option value="">Выбрать организацию</option>
-                  <option value="Org1">Организация 1</option>
-                  <option value="Org2">Организация 2</option>
-                </select>
-              </label>
-            </div>
-          </div>
-        )}
-
-        {/* Раздел 2 */}
-        {completedSteps.section1 && !completedSteps.section2 && (
-          <div className="form-step">
-            <h2>Пункт учета забора воды</h2>
-            <div className="input-group">
-              <label>
-                Наименование пункта учета:
-                <input type="text" name="controlPoint" value={formData.controlPoint} onChange={handleChange} />
-              </label>
-            </div>
-            <div className="input-group">
-              <label>
-                Координаты пункта:
-                <input type="text" name="coordinates" value={formData.coordinates} onChange={handleChange} />
-              </label>
-            </div>
-          </div>
-        )}
-
-        {/* Раздел 3 */}
-        {completedSteps.section2 && !completedSteps.section3 && (
-          <div className="form-step">
-            <h2>Приборы учета</h2>
-            <div className="input-group">
-              <label>
-                Наименование прибора:
-                <select name="device" value={formData.device} onChange={handleChange}>
-                  <option value="">Выбрать прибор</option>
-                  <option value="Meter1">Счетчик 1</option>
-                  <option value="Meter2">Счетчик 2</option>
-                </select>
-              </label>
-            </div>
-            <div className="input-group">
-              <label>
-                Наименование водоисточника:
-                <select name="waterSource" value={formData.waterSource} onChange={handleChange}>
-                  <option value="">Выбрать водоисточник</option>
-                  <option value="Source1">Источник 1</option>
-                  <option value="Source2">Источник 2</option>
-                </select>
-              </label>
-            </div>
-          </div>
-        )}
-
-        {/* Раздел 4 */}
-        {completedSteps.section3 && !completedSteps.section4 && (
-          <div className="form-step">
-            <h2>Данные измерений</h2>
-            <div className="input-group">
-              <label>
-                Дата измерения:
-                <input type="date" name="measurementDate" value={formData.measurementDate} onChange={handleChange} />
-              </label>
-            </div>
-            <div className="input-group">
-              <label>
-                Измерительный прибор №1:
-                <input type="text" name="deviceNumber" value={formData.deviceNumber} onChange={handleChange} />
-              </label>
-            </div>
-            <div className="input-group">
-              <label>
-                Время работы (сут.):
-                <input type="number" name="workingTime" value={formData.workingTime} onChange={handleChange} />
-              </label>
-            </div>
-            <div className="input-group">
-              <label>
-                Расход воды (м³/сут.):
-                <input type="number" name="waterUsage" value={formData.waterUsage} onChange={handleChange} />
-              </label>
-            </div>
-            <div className="input-group">
-              <label>
-                Подпись:
-                <input type="text" name="signature" value={formData.signature} onChange={handleChange} />
-              </label>
-            </div>
-          </div>
-        )}
-
-        {/* Кнопка отправки */}
-        {completedSteps.section4 && (
-          <div className="submit-button">
-            <button onClick={handleSubmit}>Отправить</button>
-          </div>
-        )}
+    <div className="form-container">
+    {activeSection === 1 && (
+      <div className="form-step">
+      <h2>Журнал учета водопотребления</h2>
+      <div className="input-group">
+      <label>Наименование организации: {formData.organisationName || "Без организации"}</label>
       </div>
+      <div className="input-group">
+      <label>
+      Наименование организации (забор воды):
+      <select name="waterOrg" value={formData.waterOrg} onChange={handleChange}>
+      <option value="">Выбрать организацию</option>
+      {Orgs.map((obj) => (
+        <option
+        key={obj.organization_code.code_symbol}
+        value={obj.organisation_name}
+        >
+        {obj.organization_code.code_value} - {obj.organisation_name}
+        </option>
+      ))}
+      </select>
+      </label>
+      </div>
+      </div>
+    )}
+
+    {activeSection === 2 && (
+      <div className="form-step">
+      <h2>Пункт учета забора воды</h2>
+      <div className="input-group">
+      <label>
+      Наименование пункта учета:
+      <select name="controlPoint" value={formData.controlPoint} onChange={handleChange}>
+      <option value="">Выбрать пункт учета</option>
+      {Points.map((obj) => (
+        <option
+        key={obj.id}
+        value={obj.latitude_longitude}
+        >
+        {obj.water_body_id.id} - {obj.latitude_longitude} ({obj.point_type})
+        </option>
+      ))}
+      </select>
+      </label>
+      </div>
+      <div className="input-group">
+      <label>Координаты пункта: {formData.latitude_longitude}</label>
+      </div>
+      </div>
+    )}
+
+    {activeSection === 3 && (
+      <div className="form-step">
+      <h2>Приборы учета</h2>
+      <div className="input-group">
+      <label>
+      Наименование прибора:
+      <select name="device" value={formData.device} onChange={handleChange}>
+      <option value="">Выбрать прибор</option>
+      <option value="">Выбрать пункт учета</option>
+      {Meters.map((obj) => (
+        <option
+        key={obj.id}
+        value={obj.serial_number}
+        >
+        {obj.brand_id.brand_name} - {obj.serial_number}
+        </option>
+      ))}
+      </select>
+      </label>
+      </div>
+      <div className="input-group">
+      <label>
+      Наименование водоисточника: ...
+      // <select name="waterSource" value={formData.waterSource} onChange={handleChange}>
+      // <option value="">Выбрать водоисточник</option>
+      // <option value="Source1">Источник 1</option>
+      // <option value="Source2">Источник 2</option>
+      // </select>
+      </label>
+      </div>
+      </div>
+    )}
+
+    {activeSection === 4 && (
+      <div className="form-step">
+      <h2>Данные измерений</h2>
+      <div className="input-group">
+      <label>
+      Дата измерения:
+      <input type="date" name="measurementDate" value={formData.measurementDate} onChange={handleChange} />
+      </label>
+      </div>
+      <div className="input-group">
+      <label>
+      Измерительный прибор №:
+      <input
+      type="text"
+      name="deviceNumber"
+      value={formData.deviceNumber || formData.device}
+      onChange={handleChange}
+      />
+      </label>
+      </div>
+      <div className="input-group">
+      <label>
+      Время работы (сут.):
+      <input type="number" name="workingTime" value={formData.workingTime} onChange={handleChange} />
+      </label>
+      </div>
+      <div className="input-group">
+      <label>
+      Расход воды (м³/сут.):
+      <input type="number" name="waterUsage" value={formData.waterUsage} onChange={handleChange} />
+      </label>
+      </div>
+      <div className="submit-button">
+      <button onClick={handleSubmit}>Отправить</button>
+      </div>
+      </div>
+    )}
+    </div>
     </div>
   );
 };

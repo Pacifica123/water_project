@@ -1,47 +1,48 @@
-// import React, { useState, useEffect } from "react";
-import React, {useState} from "react"
-import "../App.css"; // Стили для дизайна, похожего на пример
+import React, { useState } from "react";
+import "../App.css"; // Стили
 import WaterReportForm from "./WaterReportForm";
 import PaymentCalculationForm from "./PaymentCalculationForm";
-import Water from "./Water"
-import OrganizationInfo from "./OrganizationInfo"
-import HistoryTable from "./HistoryTable"
+import Water from "./Water";
+import OrganizationInfo from "./OrganizationInfo";
+import HistoryTable from "./HistoryTable";
 
 function ProtectedContent({ onLogout }) {
-
   const [activeSection, setActiveSection] = useState("notifications");
-  // const [userInfo] = useState({
-  //   organization: localStorage.getItem("org").organisation_name, // Заглушка для названия организации
-  //   fullName: localStorage.getItem("user").last_name, // Заглушка для ФИО пользователя
-  // });
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
-  let orgInfo = {}; // Инициализируем orgInfo как пустой объект
+  let orgInfo = {};
 
   if (orgData) {
     try {
-      orgInfo = JSON.parse(orgData); // Пытаемся разобрать данные
+      orgInfo = JSON.parse(orgData);
     } catch (error) {
       console.error("Ошибка парсинга org:", error);
-      orgInfo = {}; // Устанавливаем пустой объект в случае ошибки
+      orgInfo = {};
     }
   }
 
   const token = localStorage.getItem('jwtToken');
-  console.log("токен - ", token);
+  console.log("Токен: ", token);
+
+  // Получаем доступные разделы в зависимости от роли
+  const allowedSections = getAllowedSections(userInfo.role);
 
   const renderContent = () => {
+    if (!allowedSections.includes(activeSection)) {
+      return <div>Доступ запрещен</div>;
+    }
+
     switch (activeSection) {
       case "notifications":
         return <div>Лента уведомлений</div>;
       case "waterReport":
         return <WaterReportForm />;
       case "pynk":
-          return <div>Форма:Пункт учета</div>;
+        return <div>Форма: Пункт учета</div>;
       case "Water":
         return <Water />;
       case "paymentCalc":
-        return <PaymentCalculationForm/>;
+        return <PaymentCalculationForm />;
       case "resourceAccounting":
         return <div>Форма: Учет объема забора водных ресурсов</div>;
       case "wasteWater":
@@ -51,7 +52,7 @@ function ProtectedContent({ onLogout }) {
       case "organizationInfo":
         return <OrganizationInfo />;
       case "history":
-        return <HistoryTable/>
+        return <HistoryTable />;
       default:
         return <div>Выберите раздел</div>;
     }
@@ -59,58 +60,100 @@ function ProtectedContent({ onLogout }) {
 
   return (
     <div className="app">
-      <Header userInfo={userInfo} onLogout = {onLogout} orgInfo = {orgInfo}/>
-      <div className="main-layout">
-        <Sidebar setActiveSection={setActiveSection} />
-        <main className="main-content">{renderContent()}</main>
-      </div>
-      <Footer />
+    <Header userInfo={userInfo} onLogout={onLogout} orgInfo={orgInfo} />
+    <div className="main-layout">
+    <Sidebar setActiveSection={setActiveSection} allowedSections={allowedSections} />
+    <main className="main-content">{renderContent()}</main>
+    </div>
+    <Footer />
     </div>
   );
+}
+
+// Определение доступных разделов по ролям
+function getAllowedSections(role) {
+  switch (role) {
+    case "UserRoles.ADMIN":
+      return [
+        "notifications", "waterReport", "pynk", "Water", "paymentCalc",
+        "resourceAccounting", "wasteWater", "personalInfo", "organizationInfo", "history"
+      ];
+    case "UserRoles.ORG_ADMIN":
+      return [
+        "notifications", "pynk", "personalInfo", "organizationInfo", "history"
+      ];
+    case "UserRoles.REPORT_ADMIN":
+      return [
+        "notifications", "waterReport", "Water", "history"
+      ];
+    case "UserRoles.EMPLOYEE":
+      return [
+        "notifications", "waterReport", "Water", "paymentCalc",
+        "resourceAccounting", "wasteWater", "personalInfo", "organizationInfo",
+      ];
+    default:
+      return [];
+  }
 }
 
 function Header({ userInfo, onLogout, orgInfo }) {
   return (
     <header className="header">
-<h1>Личный кабинет ({orgInfo.organisation_name || 'Без организации'})</h1>
-      <div className="header-right">
-        <span>{userInfo.last_name} {userInfo.first_name} {userInfo.middle_name}</span>
-        <button className="logout-button" onClick={onLogout}>Выход</button>
-      </div>
+    <h1>Личный кабинет ({orgInfo.organisation_name || 'Без организации'})</h1>
+    <div className="header-right">
+    <span>{userInfo.last_name} {userInfo.first_name} {userInfo.middle_name}</span>
+    <button className="logout-button" onClick={onLogout}>Выход</button>
+    </div>
     </header>
   );
 }
 
-function Sidebar({ setActiveSection }) {
+function Sidebar({ setActiveSection, allowedSections }) {
   return (
     <div className="sidebar">
+    {allowedSections.includes("notifications") && (
       <button onClick={() => setActiveSection("notifications")}>Лента уведомлений</button>
+    )}
+    {allowedSections.includes("waterReport") && (
       <button onClick={() => setActiveSection("waterReport")}>
-        Справка "Забор поверхностной воды за квартал"
+      Справка "Забор поверхностной воды за квартал"
       </button>
-      <button onClick={() => setActiveSection("pynk")}>
-       Пункт учета
-      </button>
+    )}
+    {allowedSections.includes("pynk") && (
+      <button onClick={() => setActiveSection("pynk")}>Пункт учета</button>
+    )}
+    {allowedSections.includes("Water") && (
       <button onClick={() => setActiveSection("Water")}>Журнал учета водопотребления</button>
+    )}
+    {allowedSections.includes("paymentCalc") && (
       <button onClick={() => setActiveSection("paymentCalc")}>Расчет суммы оплаты</button>
-      <button onClick={() => setActiveSection("resourceAccounting")}>
-        Учет объема забора водных ресурсов
-      </button>
+    )}
+    {allowedSections.includes("resourceAccounting") && (
+      <button onClick={() => setActiveSection("resourceAccounting")}>Учет объема забора водных ресурсов</button>
+    )}
+    {allowedSections.includes("wasteWater") && (
       <button onClick={() => setActiveSection("wasteWater")}>Учет объема сброса сточных вод</button>
+    )}
+    {allowedSections.includes("personalInfo") && (
       <button onClick={() => setActiveSection("personalInfo")}>Личная информация</button>
+    )}
+    {allowedSections.includes("organizationInfo") && (
       <button onClick={() => setActiveSection("organizationInfo")}>Информация об организации</button>
+    )}
+    {allowedSections.includes("history") && (
       <button onClick={() => setActiveSection("history")}>История изменений</button>
+    )}
     </div>
-
   );
 }
 
 function Footer() {
   return (
     <footer className="footer">
-      <button>Руководство пользователя</button>
-      <button>Загруженные документы</button>
+    <button>Руководство пользователя</button>
+    <button>Загруженные документы</button>
     </footer>
   );
 }
+
 export default ProtectedContent;

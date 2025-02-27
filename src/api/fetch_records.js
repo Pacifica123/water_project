@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+// import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = "http://127.0.0.1:5000/api/get_struct";
+const API_URL_STRUCT = "http://127.0.0.1:5000/api/get_struct";
+const API_URL_SINGLE = "http://127.0.0.1:5000/api/edit_reference";
 
 /**
  * Универсальная функция для получения данных структуры из API.
@@ -23,7 +24,7 @@ const fetchStructureData = async (structName, filters = {}, token = null) => {
 
         const headers = token ? { 'tokenJWTAuthorization': token } : {};
 
-        const response = await axios.get(API_URL, {
+        const response = await axios.get(API_URL_STRUCT, {
             params: params,
             headers: headers,
             withCredentials: true
@@ -50,7 +51,7 @@ const fetchStructureData = async (structName, filters = {}, token = null) => {
     }
 };
 
-export default fetchStructureData;
+// export default fetchStructureData;
 
 // Пример использования:
 // 1. Импортировать функцию в ваш компонент:
@@ -73,3 +74,40 @@ export default fetchStructureData;
 //    };
 
 //    fetchData();
+
+const fetchSingleTableData = async (tableName) => {
+    try {
+        const token = localStorage.getItem('jwtToken');
+        console.log(tableName);
+        const headers = token ? { 'tokenJWTAuthorization': token } : {};
+        const response = await axios.get(API_URL_SINGLE, {
+            headers: headers,
+            params: { reference_select: tableName },
+            withCredentials: true
+        });
+        // console.log(response);
+
+        if (response.status >= 400) {
+            console.log("Ошибка HTTP: ", response);
+            return null;
+        }
+
+        const data = response.data;
+        const records = data.new_content;
+
+        console.log(" --> Сейчас будет - ", data.selected_reference)
+        console.log(records);
+
+        if (!records || records.length === 0) {
+            console.log("Нет записей в таблице");
+            return null;
+        }
+
+        return records;
+    } catch (error) {
+        console.log("Ошибка при получении данных таблицы:", error.message);
+        return null;
+    }
+};
+
+export {fetchStructureData, fetchSingleTableData};
