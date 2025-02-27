@@ -125,7 +125,8 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
     match selected_template:
         case "point_consumption":
             return get_points_consumption(filter_k, filter_v)
-
+        case "exel31_32":
+            return get_header_for_e31_32(filter_k, filter_v)
         case _:
             raise ValueError(f"не поддерживаемая структура")
 
@@ -167,6 +168,21 @@ def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
     except Exception as e:
         print(f"Error in get_points_consumption: {e}")
         return OperationResult(success=False, error=str(e))
+
+def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
+    try:
+#         ищем по point_id скорее всего
+        logs = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
+        if logs.status != OperationStatus.SUCCESS:
+            pprint.pprint(logs)
+            return logs
+        replace_logs = replace_fks(logs, WCLfor3132.__tablename__)
+        if replace_logs.status != OperationStatus.SUCCESS:
+            pprint.pprint(replace_logs)
+        return replace_logs
+
+    except Exception as e:
+        print("в get_header_for_e31_32 что-то сломалось")
 
 def form_processing_to_entity(selected_template: str, form_data: any) -> OperationResult:
     match selected_template:
@@ -249,19 +265,16 @@ def send_quarter(form_data: any):
 
 
 def send_extempl31or32(form_data: any) -> OperationResult:
-    # pprint.pprint(form_data)
+    # TODO ПЕРЕДЕЛАТЬ В ЦИКЛ ДЛЯ МНОЖЕСТВА ЗАПИСЕЙ
     table31or32 = form_data["table31or32"]
     pprint.pprint(table31or32)
     oprez = recognize_model(table31or32)
 
     print_operation_result(oprez, "send_extempl31or32")
-    # TODO : добавление в БД
-    return OperationResult(
-        status=OperationStatus.SUCCESS,
-        msg="yes!",
-        data=serialize_to_json(oprez.data)
-        )
-
+    if oprez.status == OperationStatus.SUCCESS:
+        final_rez = add_to(WCLfor3132.__tablename__, oprez.data)
+        return final_rez
+    return oprez
 # ====================== File Parsing Functions ======================
 
 def parce_exel(typeform, xls_file):

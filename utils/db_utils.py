@@ -17,15 +17,18 @@ def is_valid_foreign_key(table_name, id) -> bool:
 def replace_fks(operation_result: OperationResult, tablename: str) -> OperationResult:
     print(' ->Сюда зашло')
     if operation_result.status != OperationStatus.SUCCESS:
+        print("Сработал if operation_result.status != OperationStatus.SUCCESS")
         return operation_result
 
     records = operation_result.data
     if not records:
+        print("Сработал if not records")
         return operation_result  # Ничего не заменяем, если записей нет
 
     # Получаем класс модели из имени таблицы
     model_class = get_model_class_by_tablename(tablename)
     if not model_class:
+        print("if not model_class")
         return OperationResult(
             status=OperationStatus.DATABASE_ERROR,
             msg=f"Не удалось получить класс модели для таблицы {tablename}."
@@ -42,7 +45,7 @@ def replace_fks(operation_result: OperationResult, tablename: str) -> OperationR
 
         # Удаляем атрибуты SQLAlchemy, которые не нужны (например, _sa_instance_state)
         record_dict.pop('_sa_instance_state', None)
-
+        # print(f"--- сейчас идет {  } ---")
         # Проходим по всем полям модели
         for column in model_class.__table__.columns:
             # Проверяем, является ли атрибут внешним ключом

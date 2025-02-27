@@ -1,14 +1,25 @@
 from flask import g
 
-from db.models import Codes, User, UserRoles, WaterPoolRef, WaterAreaRef, CodeType
-
+from db.models import (
+    Codes, User, UserRoles, WaterPoolRef,
+    WaterAreaRef, WaterPoint, WaterObjectRef,
+    CodeType, Organisations, MetersBrandRef, Meters,
+    Permissions, PermissionType, PointPermissionLink,
+    SamplingLocation
+    )
+from datetime import date, timedelta
 
 def init_records(session):
     init_hydrograph_unit_recods(session)
-    init_test_user(session)
+    init_test_user(session)  # TODO добавить разные роли
     init_water_pool_records(session)
     init_water_area_records(session)
-
+    init_organisation_test(session)  #(не забыть OrgHUCLink) # TODO потом убрать
+    init_water_object_records(session)  #(по  пулам и ариям)
+    init_sampling_locations(session)
+    init_meters_and_brand(session)
+    init_permissions(session)     # TODO потом убрать
+#     TODO что?
 
 
 def init_hydrograph_unit_recods(session):
@@ -166,3 +177,387 @@ def init_water_area_records(session):
 
         # else:
         #     print(f"Запись с кодом '{code_symbol}' уже существует, пропускаем.")
+
+
+# --- 27фев2025 ---
+
+def init_organisation_test(session):
+    # Данные для инициализации организаций
+    organisations_data = {
+        "Организация 1": {
+            "organisation_name": "Организация 1",
+            "postal_address": "Адрес организации 1",
+            "legal_form": "ООО",
+            "inn": "123456789012",
+            "organisation_code": "1"
+        },
+        "Организация 2": {
+            "organisation_name": "Организация 2",
+            "postal_address": "Адрес организации 2",
+            "legal_form": "ЗАО",
+            "inn": "987654321098",
+            "organisation_code": "2"
+        }
+    }
+
+    for name, data in organisations_data.items():
+        # Проверяем, существует ли уже запись с таким названием организации
+        existing_organisation = session.query(Organisations).filter_by(organisation_name=data['organisation_name']).first()
+
+        if existing_organisation is None:
+            # Создаем новый объект Codes для ГУИВ-кода
+            existing_code = session.query(Codes).filter_by(code_symbol=data['organisation_code'], code_type=CodeType.ORGANISATION_CODE_GUIV).first()
+
+            if existing_code is None:
+                new_code = Codes(
+                    code_symbol=data['organisation_code'],
+                    code_value=data['organisation_name'],
+                    code_type=CodeType.ORGANISATION_CODE_GUIV
+                )
+                new_code.save(session)  # Сохраняем запись в сессии
+                code_id = new_code.id
+            else:
+                code_id = existing_code.id
+
+            # Создаем новую организацию
+            new_organisation = Organisations(
+                organisation_name=data['organisation_name'],
+                postal_address=data['postal_address'],
+                legal_form=data['legal_form'],
+                inn=data['inn'],
+                organization_code=code_id
+            )
+            new_organisation.save(session)  # Сохраняем запись в сессии
+            print(f"Добавлена новая организация: {data['organisation_name']} с кодом {data['organisation_code']}.")
+        else:
+            print(f"Организация '{data['organisation_name']}' уже существует.")
+
+
+def init_water_object_records(session):
+    # Данные для инициализации водных объектов
+    water_objects_data = {
+        "Водный объект 1": {
+            "code_type_symbol": "Тип1",  # Символ типа водного объекта
+            "code_obj_symbol": "Объект1",  # Символ водного объекта
+            "water_area_code_symbol": "13.01.01.001"  # Код водохозяйственного участка
+        },
+        "Водный объект 2": {
+            "code_type_symbol": "Тип2",  # Символ типа водного объекта
+            "code_obj_symbol": "Объект2",  # Символ водного объекта
+            "water_area_code_symbol": "13.01.01.002"  # Код водохозяйственного участка
+        }
+    }
+
+    for name, data in water_objects_data.items():
+        # Создаем или получаем ID типа водного объекта
+        code_type = session.query(Codes).filter_by(code_symbol=data['code_type_symbol'], code_type=CodeType.WATER_TYPE_CODE).first()
+
+        if code_type is None:
+            # Создаем новый тип водного объекта
+            new_code_type = Codes(
+                code_symbol=data['code_type_symbol'],
+                code_value=data['code_type_symbol'],  # Значение по умолчанию
+                code_type=CodeType.WATER_TYPE_CODE
+            )
+            new_code_type.save(session)  # Сохраняем запись в сессии
+            code_type = new_code_type
+            print(f"Добавлен новый тип водного объекта: {data['code_type_symbol']}.")
+
+        # Создаем или получаем ID водного объекта
+        code_obj = session.query(Codes).filter_by(code_symbol=data['code_obj_symbol'], code_type=CodeType.WATER_OBJ_CODE).first()
+
+        if code_obj is None:
+            # Создаем новый водный объект
+            new_code_obj = Codes(
+                code_symbol=data['code_obj_symbol'],
+                code_value=data['code_obj_symbol'],  # Значение по умолчанию
+                code_type=CodeType.WATER_OBJ_CODE
+            )
+            new_code_obj.save(session)  # Сохраняем запись в сессии
+            code_obj = new_code_obj
+            print(f"Добавлен новый водный объект: {data['code_obj_symbol']}.")
+
+        # Создаем или получаем ID водохозяйственного участка
+        water_area_code = session.query(Codes).filter_by(code_symbol=data['water_area_code_symbol'], code_type=CodeType.WATER_AREA_CODE).first()
+
+        if water_area_code is None:
+            # Создаем новый водохозяйственный участок
+            new_water_area_code = Codes(
+                code_symbol=data['water_area_code_symbol'],
+                code_value=data['water_area_code_symbol'],  # Значение по умолчанию
+                code_type=CodeType.WATER_AREA_CODE
+            )
+            new_water_area_code.save(session)  # Сохраняем запись в сессии
+            water_area_code = new_water_area_code
+            print(f"Добавлен новый водохозяйственный участок: {data['water_area_code_symbol']}.")
+
+        water_area_ref = session.query(WaterAreaRef).filter_by(code_area_id=water_area_code.id).first()
+
+        if water_area_ref is None:
+            # Получаем ID водного бассейна (например, по умолчанию)
+            water_pool = session.query(WaterPoolRef).first()
+
+            if water_pool is None:
+                print(f"Ошибка: Водный бассейн не найден.")
+                continue
+
+            # Создаем новую запись водохозяйственного участка
+            new_water_area_ref = WaterAreaRef(
+                code_area_id=water_area_code.id,
+                water_pool_id=water_pool.id
+            )
+            new_water_area_ref.save(session)  # Сохраняем запись в сессии
+            water_area_ref = new_water_area_ref
+            print(f"Добавлена новая запись водохозяйственного участка: {data['water_area_code_symbol']}.")
+
+        # Проверяем, существует ли уже запись с такими данными
+        existing_water_object = session.query(WaterObjectRef).filter_by(code_type_id=code_type.id, code_obj_id=code_obj.id, water_area_id=water_area_ref.id).first()
+
+        if existing_water_object is None:
+            # Создаем новую запись для водного объекта
+            new_water_object = WaterObjectRef(
+                code_type_id=code_type.id,
+                code_obj_id=code_obj.id,
+                water_area_id=water_area_ref.id
+            )
+            new_water_object.save(session)  # Сохраняем запись в сессии
+            print(f"Добавлен новый водный объект: {name}.")
+        else:
+            print(f"Водный объект '{name}' уже существует.")
+
+
+def init_sampling_locations(session):
+    # Данные для инициализации мест отбора проб
+    sampling_locations_data = {
+        "Место отбора 1": {
+            "name": "Место отбора 1",
+            "latitude_longitude": "52°21′45″ с. ш. 36°13′20″ в. д.",
+            "water_obj_name": "Объект1"  # Название водного объекта
+        },
+        "Место отбора 2": {
+            "name": "Место отбора 2",
+            "latitude_longitude": "53°21′45″ с. ш. 37°13′20″ в. д.",
+            "water_obj_name": "Объект2"  # Название водного объекта
+        }
+    }
+
+    for name, data in sampling_locations_data.items():
+        # Получаем ID водного объекта по его имени
+        water_object = session.query(WaterObjectRef).join(Codes, WaterObjectRef.code_obj_id == Codes.id).filter(Codes.code_value == data['water_obj_name']).first()
+
+        if water_object is None:
+            print(f"Ошибка: Водный объект '{data['water_obj_name']}' не найден.")
+            continue
+
+        # Проверяем, существует ли уже запись с таким названием места отбора проб
+        existing_sampling_location = session.query(SamplingLocation).filter_by(name=data['name'], water_obj_id=water_object.id).first()
+
+        if existing_sampling_location is None:
+            # Создаем новое место отбора проб
+            new_sampling_location = SamplingLocation(
+                name=data['name'],
+                latitude_longitude=data['latitude_longitude'],
+                water_obj_id=water_object.id
+            )
+            new_sampling_location.save(session)  # Сохраняем запись в сессии
+            print(f"Добавлено новое место отбора проб: {name}.")
+        else:
+            print(f"Место отбора проб '{name}' уже существует.")
+
+
+
+def init_meters_and_brand(session):
+    # Данные для инициализации марок приборов
+    brands_data = {
+        "Марка 1": {},
+        "Марка 2": {}
+    }
+
+    # Создаем марки приборов
+    for brand_name in brands_data.keys():
+        # Проверяем, существует ли уже запись с такой маркой
+        existing_brand = session.query(MetersBrandRef).filter_by(brand_name=brand_name).first()
+
+        if existing_brand is None:
+            # Создаем новую марку прибора
+            new_brand = MetersBrandRef(
+                brand_name=brand_name
+            )
+            new_brand.save(session)  # Сохраняем запись в сессии
+            print(f"Добавлена новая марка прибора: {brand_name}.")
+        else:
+            print(f"Марка прибора '{brand_name}' уже существует.")
+
+    # Данные для инициализации приборов учета
+    meters_data = {
+        "Прибор 1": {
+            "organisation_name": "Организация 1",  # Название организации
+            "brand_name": "Марка 1",  # Название марки прибора
+            "serial_number": "1234567890",
+            "verification_date": date(2022, 1, 1),  # Дата поверки
+            "verification_interval": 5  # Интервал поверки в годах
+        },
+        "Прибор 2": {
+            "organisation_name": "Организация 2",  # Название организации
+            "brand_name": "Марка 2",  # Название марки прибора
+            "serial_number": "9876543210",
+            "verification_date": date(2023, 6, 1),  # Дата поверки
+            "verification_interval": 3  # Интервал поверки в годах
+        }
+    }
+
+    for meter_name, data in meters_data.items():
+        # Получаем ID организации
+        organisation = session.query(Organisations).filter_by(organisation_name=data['organisation_name']).first()
+
+        if organisation is None:
+            print(f"Ошибка: Организация '{data['organisation_name']}' не найдена.")
+            continue
+
+        # Получаем ID марки прибора
+        brand = session.query(MetersBrandRef).filter_by(brand_name=data['brand_name']).first()
+
+        if brand is None:
+            print(f"Ошибка: Марка прибора '{data['brand_name']}' не найдена.")
+            continue
+
+        # Рассчитываем дату следующей поверки
+        next_verification_date = data['verification_date'] + timedelta(days=data['verification_interval'] * 365)
+
+        # Проверяем, существует ли уже запись с таким серийным номером
+        existing_meter = session.query(Meters).filter_by(serial_number=data['serial_number']).first()
+
+        if existing_meter is None:
+            # Создаем новый прибор учета
+            new_meter = Meters(
+                organisation_id=organisation.id,
+                brand_id=brand.id,
+                serial_number=data['serial_number'],
+                verification_date=data['verification_date'],
+                verification_interval=data['verification_interval'],
+                next_verification_date=next_verification_date
+            )
+            new_meter.save(session)  # Сохраняем запись в сессии
+            print(f"Добавлен новый прибор учета: {meter_name}.")
+        else:
+            print(f"Прибор учета '{meter_name}' уже существует.")
+
+
+def init_permissions(session):
+    # Данные для инициализации разрешений
+    permissions_data = {
+        "Разрешение 1": {
+            "organisation_name": "Организация 1",  # Название организации
+            "organisation_address": "Адрес организации 1",  # Адрес организации
+            "organisation_legal_form": "ООО",  # Юридическая форма организации
+            "organisation_inn": "123456789012",  # ИНН организации
+            "permission_number": "1234567890",
+            "registration_date": date(2022, 1, 1),  # Дата регистрации
+            "expiration_date": date(2025, 1, 1),  # Дата истечения срока действия
+            "permission_type": PermissionType.WATER_WITHDRAWAL,  # Тип разрешения
+            "allowed_volume": 1000.0,  # Допустимый объем
+            "point_type": PermissionType.WATER_WITHDRAWAL,  # Тип точки
+            "point_name": "Точка забора 1",  # Название точки
+            "point_coordinates": "52°21′45″ с. ш. 36°13′20″ в. д.",  # Координаты точки
+            "water_body_name": "Объект1"  # Название водного объекта
+        },
+        "Разрешение 2": {
+            "organisation_name": "Организация 2",  # Название организации
+            "organisation_address": "Адрес организации 2",  # Адрес организации
+            "organisation_legal_form": "ЗАО",  # Юридическая форма организации
+            "organisation_inn": "987654321098",  # ИНН организации
+            "permission_number": "9876543210",
+            "registration_date": date(2023, 6, 1),  # Дата регистрации
+            "expiration_date": date(2026, 6, 1),  # Дата истечения срока действия
+            "permission_type": PermissionType.DISCHARGE,  # Тип разрешения
+            "allowed_volume": 500.0,  # Допустимый объем
+            "point_type": PermissionType.DISCHARGE,  # Тип точки
+            "point_name": "Точка сброса 1",  # Название точки
+            "point_coordinates": "53°21′45″ с. ш. 37°13′20″ в. д.",  # Координаты точки
+            "water_body_name": "Объект2"  # Название водного объекта
+        }
+    }
+
+    for permission_name, data in permissions_data.items():
+        # Создаем или получаем ID организации
+        organisation = session.query(Organisations).filter_by(organisation_name=data['organisation_name']).first()
+
+        if organisation is None:
+            # Создаем новую организацию
+            new_organisation = Organisations(
+                organisation_name=data['organisation_name'],
+                postal_address=data['organisation_address'],
+                legal_form=data['organisation_legal_form'],
+                inn=data['organisation_inn']
+            )
+            new_organisation.save(session)  # Сохраняем запись в сессии
+            organisation = new_organisation
+            print(f"Добавлена новая организация: {data['organisation_name']}.")
+
+        # Проверяем, существует ли уже запись с таким номером разрешения
+        existing_permission = session.query(Permissions).filter_by(permission_number=data['permission_number']).first()
+
+        if existing_permission is None:
+            # Создаем новое разрешение
+            new_permission = Permissions(
+                organisation_id=organisation.id,
+                permission_number=data['permission_number'],
+                registration_date=data['registration_date'],
+                expiration_date=data['expiration_date'],
+                permission_type=data['permission_type'],
+                allowed_volume=data['allowed_volume']
+            )
+            new_permission.save(session)  # Сохраняем запись в сессии
+            print(f"Добавлено новое разрешение: {permission_name}.")
+
+            # Получаем ID только что созданного разрешения
+            permission_id = new_permission.id
+
+            # Получаем или создаем водный объект
+            water_body = session.query(WaterObjectRef).join(Codes, WaterObjectRef.code_obj_id == Codes.id).filter(Codes.code_value == data['water_body_name']).first()
+
+            if water_body is None:
+                print(f"Ошибка: Водный объект '{data['water_body_name']}' не найден. Создайте его сначала.")
+                continue
+
+            # Создаем или получаем точку забора/сброса
+            water_point = session.query(WaterPoint).filter_by(organisation_id=organisation.id, point_type=data['point_type'].value).first()
+
+            if water_point is None:
+                # Получаем или создаем прибор учета
+                meter = session.query(Meters).filter_by(organisation_id=organisation.id).first()
+
+                if meter is None:
+                    print(f"Ошибка: Прибор учета для организации '{organisation.organisation_name}' не найден. Создайте его сначала.")
+                    continue
+
+                # Создаем новую точку забора/сброса
+                new_water_point = WaterPoint(
+                    organisation_id=organisation.id,
+                    meter_id=meter.id,
+                    water_body_id=water_body.id,
+                    latitude_longitude=data['point_coordinates'],
+                    point_type=data['point_type'].value
+                )
+                new_water_point.save(session)  # Сохраняем запись в сессии
+                water_point = new_water_point
+                print(f"Добавлена новая точка забора/сброса: {data['point_name']}.")
+
+            # Проверяем, существует ли уже связь между точкой и разрешением
+            existing_link = session.query(PointPermissionLink).filter_by(point_id=water_point.id, permission_id=permission_id).first()
+
+            if existing_link is None:
+                # Создаем новую связь между точкой и разрешением
+                new_link = PointPermissionLink(
+                    point_id=water_point.id,
+                    permission_id=permission_id,
+                    actual_start_date=data['registration_date'],
+                    actual_end_date=data['expiration_date'],
+                    active=True
+                )
+                new_link.save(session)  # Сохраняем запись в сессии
+                print(f"Связано разрешение '{permission_name}' с точкой '{data['point_name']}'.")
+            else:
+                print(f"Связь между разрешением '{permission_name}' и точкой '{data['point_name']}' уже существует.")
+        else:
+            print(f"Разрешение '{permission_name}' уже существует.")

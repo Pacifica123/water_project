@@ -37,15 +37,13 @@ def rest_login():
 
             return jsonify({
                     "token": token,
-                    "user": clear_fields(serialize_to_json_old(res.data), ["password", "role"]),
+                    "user": clear_fields(serialize_to_json_old(res.data), ["password"]),
                     "org": serialize_to_json_old(org.data)
                     }), 200
         else:
-
-
             return jsonify({
                     "token": token,
-                    "user": clear_fields(serialize_to_json_old(res.data), ["password", "role"]),
+                    "user": clear_fields(serialize_to_json_old(res.data), ["password"]),
                     }), 200
         # session['user'] = res.data
         # return jsonify({'status': 'success', 'message': 'Успешная авторизация', 'user': res.data}), 200
@@ -62,6 +60,7 @@ def rest_add_record(tablename):
         return jsonify({'status': 'success', 'message': 'Запись успешно добавлена.'}), 201
     else:
         return jsonify({'status': 'error', 'message': result.message}), 400
+
 
 
 @api.route('/api/get_struct', methods = ['GET'])
@@ -107,7 +106,9 @@ def rest_edit_reference():
             # new_content = [convert_to_dict(record) for record in records]
             # required_fields = get_required_fields(entity_class)
             pprint.pprint(records)
+            print("-->сюда дошло")
         except Exception as e:
+            print("сработал экспешн в edit_reference")
             return jsonify({"error": str(e)}), 500
 
         return jsonify({

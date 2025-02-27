@@ -4,7 +4,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Optional
 from enum import Enum as PyEnum
 from sqlalchemy import JSON
-
+from flask import g
 
 class PermissionType(PyEnum):
     WATER_WITHDRAWAL = "water_withdrawal"
@@ -19,6 +19,7 @@ class CodeType(PyEnum):
     WATER_OBJ_CODE = "water_object_code"
     WATER_AREA_CODE = "water_area_code"
     WATER_POOL_CODE = "water_pool_code"
+    WATER_TYPE_CODE = "type_of_water_obj"
 
 
 class WaterTreatmentLevel(PyEnum):
@@ -34,8 +35,8 @@ class WaterTreatmentLevel(PyEnum):
 
 class UserRoles(PyEnum):
     ADMIN = "admin" # главный админ
-    ORG_ADMIN = "org_admin"  # администратор организации (по начальному развертыванию)
-    REPORT_ADMIN = "report_admin"  # Администратор отчетов
+    ORG_ADMIN = "org_admin"  # Администратор Министерства, отвечающий за внесение организаций
+    REPORT_ADMIN = "report_admin"  # Администратор отчетов со стороны Министерства
     EMPLOYEE = "employee" # Сотрудник органиазции
 
 class ConsumersCategories(PyEnum):
@@ -99,13 +100,13 @@ class SamplingLocation(Base):
     Атрибуты:\n
       \n  - name (str): Название места отбора проб.\n
       \n  - latitude_longitude (str): Географические координаты места в формате 'широта, долгота'.\n
-      \n  - water_body_id (int): Идентификатор водного объекта, ссылающийся на таблицу 'water_object_ref'.\n
+      \n  - water_obj_id (int): Идентификатор водного объекта, ссылающийся на таблицу 'water_object_ref'.\n
     """
     __tablename__ = 'sampling_location'
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     latitude_longitude: Mapped[str] = mapped_column(String(100), nullable=False)
-    water_body_id: Mapped[int] = mapped_column(ForeignKey('water_object_ref.id'), nullable=False)
+    water_obj_id: Mapped[int] = mapped_column(ForeignKey('water_object_ref.id'), nullable=False)
 
 
 class Codes(Base):
@@ -237,16 +238,19 @@ class Meters(Base):
     brand_id: Mapped[int] = mapped_column(ForeignKey('meters_brand_ref.id'), nullable=False)
     serial_number: Mapped[str] = mapped_column(String(50), nullable=False)
     verification_date: Mapped[Date] = mapped_column(Date, nullable=False)
-    verification_interval: Mapped[int] = mapped_column(Integer, nullable=False)
+    verification_interval: Mapped[int] = mapped_column(Integer, nullable=False)     # в годах
     next_verification_date: Mapped[Date] = mapped_column(Date, nullable=False)
 
     def to_dict(self):
+        brand = g.session.query(MetersBrandRef).filter_by(id=self.brand_id, is_deleted=False).one()
+        print(f" --> МЫ ТУТ{brand}")
         return {
             'id': self.id,
             'serial_number': self.serial_number,
             'verification_date': self.verification_date,
             'verification_interval': self.verification_interval,
             'next_verification_date': self.next_verification_date,
+            'brand': brand.to_dict()
         }
 
 
@@ -395,6 +399,12 @@ class WaterObjectRef(Base):
     code_type_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
     code_obj_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
     water_area_id: Mapped[int] = mapped_column(ForeignKey('water_area_ref.id'), nullable=False)
+    def to_dict(self):
+        code = g.session.query(Codes).filter_by(id=self.code_obj_id, is_deleted=False).one()
+        return {
+            'id': self.id,
+            'code_obj': code.to_dict()
+        }
 
 
 class WaterPoint(Base):
