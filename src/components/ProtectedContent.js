@@ -47,8 +47,7 @@ function ProtectedContent({ onLogout }) {
         return <div>Форма: Учет объема забора водных ресурсов</div>;
       case "wasteWater":
         return <div>Форма: Учет объема сброса сточных вод</div>;
-      case "personalInfo":
-        return <div>Личная информация о себе</div>;
+
       case "organizationInfo":
         return <OrganizationInfo />;
       case "history":
@@ -134,9 +133,7 @@ function Sidebar({ setActiveSection, allowedSections }) {
     {allowedSections.includes("wasteWater") && (
       <button onClick={() => setActiveSection("wasteWater")}>Учет объема сброса сточных вод</button>
     )}
-    {allowedSections.includes("personalInfo") && (
-      <button onClick={() => setActiveSection("personalInfo")}>Личная информация</button>
-    )}
+
     {allowedSections.includes("organizationInfo") && (
       <button onClick={() => setActiveSection("organizationInfo")}>Информация об организации</button>
     )}

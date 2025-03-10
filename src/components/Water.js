@@ -70,28 +70,15 @@ const Water = () => {
   const [activeSection, setActiveSection] = useState(1);
   const [manualNavigation, setManualNavigation] = useState(false);
 
-  /*const handleChange = (e) => {
-    const { name, value } = e.target;
-    let updatedFormData = { ...formData, [name]: value };
-
-    if (name === "controlPoint") {
-      updatedFormData.coordinates = waterPoints[value] || "";
-    }
-
-    // setFormData(updatedFormData);
-    setFormData({
-      ...formData,
-      controlPoint: e.target.value,
-      latitude_longitude: e.target.value // Обновляем latitude_longitude
-    });
-
-    checkCompletion(updatedFormData);
-  };*/
+  const [selectedPoint, setSelectedPoint] = useState(null);
   const handleChange = (e) => {
     const { name, value } = e.target;
     let updatedFormData = { ...formData, [name]: value };
     console.log(formData)
     if (name === "controlPoint") {
+      const selected = Points.find((point) => point.latitude_longitude === value);
+      setSelectedPoint(selected); // Сохраняем выбранный пункт
+
       updatedFormData.latitude_longitude = value; // Обновляем latitude_longitude
       updatedFormData.coordinates = waterPoints[value] || "";
       //updatedFormData.water_body_id.code_obj.code_value = value;
@@ -180,7 +167,7 @@ const Water = () => {
         key={obj.id}
         value={obj.latitude_longitude}
         >
-        {obj.water_body_id.id} - {obj.latitude_longitude} ({obj.point_type})
+        {obj.water_body_id.code_obj.code_symbol} - {obj.latitude_longitude} ({obj.point_type})
         </option>
       ))}
       </select>
@@ -200,7 +187,6 @@ const Water = () => {
       Наименование прибора:
       <select name="device" value={formData.device} onChange={handleChange}>
       <option value="">Выбрать прибор</option>
-      <option value="">Выбрать пункт учета</option>
       {Meters.map((obj) => (
         <option
         key={obj.id}
@@ -208,19 +194,18 @@ const Water = () => {
         >
         {obj.brand_id.brand_name} - {obj.serial_number}
         </option>
+
       ))}
       </select>
+
       </label>
       </div>
       <div className="input-group">
-      <label>
-      Наименование водоисточника: ...
-      // <select name="waterSource" value={formData.waterSource} onChange={handleChange}>
-      // <option value="">Выбрать водоисточник</option>
-      // <option value="Source1">Источник 1</option>
-      // <option value="Source2">Источник 2</option>
-      // </select>
-      </label>
+      {selectedPoint && (
+        <label>
+        Наименование водоисточника: {selectedPoint.water_body_id.code_obj.code_symbol}
+        </label>
+      )}
       </div>
       </div>
     )}

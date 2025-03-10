@@ -17,7 +17,6 @@ const HistoryTable = () => {
                         <th>Тип изменения</th>
                         <th>Дата</th>
                         <th>Причина</th>
-                        <th>Пользователь</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -26,7 +25,6 @@ const HistoryTable = () => {
                             <td>{item.type}</td>
                             <td>{item.date}</td>
                             <td>{item.reason}</td>
-                            <td>{item.user}</td>
                         </tr>
                     ))}
                 </tbody>
