@@ -5,6 +5,7 @@ import PaymentCalculationForm from "./PaymentCalculationForm";
 import Water from "./Water";
 import OrganizationInfo from "./OrganizationInfo";
 import HistoryTable from "./HistoryTable";
+import AccountingPost from "./AccountingPost";
 
 function ProtectedContent({ onLogout }) {
   const [activeSection, setActiveSection] = useState("notifications");
@@ -37,8 +38,8 @@ function ProtectedContent({ onLogout }) {
         return <div>Лента уведомлений</div>;
       case "waterReport":
         return <WaterReportForm />;
-      case "pynk":
-        return <div>Форма: Пункт учета</div>;
+      case "AccountingPost":
+        return <AccountingPost/>;
       case "Water":
         return <Water />;
       case "paymentCalc":
@@ -47,7 +48,6 @@ function ProtectedContent({ onLogout }) {
         return <div>Форма: Учет объема забора водных ресурсов</div>;
       case "wasteWater":
         return <div>Форма: Учет объема сброса сточных вод</div>;
-
       case "organizationInfo":
         return <OrganizationInfo />;
       case "history":
@@ -74,12 +74,12 @@ function getAllowedSections(role) {
   switch (role) {
     case "UserRoles.ADMIN":
       return [
-        "notifications", "waterReport", "pynk", "Water", "paymentCalc",
-        "resourceAccounting", "wasteWater", "personalInfo", "organizationInfo", "history"
+        "notifications", "waterReport", "AccountingPost", "Water", "paymentCalc",
+        "resourceAccounting", "wasteWater", "organizationInfo", "history"
       ];
     case "UserRoles.ORG_ADMIN":
       return [
-        "notifications", "pynk", "personalInfo", "organizationInfo", "history"
+        "notifications", "AccountingPost", "personalInfo", "organizationInfo", "history"
       ];
     case "UserRoles.REPORT_ADMIN":
       return [
@@ -88,7 +88,7 @@ function getAllowedSections(role) {
     case "UserRoles.EMPLOYEE":
       return [
         "notifications", "waterReport", "Water", "paymentCalc",
-        "resourceAccounting", "wasteWater", "personalInfo", "organizationInfo",
+        "resourceAccounting", "wasteWater", "organizationInfo",
       ];
     default:
       return [];
@@ -118,8 +118,8 @@ function Sidebar({ setActiveSection, allowedSections }) {
       Справка "Забор поверхностной воды за квартал"
       </button>
     )}
-    {allowedSections.includes("pynk") && (
-      <button onClick={() => setActiveSection("pynk")}>Пункт учета</button>
+    {allowedSections.includes("AccountingPost") && (
+      <button onClick={() => setActiveSection("AccountingPost")}>Пункт учета</button>
     )}
     {allowedSections.includes("Water") && (
       <button onClick={() => setActiveSection("Water")}>Журнал учета водопотребления</button>
@@ -133,7 +133,6 @@ function Sidebar({ setActiveSection, allowedSections }) {
     {allowedSections.includes("wasteWater") && (
       <button onClick={() => setActiveSection("wasteWater")}>Учет объема сброса сточных вод</button>
     )}
-
     {allowedSections.includes("organizationInfo") && (
       <button onClick={() => setActiveSection("organizationInfo")}>Информация об организации</button>
     )}
