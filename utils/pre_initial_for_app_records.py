@@ -54,18 +54,80 @@ def init_hydrograph_unit_recods(session):
 
 
 def init_test_user(session):
-    emp = User(
-        last_name='A',
-        first_name='Af',
-        birth_date='12.12.2012',
-        username='admin',
-        email='admin@test.test',
-        password='123',
-        role=UserRoles.ADMIN
-    )
-    existing_code = session.query(User).filter_by(username=emp.username).first()
-    if existing_code is None:
-        emp.save(session)
+    # Данные для инициализации пользователей
+    users_data = [
+        {
+            "last_name": "Админ",
+            "first_name": "Админ",
+            "birth_date": "12.12.2012",
+            "username": "admin",
+            "email": "admin@test.test",
+            "password": "123",
+            "role": UserRoles.ADMIN
+        },
+        {
+            "last_name": "Организатор",
+            "first_name": "Организатор",
+            "birth_date": "01.01.1990",
+            "username": "orgadmin",
+            "email": "orgadmin@test.test",
+            "password": "123",
+            "role": UserRoles.ORG_ADMIN
+        },
+        {
+            "last_name": "Отчетник",
+            "first_name": "Отчетник",
+            "birth_date": "02.02.1990",
+            "username": "report_admin",
+            "email": "report_admin@test.test",
+            "password": "123",
+            "role": UserRoles.REPORT_ADMIN
+        },
+        {
+            "last_name": "Сотрудник 1",
+            "first_name": "Сотрудник 1",
+            "birth_date": "03.03.1990",
+            "username": "employee1",
+            "email": "employee1@test.test",
+            "password": "123",
+            "role": UserRoles.EMPLOYEE,
+            "organisation_id": 1  # Принадлежит к первой организации
+        },
+        {
+            "last_name": "Сотрудник 2",
+            "first_name": "Сотрудник 2",
+            "birth_date": "04.04.1990",
+            "username": "employee2",
+            "email": "employee2@test.test",
+            "password": "123",
+            "role": UserRoles.EMPLOYEE,
+            "organisation_id": 2  # Принадлежит ко второй организации
+        }
+    ]
+
+    for user_data in users_data:
+        # Проверяем, существует ли уже пользователь с таким именем
+        existing_user = session.query(User).filter_by(username=user_data['username']).first()
+
+        if existing_user is None:
+            # Создаем нового пользователя
+            new_user = User(
+                last_name=user_data['last_name'],
+                first_name=user_data['first_name'],
+                birth_date=user_data['birth_date'],
+                username=user_data['username'],
+                email=user_data['email'],
+                password=user_data['password'],
+                role=user_data['role']
+            )
+
+            if 'organisation_id' in user_data:
+                new_user.organisation_id = user_data['organisation_id']
+
+            new_user.save(session)  # Сохраняем запись в сессии
+            print(f"Добавлен новый пользователь: {user_data['username']}.")
+        else:
+            print(f"Пользователь '{user_data['username']}' уже существует.")
 
 
 def init_water_pool_records(session):

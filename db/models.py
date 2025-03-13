@@ -468,8 +468,8 @@ class WaterConsumptionLog(Base):
     __tablename__ = 'water_consumption_log'
 
     point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
-    consumption_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    treatment_level: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=False)
+    consumption_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=True) # на удаление...
+    treatment_level: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=True)
     exploitation_org_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), nullable=False)
 
 
@@ -524,6 +524,7 @@ class RecordWCL(Base):
     operating_time_days: Mapped[int] = mapped_column(Integer, nullable=False)
     water_consumption_m3_per_day: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     meter_readings: Mapped[dict] = mapped_column(JSON)
+
 
 
 class WaterConsumptionLogByCategories(Base):

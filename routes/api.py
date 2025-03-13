@@ -4,8 +4,12 @@ from sqlalchemy.testing import db
 
 from data.examples import reference_data, templates, column_translations, unwanted_columns
 from db.crudcore import update_record, get_all_by_foreign_key, get_record_by_id
-from routes.backend import get_all_record_from, get_fdata_by_selected, backend_login, \
-    edit_or_add_employee, update_record_in, delete_record_from, delete_users, add_to, form_processing_to_entity, get_structs
+from routes.backend import (
+    get_all_record_from, get_fdata_by_selected, backend_login,
+    edit_or_add_employee, update_record_in, delete_record_from,
+    delete_users, add_to, form_processing_to_entity, get_structs,
+    check_login
+    )
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import print_data_in_func, OperationStatus, extract_value_from_json, \
     get_model_class_by_tablename, convert_to_dict, get_required_fields, serialize_to_json_old, clear_fields, print_entity_data
@@ -52,16 +56,14 @@ def rest_login():
 
 
 
-@api.route('/api/records/<tablename>', methods=['POST'])
-def rest_add_record(tablename):
-    record_data = request.json  # Получаем данные как JSON
-    result = add_to(tablename, record_data)
-    if result.status == OperationStatus.SUCCESS:
-        return jsonify({'status': 'success', 'message': 'Запись успешно добавлена.'}), 201
-    else:
-        return jsonify({'status': 'error', 'message': result.message}), 400
-
-
+# @api.route('/api/records/<tablename>', methods=['POST'])
+# def rest_add_record(tablename):
+#     record_data = request.json  # Получаем данные как JSON
+#     result = add_to(tablename, record_data)
+#     if result.status == OperationStatus.SUCCESS:
+#         return jsonify({'status': 'success', 'message': 'Запись успешно добавлена.'}), 201
+#     else:
+#         return jsonify({'status': 'error', 'message': result.message}), 400
 
 @api.route('/api/get_struct', methods = ['GET'])
 def rest_get():
@@ -143,38 +145,38 @@ def rest_edit_reference():
     return jsonify({"error": "Invalid method"}), 405
 
 
-@api.route('/api/update_record', methods=['POST'])
-def rest_update_record():
-    token = request.headers.get('tokenJWTAuthorization')
-    auth_res = auth_validate(token)
-    if auth_res.status != "success" :
-        return jsonify({"error": "Пользователь неавторизован"}), 401
-
-    try:
-        data = request.json
-        tablename = data.get('reference_select')
-        record_id = data.get('record_id')
-
-        if not tablename or not record_id:
-            return jsonify({"error": "Missing required parameters"}), 400
-
-        # Сбор всех данных для обновления
-        record_data = {key: value for key, value in data.items() if key not in ['reference_select', 'record_id']}
-
-        if 'is_deleted' not in record_data:
-            record_data['is_deleted'] = False
-
-        if tablename == "codes":
-            record_data['code_type'] = record_data.get('code_type', 'hydrographic_unit_code')
-
-        result = update_record_in(tablename, record_id, record_data)
-        if result.status == OperationStatus.SUCCESS:
-            return jsonify({"message": "Record updated successfully"}), 200
-        else:
-            return jsonify({"error": f"{result.status}: {result.message}"}), 400
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# @api.route('/api/update_record', methods=['POST'])
+# def rest_update_record():
+#     token = request.headers.get('tokenJWTAuthorization')
+#     auth_res = auth_validate(token)
+#     if auth_res.status != "success" :
+#         return jsonify({"error": "Пользователь неавторизован"}), 401
+#
+#     try:
+#         data = request.json
+#         tablename = data.get('reference_select')
+#         record_id = data.get('record_id')
+#
+#         if not tablename or not record_id:
+#             return jsonify({"error": "Missing required parameters"}), 400
+#
+#         # Сбор всех данных для обновления
+#         record_data = {key: value for key, value in data.items() if key not in ['reference_select', 'record_id']}
+#
+#         if 'is_deleted' not in record_data:
+#             record_data['is_deleted'] = False
+#
+#         if tablename == "codes":
+#             record_data['code_type'] = record_data.get('code_type', 'hydrographic_unit_code')
+#
+#         result = update_record_in(tablename, record_id, record_data)
+#         if result.status == OperationStatus.SUCCESS:
+#             return jsonify({"message": "Record updated successfully"}), 200
+#         else:
+#             return jsonify({"error": f"{result.status}: {result.message}"}), 400
+#
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
 
 @api.route('/api/send_form', methods=['POST'])
@@ -186,6 +188,7 @@ def send_to():
     auth_res = auth_validate(token)
     if auth_res.status != "success":
         return jsonify({"error": "Пользователь неавторизован"}), 401
+    # if !check_login()  ....а как? у нас же просто токен
 
     try:
         # Получаем данные из запроса

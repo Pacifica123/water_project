@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from flask import Blueprint, g
 
 from data.examples import unwanted_columns
@@ -6,10 +6,10 @@ from db.crudcore import (
     read_all_employees, find_employee_by_username,
     get_all_from_table, create_user, create_record_entity,
     update_employee, update_record, soft_delete_record,
-    get_all_by_foreign_key
+    get_all_by_foreign_key, get_record_by_id
 )
 from db.models import (
-    Codes, Permissions, StandartsRef, User, WaterConsumptionLogByCategories, ConsumersCategories, Month, PointPermissionLink, PointMeterLink, Permissions, Meters, Organisations, WCLfor3132)
+    Codes, Permissions, StandartsRef, User, UserRoles, WaterConsumptionLogByCategories, RecordWCL, WaterConsumptionLog, ConsumersCategories, Month, PointPermissionLink, PointMeterLink, Permissions, Meters, Organisations, WCLfor3132, WaterPoint)
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import (
     print_data_in_func, parce_year_and_quarter, check_quarter_data_exist,
@@ -59,6 +59,15 @@ def backend_login(username: str, password: str) -> OperationResult:
         msg="авторизация завершилась успешно",
         data=employee # БЫЛО : data=serialize_to_json_old(employee)
     )
+
+
+def check_login(username: str, need_role: UserRoles) -> bool:
+    """возвращает True если роль соответствует требуемой или это главный админ"""
+    employee = find_employee_by_username(username)
+    if employee.role == need_role or employee.role == UserRoles.ADMIN:
+        return True
+    return False
+
 
 def edit_or_add_employee(user_data) -> OperationResult:
     username = user_data.get('username')
@@ -127,8 +136,59 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
             return get_points_consumption(filter_k, filter_v)
         case "exel31_32":
             return get_header_for_e31_32(filter_k, filter_v)
+        case "water_logs":
+            return get_water_logs(filter_k, filter_v)
         case _:
-            raise ValueError(f"не поддерживаемая структура")
+            return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
+            # raise ValueError(f"не поддерживаемая структура в get_structs")
+
+
+def get_water_logs(filter_k: str, filter_v: any) -> OperationResult:
+    try:
+        # 0) Сначала получить пункт учета и его id нужно:
+        print(filter_k)
+        if "°" in str(filter_v) and str(filter_k) == "point_id":
+            point_try = get_all_by_foreign_key(WaterPoint, "latitude_longitude", filter_v)
+            if point_try.status != OperationStatus.SUCCESS:
+                pprint.pprint(point_try)
+                return point_try
+            point_id = point_try.data[0].id
+            print(f"айдишка пункта учета - {point_id}")
+
+            # 1) Получить журналы учета водопотребления (скорее всего по пункту учета)
+            logs = get_all_by_foreign_key(WaterConsumptionLog, "point_id", point_id)
+            if logs.status != OperationStatus.SUCCESS:
+                pprint.pprint(logs)
+                return logs
+
+            # 2) Для каждого журнала получить записи
+            log_data = []
+            for log in logs.data:
+                records = get_all_by_foreign_key(RecordWCL, "log_id", log.id)
+                if records.status != OperationStatus.SUCCESS:
+                    pprint.pprint(records)
+                    return records
+
+                # 3) Дополнительные данные (точка водозабора, организация)
+                point = get_record_by_id(WaterPoint.__tablename__, point_id)
+                org = get_all_by_foreign_key(Organisations, "id", log.exploitation_org_id).data[0]
+
+                # 4) Компонуем данные
+                log_data.append({
+                    'log': log,
+                    'records': records.data,
+                    'water_point': point,
+                    'organisation': org
+                })
+
+            return OperationResult(OperationStatus.SUCCESS, data=log_data)
+        else:
+            return OperationResult(OperationStatus.NOT_REALIZED)
+
+    except Exception as e:
+        print(f"Error in get_water_logs: {e}")
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
+
 
 def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
     try:
@@ -167,7 +227,7 @@ def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
 
     except Exception as e:
         print(f"Error in get_points_consumption: {e}")
-        return OperationResult(success=False, error=str(e))
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
 def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
     try:
@@ -183,21 +243,6 @@ def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
 
     except Exception as e:
         print("в get_header_for_e31_32 что-то сломалось")
-
-def form_processing_to_entity(selected_template: str, form_data: any) -> OperationResult:
-    match selected_template:
-        case "send_quarter":
-            return send_quarter(form_data)
-        case "accounting_for_water_consumption":
-            pass
-        case "excel_template_3.1":
-            return send_extempl31or32(form_data)
-        case "excel_template_3.2":
-            send_extempl31or32(form_data)
-        case "Payment_calculation":
-            pass
-        case _:
-            raise ValueError(f"Неизвестная форма или ее отсутсвие : {selected_template}")
 
 def get_fdata_by_selected(selected_template: str) -> OperationResult:
     """Возвращает необходимые данные для формы заполнения."""
@@ -222,6 +267,112 @@ def get_fdata_by_selected(selected_template: str) -> OperationResult:
 
     return OperationResult(OperationStatus.SUCCESS, "Данные успешно получены", all_data)
 
+
+def find_water_consumption_log(water_point_id: int, month: int) -> OperationResult:
+    try:
+        # Получение журналов учета водопотребления для точки водозабора
+        logs_result = get_water_logs("point_id", water_point_id)
+        if logs_result.status != OperationStatus.SUCCESS:
+            return logs_result
+
+        # Поиск журнала, соответствующего указанному месяцу
+        target_log = None
+        for log_data in logs_result.data:
+            log = log_data['log']
+            records = log_data['records']
+
+            # Проверка записей на соответствие месяцу
+            for record in records:
+                record_month = record.measurement_date.month
+                if record_month == month:
+                    target_log = log
+                    break
+
+            if target_log:
+                break
+
+        if not target_log:
+            return OperationResult(
+                OperationStatus.DATABASE_ERROR,
+                msg=f"Не найден журнал учета водопотребления для точки {water_point_id} и месяца {month}"
+            )
+
+        return OperationResult(OperationStatus.SUCCESS, data=target_log)
+
+    except Exception as e:
+        print(f"Error in find_water_consumption_log: {e}")
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
+
+
+
+# --------- send form processing funstions --------- #
+
+def form_processing_to_entity(selected_template: str, form_data: any) -> OperationResult:
+    match selected_template:
+        case "send_quarter":
+            return send_quarter(form_data)
+        case "water_consumption_single":
+            return process_water_consumption_single(form_data)
+        case "water_consumption_many":
+            pass
+        case "excel_template_3.1":
+            return send_extempl31or32(form_data)
+        case "excel_template_3.2":
+            return send_extempl31or32(form_data)
+        case "Payment_calculation":
+            pass
+        case _:
+            raise ValueError(f"Неизвестная форма или ее отсутсвие : {selected_template}")
+
+def process_water_consumption_single(form_data: dict) -> OperationResult:
+    try:
+        # Получение данных из формы
+        measurement_date = form_data.get("measurement_date")
+        water_point_id = form_data.get("water_point_id")  # Предполагаем, что water_point_id есть в форме
+
+        if not measurement_date or not water_point_id:
+            return OperationResult(
+                OperationStatus.VALIDATION_ERROR,
+                msg="Недостаточно данных для определения журнала учета водопотребления"
+            )
+
+        # Определение месяца
+        month = datetime.strptime(measurement_date, "%Y-%m-%d").month  # Пример формата даты
+
+        # Поиск журнала по water_point_id и месяцу
+        log_result = find_water_consumption_log(water_point_id, month)
+        if log_result.status != OperationStatus.SUCCESS:
+            return log_result
+
+        log = log_result.data
+
+        # Сопоставление полей формы с полями модели RecordWCL
+        mapping = {
+            "measurement_date": "measurement_date",
+            "operating_time_days": "operating_time_days",
+            "water_consumption_m3_per_day": "water_consumption_m3_per_day",
+            "meter_readings": "meter_readings",
+        }
+
+        # Создание словаря для записи в БД
+        record_data = {}
+        for field_name, value in form_data.items():
+            if field_name in mapping.values():
+                record_data[mapping[field_name]] = value
+
+        # Добавление log_id
+        record_data["log_id"] = log.id
+
+        # Добавление записи в БД
+        result = add_to(RecordWCL.__tablename__, record_data)
+        if result.status != OperationStatus.SUCCESS:
+            return result
+
+        return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
+
+    except Exception as e:
+        print(f"Error in process_water_consumption_single: {e}")
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
 
 def send_quarter(form_data: any):

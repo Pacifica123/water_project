@@ -6,7 +6,7 @@ from flask import g
 from sqlalchemy import Date, DateTime, func
 from sqlalchemy.exc import NoResultFound, SQLAlchemyError, IntegrityError
 
-from db.models import User, UserRoles
+from db.models import User, UserRoles, History
 from utils.backend_utils import OperationResult, OperationStatus, print_data_in_func, get_required_fields, \
     get_model_class_by_tablename
 
@@ -32,6 +32,7 @@ def create_record_entity(entity_class, data: dict) -> bool:
 
         session.add(record)
         session.commit()
+
         return True
     except IntegrityError:
         session.rollback()  # Откатываем изменения в случае ошибки
@@ -216,7 +217,7 @@ def find_employee_by_username(username: str) -> Optional[User]:
         print(f'\n ---> ОШИБКА БД: {e}\n')
         return None
 
-def get_all_by_foreign_key(entity: Type[Any], foreign_key_id: int, foreign_key_column: str) -> OperationResult:
+def get_all_by_foreign_key(entity: Type[Any], foreign_key_column: str, foreign_key_id: any) -> OperationResult:
     """
     Получение всех записей из указанной таблицы по значению внешнего ключа.
 
