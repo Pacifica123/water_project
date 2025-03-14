@@ -319,7 +319,7 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
             return send_extempl31or32(form_data)
         case "excel_template_3.2":
             return send_extempl31or32(form_data)
-        case "Payment_calculation":
+        case "payment_calculation":
             pass
         case _:
             raise ValueError(f"Неизвестная форма или ее отсутсвие : {selected_template}")
