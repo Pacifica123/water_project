@@ -1,101 +1,113 @@
-import React from "react";
+import React, { useState } from "react";
+import { sendSingleData } from "../api/add_records"; // Импорт функции для отправки данных
+import "../App.css"; // Подключение стилей
 
 function OrganizationInfo() {
     const userData = localStorage.getItem("user");
-    let userInfo = {};
+    const orgData = localStorage.getItem("org");
 
-    if (userData) {
-        try {
-            userInfo = JSON.parse(userData);
-        } catch (error) {
-            console.error("Ошибка парсинга user:", error);
-            userInfo = {};
-        }
+    let userInfo = {};
+    let orgInfo = {};
+
+    try {
+        userInfo = userData ? JSON.parse(userData) : {};
+        orgInfo = orgData ? JSON.parse(orgData) : {};
+    } catch (error) {
+        console.error("Ошибка парсинга данных:", error);
     }
 
-    if (!userInfo) {
+    const [newOrgInfo, setNewOrgInfo] = useState({
+        organisation_name: "",
+        inn: "",
+        organization_code: "",
+        legal_form: "",
+        postal_address: "",
+    });
+
+    const legalForms = ["ООО", "АО", "ИП", "ЗАО", "ПАО"];
+
+    const handleInputChange = (e) => {
+        setNewOrgInfo({ ...newOrgInfo, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        try {
+            const response = await sendSingleData("organisations", newOrgInfo);
+            alert("Данные успешно отправлены!");
+            console.log("Ответ сервера:", response);
+            setNewOrgInfo({
+                organisation_name: "",
+                inn: "",
+                organization_code: "",
+                legal_form: "",
+                postal_address: "",
+            });
+        } catch (error) {
+            console.error("Ошибка отправки данных:", error);
+            alert("Ошибка при отправке данных. Проверьте соединение.");
+        }
+    };
+
+    if (!userInfo || !userInfo.role) {
         return <p>Информация о пользователе не найдена</p>;
     }
 
-    const orgData = localStorage.getItem("org");
-    let orgInfo = {};
-
-    if (orgData) {
-        try {
-            orgInfo = JSON.parse(orgData);
-        } catch (error) {
-            console.error("Ошибка парсинга org:", error);
-            orgInfo = {};
-        }
-    }
-
-    // if (!orgInfo) {
-    //     return <p>Информация об организации не найдена</p>;
-    // }
-
-    // Извлекаем роль пользователя
-    const userRole = userInfo.role;
-
-    // Удаление префикса "UserRoles." из роли
-    const role = userRole.replace("UserRoles.", "");
-    console.log("Роль пользователя:", role);
-
+    const role = userInfo.role.replace("UserRoles.", "");
 
     return (
+        <div className="organization-info-container">
         <div className="organization-info">
         <h2>Информация об организации</h2>
-
         {role === "EMPLOYEE" ? (
-            // Контент для администратора организации
             <table className="info-table">
             <tbody>
-            <tr>
-            <td>Наименование организации:</td>
-            <td>{orgInfo.organisation_name}</td>
-            </tr>
-            <tr>
-            <td>ИНН:</td>
-            <td>{orgInfo.inn}</td>
-            </tr>
-            <tr>
-            <td>Код организации:</td>
-            <td>{orgInfo.organization_code}</td>
-            </tr>
-            <tr>
-            <td>Юридическая форма:</td>
-            <td>{orgInfo.legal_form}</td>
-            </tr>
-            <tr>
-            <td>Почтовый адрес:</td>
-            <td>{orgInfo.postal_address}</td>
-            </tr>
+            <tr><td>Наименование организации:</td><td>{orgInfo.organisation_name}</td></tr>
+            <tr><td>ИНН:</td><td>{orgInfo.inn}</td></tr>
+            <tr><td>Код организации:</td><td>{orgInfo.organization_code}</td></tr>
+            <tr><td>Юридическая форма:</td><td>{orgInfo.legal_form}</td></tr>
+            <tr><td>Почтовый адрес:</td><td>{orgInfo.postal_address}</td></tr>
             </tbody>
             </table>
-        ) : role === "REPORT_ADMIN" ? (
-            // Контент для администратора отчетов
-            <div>
-            <p>TODO  графики, список организаций</p>
-            {/* Здесь всякиие графики.. */}
-            </div>
         ) : role === "ORG_ADMIN" ? (
-            // Контент для администратора Министерства
-            <div>
-            <p>TODO  список организаций, кнопка добавления, редактирования, удаления</p>
-            {/* Добавьте контент  */}
+            <div className="form-container">
+            <h3>Добавление/Редактирование информации об организации</h3>
+            <form onSubmit={handleSubmit}>
+            <div className="input-group">
+            <label>Наименование организации:</label>
+            <input type="text" name="organisation_name" value={newOrgInfo.organisation_name} onChange={handleInputChange} required />
             </div>
-        ) : role === "ADMIN" ? (
-            // Контент для главного админа
-            <div>
-            <p>Административный доступ список организаций, все кнопки, возможно что-то еще</p>
-            {/* эээ...? */}
+            <div className="input-group">
+            <label>ИНН:</label>
+            <input type="text" name="inn" value={newOrgInfo.inn} onChange={handleInputChange} required />
+            </div>
+            <div className="input-group">
+            <label>Код организации:</label>
+            <input type="text" name="organization_code" value={newOrgInfo.organization_code} onChange={handleInputChange} required />
+            </div>
+            <div className="input-group">
+            <label>Юридическая форма:</label>
+            <select name="legal_form" value={newOrgInfo.legal_form} onChange={handleInputChange} required>
+            <option value="">Выберите юридическую форму</option>
+            {legalForms.map((form) => (
+                <option key={form} value={form}>{form}</option>
+            ))}
+            </select>
+            </div>
+            <div className="input-group">
+            <label>Почтовый адрес:</label>
+            <input type="text" name="postal_address" value={newOrgInfo.postal_address} onChange={handleInputChange} required />
+            </div>
+            <div className="button-container">
+            <button type="submit" className="submit-button">Сохранить</button>
+            </div>
+            </form>
             </div>
         ) : (
-            // все остальное
-            <div>
             <p>Доступ ограничен</p>
-            {/* Добавьте контент для сотрудников или других ролей */}
-            </div>
         )}
+        </div>
         </div>
     );
 }

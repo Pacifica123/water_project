@@ -54,47 +54,61 @@ const AccountingPost = () => {
 
   return (
     <div className="accounting-container">
-      <h2>Пункты учета</h2>
-      <table className="accounting-table">
-        <thead>
-          <tr>
-            <th>Название</th>
-            <th>Организация</th>
-            <th>Координаты</th>
-            <th>Тип</th>
-            <th>Действие</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredPoints.length > 0 ? (
-            filteredPoints.map((point) => (
-              <tr key={point.id}>
-                <td>{point.water_body_id.code_obj.code_value || "Без названия"}</td>
-                <td>{point.organisation_id.organisation_name}</td>
-                <td>{point.latitude_longitude || "-"}</td>
-                <td>{point.point_type || "-"}</td>
-                <td>
-                  <button onClick={() => setSelectedPoint(point)}>Открыть журнал</button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="5">Нет данных</td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    <h2>Пункты учета</h2>
+    <table className="accounting-table">
+    <thead>
+    <tr>
+    <th>Название</th>
+    <th>Организация</th>
+    <th>Координаты</th>
+    <th>Тип</th>
+    <th>Действие</th>
+    </tr>
+    </thead>
+    <tbody>
+    {filteredPoints.length > 0 ? (
+      filteredPoints.map((point) => (
+        <tr key={point.id}>
+        <td>{point.water_body_id.code_obj.code_value || "Без названия"}</td>
+        <td>{point.organisation_id.organisation_name}</td>
+        <td>{point.latitude_longitude || "-"}</td>
+        <td>{point.point_type || "-"}</td>
+        <td>
+        <button onClick={() => setSelectedPoint(point)}>Открыть журнал</button>
+        </td>
+        </tr>
+      ))
+    ) : (
+      <tr>
+      <td colSpan="5">Нет данных</td>
+      </tr>
+    )}
+    </tbody>
+    </table>
 
-      {selectedPoint && (
-        <div className="water-log">
-          <h2>Журнал учета водопотребления для {selectedPoint.name || "Без названия"}</h2>
-          <p>Организация: {selectedPoint.organisation_name}</p>
-          {/* Здесь можно подключить компонент журнала и передать selectedPoint.id */}
-          <p>Функционал журнала в разработке...</p>
-          <button onClick={() => setSelectedPoint(null)}>Закрыть</button>
-        </div>
-      )}
+    {selectedPoint && (
+      <div className="water-log">
+      <h2>Журнал учета водопотребления для {selectedPoint.water_body_id.code_obj.code_value || "Без названия"}</h2>
+      <p>Организация: {selectedPoint.organisation_id.organisation_name}</p>
+      <select id="months">
+      <option value="январь">январь</option>
+      <option value="февраль">февраль</option>
+      <option value="март">март</option>
+      <option value="апрель">апрель</option>
+      <option value="май">май</option>
+      <option value="июнь">июнь</option>
+      <option value="июль">июль</option>
+      <option value="август">август</option>
+      <option value="сентябрь">сентябрь</option>
+      <option value="октябрь">октябрь</option>
+      <option value="ноябрь">ноябрь</option>
+      <option value="декабрь">декабрь</option>
+      </select>
+      {/* Здесь можно подключить компонент журнала и передать selectedPoint.id */}
+      <p>Функционал журнала в разработке...</p>
+      <button onClick={() => setSelectedPoint(null)}>Закрыть</button>
+      </div>
+    )}
     </div>
   );
 };

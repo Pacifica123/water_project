@@ -33,4 +33,23 @@ const sendFormData = async (formName, data, config = {}) => {
     }
 };
 
-export default sendFormData;
+const sendSingleData = async (tableName, data, config = {}) => {
+    const token = localStorage.getItem('jwtToken');
+
+    try {
+        const response = await axios.post(`${API_BASE_URL}/records/${tableName}`, {
+            ...data // Добавляем данные формы
+        }, {
+            headers: {
+                'tokenJWTAuthorization': token
+            },
+            withCredentials: true
+        });
+
+        return response.data; // Возвращаем данные ответа
+    } catch (error) {
+        console.error("Ошибка при отправке данных:", error);
+        throw new Error(`Ошибка при отправке данных формы "${tableName}": ${error.message}`);
+    }
+};
+export {sendFormData, sendSingleData };

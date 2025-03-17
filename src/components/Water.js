@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../css/Water.css";
 
 import {fetchSingleTableData} from "../api/fetch_records"
-import sendFormData from "../api/add_records"
+import {sendFormData} from "../api/add_records"
 
 
 const Water = () => {
@@ -287,20 +287,19 @@ const Water = () => {
       <input type="number" name="waterUsage" value={formData.waterUsage} onChange={handleChange} />
       </label>
       </div>
-      <div className="submit-button" style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
+      <div  style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
       <button
       style={{
         backgroundColor: "#007BFF",
         color: "white",
-        padding: "12px 24px",
+        padding: "20px 300px",
         fontSize: "18px",
         border: "none",
         borderRadius: "8px",
         cursor: "pointer",
         transition: "background 0.3s"
       }}
-      onMouseOver={(e) => e.target.style.backgroundColor = "#0056b3"}
-      onMouseOut={(e) => e.target.style.backgroundColor = "#007BFF"}
+
       onClick={handleSubmit}
       >
       Отправить
