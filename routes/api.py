@@ -56,14 +56,14 @@ def rest_login():
 
 
 
-# @api.route('/api/records/<tablename>', methods=['POST'])
-# def rest_add_record(tablename):
-#     record_data = request.json  # Получаем данные как JSON
-#     result = add_to(tablename, record_data)
-#     if result.status == OperationStatus.SUCCESS:
-#         return jsonify({'status': 'success', 'message': 'Запись успешно добавлена.'}), 201
-#     else:
-#         return jsonify({'status': 'error', 'message': result.message}), 400
+@api.route('/api/records/<tablename>', methods=['POST'])
+def rest_add_record(tablename):
+    record_data = request.json  # Получаем данные как JSON
+    result = add_to(tablename, record_data)
+    if result.status == OperationStatus.SUCCESS:
+        return jsonify({'status': 'success', 'message': 'Запись успешно добавлена.'}), 201
+    else:
+        return jsonify({'status': 'error', 'message': result.message}), 400
 
 @api.route('/api/get_struct', methods = ['GET'])
 def rest_get():

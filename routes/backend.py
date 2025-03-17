@@ -9,7 +9,7 @@ from db.crudcore import (
     get_all_by_foreign_key, get_record_by_id
 )
 from db.models import (
-    Codes, Permissions, StandartsRef, User, UserRoles, WaterConsumptionLogByCategories, RecordWCL, WaterConsumptionLog, ConsumersCategories, Month, PointPermissionLink, PointMeterLink, Permissions, Meters, Organisations, WCLfor3132, WaterPoint)
+    Codes, CodeType, Permissions, StandartsRef, User, UserRoles, WaterConsumptionLogByCategories, RecordWCL, WaterConsumptionLog, ConsumersCategories, Month, PointPermissionLink, PointMeterLink, Permissions, Meters, Organisations, WCLfor3132, WaterPoint)
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import (
     print_data_in_func, parce_year_and_quarter, check_quarter_data_exist,
@@ -17,7 +17,7 @@ from utils.backend_utils import (
     print_entity_data, serialize_to_json, get_model_class_by_tablename,
     get_required_fields, print_operation_result, serialize_to_json_old
 )
-from utils.db_utils import replace_fks, recognize_model
+from utils.db_utils import (replace_fks, recognize_model, try_create_code)
 import pprint
 
 backend = Blueprint('backend', __name__)
@@ -99,6 +99,34 @@ def get_all_record_from(tablename: str) -> OperationResult:
 
 def add_to(tablename: str, data) -> OperationResult:
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
+
+    if tablename == "organisations":
+                # 1. Получить organization_code из data
+        organization_code = data.get('organization_code')
+
+        if not organization_code:
+            return OperationResult(
+                status=OperationStatus.VALIDATION_ERROR,
+                msg="Отсутствует organization_code в данных"
+            )
+
+        # 2. Проверить, существует ли уже такой код
+        existing_code_result = try_create_code(organization_code, CodeType.ORGANISATION_CODE_GUIV, data.get('organisation_name'))
+
+        if existing_code_result.status != OperationStatus.SUCCESS:
+            return existing_code_result
+
+        # 3. Получить id созданного кода
+        code_id = existing_code_result.data.get('id')
+
+        if not code_id:
+            return OperationResult(
+                status=OperationStatus.UNDEFINE_ERROR,
+                msg="Не удалось получить id созданного кода"
+            )
+
+        # 4. Пересобрать data с новым organization_code
+        data['organization_code'] = code_id
 
     if create_record_entity(cls, data):
         return OperationResult(

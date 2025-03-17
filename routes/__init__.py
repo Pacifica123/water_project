@@ -1,5 +1,5 @@
 from .backend import backend
-from .frontend import frontend
+# from .frontend import frontend
 from .api import api
 
 
@@ -10,5 +10,5 @@ def register_routes(app):
         print(rule.endpoint)
     app.register_blueprint(api, url_prefix='/')
     app.register_blueprint(backend, url_prefix='/')
-    app.register_blueprint(frontend, url_prefix='/')
+    # app.register_blueprint(frontend, url_prefix='/')
 

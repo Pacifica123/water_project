@@ -1,12 +1,63 @@
-from db.crudcore import get_record_by_id
+from db.crudcore import (
+    get_record_by_id, create_record_entity, get_all_by_foreign_key, get_all_by_conditions, create_records_entities
+)
 from utils.backend_utils import OperationStatus, OperationResult, get_model_class_by_tablename
 from sqlalchemy.inspection import inspect
 import json
 import inspect
-from db.models import Base
+from db.models import Base, CodeType, Codes
 from sqlalchemy.orm import DeclarativeBase
 import pprint
 import importlib
+
+
+def try_create_code(code_symbol: str, code_type: CodeType, code_value: str) -> OperationResult:
+    """
+    Если код существует то SUCCESS
+    """
+    # Проверяем, существует ли уже такой код
+    conditions = [
+        {'code_symbol': code_symbol},
+        {'code_type': code_type}
+    ]
+    existing_code_result = get_all_by_conditions(Codes, conditions)
+
+    if existing_code_result.status == OperationStatus.SUCCESS and existing_code_result.data:
+        # Код уже существует, возвращаем успех с отметкой о том, что код был найден
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            data={'id': existing_code_result.data[0].id},
+            msg="Код уже существует."
+        )
+    new_code = Codes(
+        code_symbol=code_symbol,
+        code_value=code_value,
+        code_type=code_type
+    )
+    new_code_list = [new_code]
+
+    # Попытка создать запись
+    create_result = create_records_entities(new_code_list)
+
+    if create_result.status == OperationStatus.SUCCESS:
+        # Получить id созданного кода
+        new_code_rez = get_all_by_conditions(
+            Codes,
+            conditions
+        )
+
+        if new_code_rez.status == OperationStatus.SUCCESS and len(new_code_rez.data) == 1:
+            new_code = new_code_rez.data[0]
+            return OperationResult(
+                status=OperationStatus.SUCCESS,
+                data={'id': new_code.id}
+            )
+        else:
+            return new_code_rez
+
+    return create_result
+
+
 
 
 def is_valid_foreign_key(table_name, id) -> bool:

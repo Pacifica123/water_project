@@ -1,5 +1,5 @@
 import datetime
-from typing import Optional, List, Type, Any
+from typing import Optional, List, Type, Any, Dict
 
 import sqlalchemy
 from flask import g
@@ -28,6 +28,7 @@ def create_record_entity(entity_class, data: dict) -> bool:
 
         # Создаем экземпляр сущности с переданными данными
         record_data = {**data, 'created_by': created_by}
+
         record = entity_class(**record_data)
 
         session.add(record)
@@ -95,6 +96,47 @@ def create_user(user_data) -> bool:
     except Exception as e:
         print(f' ---> ОШИБКА БД: {e}')
         return False
+
+
+def create_records_entities(records: List[Any]) -> OperationResult:
+    """
+    Создает несколько записей в базе данных для указанных сущностей.
+
+    :param records: Список экземпляров моделей для добавления в базу данных.
+    :return: OperationResult с результатом операции.
+    """
+    if not records:
+        return OperationResult(
+            status=OperationStatus.INVALID_REQUEST,
+            msg="Список записей пуст."
+        )
+
+    # Определяем тип модели по первому элементу в списке
+    entity_class = type(records[0])
+
+    session = g.session
+    try:
+        # Добавляем все записи в сессию
+        session.add_all(records)
+        session.commit()
+
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            msg=f"Записи успешно добавлены для модели {entity_class.__name__}."
+        )
+    except IntegrityError:
+        session.rollback()  # Откатываем изменения в случае ошибки
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg=f"Ошибка: записи с такими данными уже существуют для модели {entity_class.__name__}."
+        )
+    except Exception as e:
+        session.rollback()  # Откатываем изменения в случае любой другой ошибки
+        print(f"Ошибка при добавлении записей: {e}")
+        return OperationResult(
+            status=OperationStatus.UNDEFINE_ERROR,
+            msg=f"Произошла ошибка при добавлении записей для модели {entity_class.__name__}."
+        )
 
 
 # - - - - - - - - - - - - - - - - - - - -
@@ -253,6 +295,74 @@ def get_all_by_foreign_key(entity: Type[Any], foreign_key_column: str, foreign_k
             status=OperationStatus.UNDEFINE_ERROR,
             msg="Произошла неожиданная ошибка, не связанная с БД."
         )
+
+def get_all_by_conditions(
+    entity: Type[Any],
+    conditions: List[Dict[str, Any]],
+    is_deleted: bool = False
+) -> OperationResult:
+    """
+    Получение всех записей из указанной таблицы по списку условий.
+
+    :param entity: Класс модели SQLAlchemy, соответствующий таблице.
+    :param conditions: Список словарей, где каждый словарь содержит имя столбца и значение для фильтрации.
+    :param is_deleted: Флаг, указывающий, следует ли учитывать удаленные записи. По умолчанию False.
+    :return: OperationResult с записями из таблицы или сообщением об ошибке.
+    """
+    print_data_in_func(entity, "get_all_by_conditions")
+
+    try:
+        # Формируем фильтр для запроса по условиям
+        filter_conditions = []
+        if 'column' in conditions[0]:
+            for condition in conditions:
+                column_name = condition['column']
+                value = condition['value']
+
+                # Проверяем, что столбец существует в модели
+                if not hasattr(entity, column_name):
+                    return OperationResult(
+                        status=OperationStatus.INVALID_REQUEST,
+                        msg=f"Столбец '{column_name}' не найден в модели {entity.__name__}."
+                    )
+
+                filter_conditions.append(getattr(entity, column_name) == value)
+        else:
+            # Если ключи — имена столбцов
+            for condition in conditions:
+                for column_name, value in condition.items():
+                    filter_conditions.append(getattr(entity, column_name) == value)
+
+        # Добавляем условие для удаленных записей
+        if not is_deleted:
+            filter_conditions.append(entity.is_deleted == False)
+
+        # Используем функцию all() для объединения условий по логическому И
+        records = g.session.query(entity).filter(*filter_conditions).all()
+
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            data=records
+        )
+    except NoResultFound:
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg=f"Не найдено ни одной записи в {entity} по заданным условиям."
+        )
+    except SQLAlchemyError as e:
+        print(f' ---> ОШИБКА БД: {e}')
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg="Произошла ошибка при работе с БД."
+        )
+    except Exception as e:
+        print(f' ---> НЕОЖИДАННАЯ ОШИБКА: {e}')
+        return OperationResult(
+            status=OperationStatus.UNDEFINE_ERROR,
+            msg="Произошла неожиданная ошибка, не связанная с БД."
+        )
+
+
 # - - - - - - - - - - - - - - - - - - - -
 # СЕКЦИЯ UPDATE
 # - - - - - - - - - - - - - - - - - - - -
