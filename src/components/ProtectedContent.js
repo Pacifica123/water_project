@@ -6,6 +6,8 @@ import Water from "./Water";
 import OrganizationInfo from "./OrganizationInfo";
 import HistoryTable from "./HistoryTable";
 import AccountingPost from "./AccountingPost";
+import AdminPanel from "./AdminPanel";
+import UserPage from "./UserPage";
 
 function ProtectedContent({ onLogout }) {
   const [activeSection, setActiveSection] = useState("notifications");
@@ -52,6 +54,10 @@ function ProtectedContent({ onLogout }) {
         return <OrganizationInfo />;
       case "history":
         return <HistoryTable />;
+      case "UserPage":
+        return <UserPage />;
+      case "AdminPanel":
+        return <AdminPanel />
       default:
         return <div>Выберите раздел</div>;
     }
@@ -74,12 +80,12 @@ function getAllowedSections(role) {
   switch (role) {
     case "UserRoles.ADMIN":
       return [
-        "notifications", "waterReport", "AccountingPost", "Water", "paymentCalc",
+        "notifications", "UserPage", "waterReport", "AccountingPost", "Water", "paymentCalc", "AdminPanel",
         "resourceAccounting", "wasteWater", "organizationInfo", "history"
       ];
     case "UserRoles.ORG_ADMIN":
       return [
-        "notifications", "AccountingPost", "personalInfo", "organizationInfo", "history"
+        "notifications", "UserPage", "AccountingPost", "personalInfo", "organizationInfo", "history"
       ];
     case "UserRoles.REPORT_ADMIN":
       return [
@@ -138,6 +144,12 @@ function Sidebar({ setActiveSection, allowedSections }) {
     )}
     {allowedSections.includes("history") && (
       <button onClick={() => setActiveSection("history")}>История изменений</button>
+    )}
+    {allowedSections.includes("AdminPanel") && (
+      <button onClick={() => setActiveSection("AdminPanel")}>Админ панель</button>
+    )}
+    {allowedSections.includes("UserPage") && (
+      <button onClick={() => setActiveSection("UserPage")}>О пользователях</button>
     )}
     </div>
   );
