@@ -1,4 +1,4 @@
-from flask import g
+# from flask import g
 
 from db.models import (
     Codes, User, UserRoles, WaterPoolRef,
@@ -9,12 +9,14 @@ from db.models import (
     )
 from datetime import date, timedelta
 
+
 def init_records(session):
     init_hydrograph_unit_recods(session)
+    init_organisation_test(session)  # (не забыть OrgHUCLink) # TODO потом убрать
     init_test_user(session)  # TODO добавить разные роли
     init_water_pool_records(session)
     init_water_area_records(session)
-    init_organisation_test(session)  #(не забыть OrgHUCLink) # TODO потом убрать
+
     init_water_object_records(session)  #(по  пулам и ариям)
     init_sampling_locations(session)
     init_meters_and_brand(session)

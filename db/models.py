@@ -6,6 +6,7 @@ from enum import Enum as PyEnum
 from sqlalchemy import JSON
 from flask import g
 
+
 class PermissionType(PyEnum):
     WATER_WITHDRAWAL = "water_withdrawal"
     DISCHARGE = "discharge"
@@ -39,10 +40,12 @@ class UserRoles(PyEnum):
     REPORT_ADMIN = "report_admin"  # Администратор отчетов со стороны Министерства
     EMPLOYEE = "employee" # Сотрудник органиазции
 
+
 class ConsumersCategories(PyEnum):
     ACTUAL = "actual"
     POPULATION = "population"
     OTHER = "other"
+
 
 class Month(PyEnum):
     JANUARY = "январь"
@@ -57,6 +60,7 @@ class Month(PyEnum):
     OCTOBER = "октябрь"
     NOVEMBER = "ноябрь"
     DECEMBER = "декабрь"
+
 
 class Base(DeclarativeBase):
     """
@@ -447,16 +451,20 @@ class User(Base):
     organisation_id: Mapped[Optional[int]] = mapped_column(ForeignKey('organisations.id'), nullable=True)
     role: Mapped[UserRoles] = mapped_column(SQLAEnum(UserRoles), nullable=False)
 
-
-    # Связь с моделью Organisations
-    # organisation: Mapped['Organisations'] = relationship('Organisations', back_populates='users')  # если не заработает - убрать
-    # def to_dict(self):
-    #     return {
-    #         'id': self.id,
-    #         'last_name': self.last_name,
-    #         'actual_end_date': self.actual_end_date,
-    #         'active': self.active,
-    #     }
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'last_name': self.last_name,
+            'first_name': self.first_name,
+            'middle_name': self.middle_name,
+            'birth_date': self.birth_date.isoformat() if self.birth_date else None,
+            'username': self.username,
+            'email': self.email,
+            # Не включаем пароль в словарь для безопасности
+            # 'password': self.password,
+            # 'organisation_id': self.organisation_id,
+            'role': self.role  # Преобразуем перечисление в строку
+        }
 
 
 class WaterConsumptionLog(Base):

@@ -1,22 +1,17 @@
-from flask import Blueprint, request, jsonify, session, g, redirect, render_template, url_for, session, flash
-from sqlalchemy.sql.functions import user
-from sqlalchemy.testing import db
+from flask import Blueprint, request, jsonify, session
+# from sqlalchemy.sql.functions import user
+# from sqlalchemy.testing import db
 
-from data.examples import reference_data, templates, column_translations, unwanted_columns
+# from data.examples import reference_data, templates, column_translations,
 from db.crudcore import update_record, get_all_by_foreign_key, get_record_by_id
-from routes.backend import (
-    get_all_record_from, get_fdata_by_selected, backend_login,
-    edit_or_add_employee, update_record_in, delete_record_from,
-    delete_users, add_to, form_processing_to_entity, get_structs,
-    check_login
-    )
+from routes.backend import *;
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import print_data_in_func, OperationStatus, extract_value_from_json, \
     get_model_class_by_tablename, convert_to_dict, get_required_fields, serialize_to_json_old, clear_fields, print_entity_data
-from db.models import  User, Organisations
-import jwt
-import datetime
-from db.config import LONG_KEY
+from db.models import Organisations
+# import jwt
+# import datetime
+# from db.config import LONG_KEY
 from utils.validators.auth_validation import generateJWT, auth_validate
 import pprint
 
@@ -55,7 +50,6 @@ def rest_login():
         return jsonify({'status': 'error', 'message': res.message}), 401
 
 
-
 @api.route('/api/records/<tablename>', methods=['POST'])
 def rest_add_record(tablename):
     record_data = request.json  # Получаем данные как JSON
@@ -64,6 +58,7 @@ def rest_add_record(tablename):
         return jsonify({'status': 'success', 'message': 'Запись успешно добавлена.'}), 201
     else:
         return jsonify({'status': 'error', 'message': result.message}), 400
+
 
 @api.route('/api/get_struct', methods = ['GET'])
 def rest_get():
@@ -75,8 +70,12 @@ def rest_get():
     struct_name = request.args.get('struct_name')
     filter_k = request.args.get('filter_k')
     filter_v = request.args.get('filter_v')
-    if not filter_k or not filter_v:
-        return jsonify({"success": False, "error": "Необходимо передать filter_k и filter_v"}), 400
+    if struct_name == "allModels":
+        # Фильтр не обязателен
+        pass
+    else:
+        if not filter_k or not filter_v:
+            return jsonify({"success": False, "error": "Необходимо передать filter_k и filter_v"}), 400
     print(" --> struct is : {struct_name}")
     res = get_structs(struct_name, filter_k, filter_v)
     if res.status != OperationStatus.SUCCESS:
@@ -103,19 +102,19 @@ def rest_edit_reference():
 
         # Получение информации о модели и данных
         try:
-            entity_class = get_model_class_by_tablename(selected_reference)
+            # entity_class = get_model_class_by_tablename(selected_reference)
             records = get_all_record_from(selected_reference).data
-            # new_content = [convert_to_dict(record) for record in records]
+            new_content = [convert_to_dict(record) for record in records]
             # required_fields = get_required_fields(entity_class)
             pprint.pprint(records)
-            print("-->сюда дошло")
+
         except Exception as e:
-            print("сработал экспешн в edit_reference")
+            print(f"сработал экспешн в edit_reference {e}")
             return jsonify({"error": str(e)}), 500
 
         return jsonify({
             "selected_reference": selected_reference,
-            "new_content": records,
+            "new_content": process_enums(new_content),
             # "required_fields": required_fields
         }), 200
 

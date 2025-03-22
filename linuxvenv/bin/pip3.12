@@ -1,4 +1,4 @@
-#!/home/noir/projects/diplom/flask_backend/linuxvenv/bin/python
+#!/home/noir/projects/diplom/back/linuxvenv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

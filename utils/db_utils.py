@@ -5,7 +5,7 @@ from utils.backend_utils import OperationStatus, OperationResult, get_model_clas
 from sqlalchemy.inspection import inspect
 import json
 import inspect
-from db.models import Base, CodeType, Codes
+from db.models import *
 from sqlalchemy.orm import DeclarativeBase
 import pprint
 import importlib
@@ -58,6 +58,20 @@ def try_create_code(code_symbol: str, code_type: CodeType, code_value: str) -> O
     return create_result
 
 
+def get_all_models() -> OperationResult:
+    try:
+        # Список моделей с русскоязычными именами
+        models_list = [
+            ["Пользователи", "User"],
+            ["Протокол химического анализа", ],
+            ["Товары", "Product"],
+            # Добавьте сюда другие модели
+        ]
+
+        return OperationResult(OperationStatus.SUCCESS, data=models_list)
+
+    except Exception as e:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=f"Неизвестная ошибка: {e}")
 
 
 def is_valid_foreign_key(table_name, id) -> bool:

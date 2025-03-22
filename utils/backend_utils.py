@@ -12,6 +12,7 @@ from sqlalchemy.exc import NoResultFound
 from db.models import Base
 import inspect
 
+import enum
 
 class OperationStatus:
     SUCCESS = "success"
@@ -167,6 +168,49 @@ def extract_value_from_json(json_str: str, key: str) -> OperationResult:
         )
 
 
+def process_enums(data):
+    """
+    Обработка перечислений в списке словарей.
+
+    :param data: Список словарей, содержащих перечисления.
+    :return: Список словарей с перечислениями, замененными на строковые значения.
+    """
+    processed_data = []
+    for item in data:
+        processed_item = {}
+        for key, value in item.items():
+            # Проверка, является ли значение перечислением
+            if isinstance(value, enum.Enum):
+                # Если перечисление, то заменяем его на строковое значение
+                processed_item[key] = value.name
+            else:
+                # Если не перечисление, то оставляем как есть
+                processed_item[key] = value
+
+        processed_data.append(processed_item)
+
+    return processed_data
+
+
+def serialize_to_json_records(records: list) -> str:
+    """
+    Сериализует список записей в JSON-формат.
+    :param records: Список объектов для сериализации.
+    :return: OperationResult с сериализованным JSON.
+    """
+    try:
+        json_records = []
+        for record in records:
+            result = serialize_to_json_old(record)
+            json_records.append(json.loads(result))
+
+        json_str = json.dumps(json_records)
+        return json_str
+    except Exception as e:
+        print_data_in_func(e, "serialize_to_json_records")
+        # return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
+
+
 
 def serialize_to_json(obj: Any) -> Any:
     """
@@ -193,11 +237,13 @@ def serialize_to_json_old(obj: Any) -> str:
     :param obj: Объект, который нужно сериализовать.
     :return: Строка в формате JSON.
     """
+    print_data_in_func(obj, "serialize_to_json_old")
     # Проверка, является ли объект экземпляром класса
     if hasattr(obj, '__dict__'):
         # Извлечение атрибутов объекта
         obj_dict = obj.__dict__
     else:
+
         raise ValueError("Переданный объект не является экземпляром класса.")
     # Преобразование в JSON
     return json.dumps(obj_dict, default=str)
@@ -329,4 +375,8 @@ def get_last_day(year, month):
 
 
 def convert_to_dict(record):
-    return {column.name: getattr(record, column.name) for column in record.__table__.columns}
+    print_data_in_func(record, "convert_to_dict")
+    if hasattr(record, '__table__'):  # Если record — объект SQLAlchemy
+        return {column.name: getattr(record, column.name) for column in record.__table__.columns}
+    else:  # Если record — словарь
+        return record  # Просто возвращаем словарь как есть

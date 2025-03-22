@@ -11,18 +11,14 @@ from db.crudcore import (
 from db.models import (
     Codes, CodeType, Permissions, StandartsRef, User, UserRoles, WaterConsumptionLogByCategories, RecordWCL, WaterConsumptionLog, ConsumersCategories, Month, PointPermissionLink, PointMeterLink, Permissions, Meters, Organisations, WCLfor3132, WaterPoint)
 from utils.backend_chain_validation import validate_data
-from utils.backend_utils import (
-    print_data_in_func, parce_year_and_quarter, check_quarter_data_exist,
-    get_last_day, OperationResult, OperationStatus,
-    print_entity_data, serialize_to_json, get_model_class_by_tablename,
-    get_required_fields, print_operation_result, serialize_to_json_old
-)
+from utils.backend_utils import *
 from utils.db_utils import (replace_fks, recognize_model, try_create_code)
 import pprint
 
 backend = Blueprint('backend', __name__)
 
 # ====================== CRUD Functions ======================
+
 
 def get_users() -> OperationResult:
     employees = read_all_employees()
@@ -37,6 +33,7 @@ def get_users() -> OperationResult:
         msg="",
         data=employees
     )
+
 
 def backend_login(username: str, password: str) -> OperationResult:
     employee = find_employee_by_username(username)
@@ -57,12 +54,13 @@ def backend_login(username: str, password: str) -> OperationResult:
     return OperationResult(
         status=OperationStatus.SUCCESS,
         msg="авторизация завершилась успешно",
-        data=employee # БЫЛО : data=serialize_to_json_old(employee)
+        data=employee  # БЫЛО : data=serialize_to_json_old(employee)
     )
 
 
 def check_login(username: str, need_role: UserRoles) -> bool:
-    """возвращает True если роль соответствует требуемой или это главный админ"""
+    """возвращает True если роль соответствует требуемой или это главный админ
+    """
     employee = find_employee_by_username(username)
     if employee.role == need_role or employee.role == UserRoles.ADMIN:
         return True
@@ -87,7 +85,11 @@ def edit_or_add_employee(user_data) -> OperationResult:
             )
     return OperationResult(status=OperationStatus.UNDEFINE_ERROR)
 
+
 def edit_concrete_record(selected_model, selected_id, newdata) -> OperationResult:
+    """
+    ....
+    """
     ...
 
 
@@ -97,11 +99,12 @@ def get_all_record_from(tablename: str) -> OperationResult:
     print_operation_result(res)
     return replace_fks(res, tablename)
 
+
 def add_to(tablename: str, data) -> OperationResult:
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
 
     if tablename == "organisations":
-                # 1. Получить organization_code из data
+        # 1. Получить organization_code из data
         organization_code = data.get('organization_code')
 
         if not organization_code:
@@ -139,6 +142,7 @@ def add_to(tablename: str, data) -> OperationResult:
         msg=f"Ошибка при создании записи в {tablename} или запись уже существует или такой сущности нет в БД"
     )
 
+
 def update_record_in(tablename: str, record_id: int, data: dict) -> OperationResult:
     cls = get_model_class_by_tablename(tablename)
     if cls is None:
@@ -149,15 +153,19 @@ def update_record_in(tablename: str, record_id: int, data: dict) -> OperationRes
     print_data_in_func(res.status, "update_record_in")
     return res
 
+
 def delete_record_from(tablename: str, record_id: int) -> OperationResult:
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
     return soft_delete_record(cls, record_id)
+
 
 def delete_users(tablename: str, users_id: int) -> OperationResult:
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
     return soft_delete_record(cls, users_id)
 
 # ====================== Data Processing Functions ======================
+
+
 def get_structs(selected_template: str, filter_k: str, filter_v: any) -> OperationResult:
     match selected_template:
         case "point_consumption":
@@ -166,6 +174,8 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
             return get_header_for_e31_32(filter_k, filter_v)
         case "water_logs":
             return get_water_logs(filter_k, filter_v)
+        case "allModels":
+            return get_all_models()
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
             # raise ValueError(f"не поддерживаемая структура в get_structs")
@@ -220,7 +230,7 @@ def get_water_logs(filter_k: str, filter_v: any) -> OperationResult:
 
 def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
     try:
-#         1) Добыча точек водозабора
+        # 1) Добыча точек водозабора
         points = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
         if points.status != OperationStatus.SUCCESS:
             pprint.pprint(points)
@@ -257,9 +267,10 @@ def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
         print(f"Error in get_points_consumption: {e}")
         return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
+
 def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
     try:
-#         ищем по point_id скорее всего
+        # ищем по point_id скорее всего
         logs = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
         if logs.status != OperationStatus.SUCCESS:
             pprint.pprint(logs)
@@ -271,6 +282,8 @@ def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
 
     except Exception as e:
         print("в get_header_for_e31_32 что-то сломалось")
+        print(e)
+
 
 def get_fdata_by_selected(selected_template: str) -> OperationResult:
     """Возвращает необходимые данные для формы заполнения."""
@@ -332,8 +345,8 @@ def find_water_consumption_log(water_point_id: int, month: int) -> OperationResu
         return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
 
-
 # --------- send form processing funstions --------- #
+
 
 def form_processing_to_entity(selected_template: str, form_data: any) -> OperationResult:
     match selected_template:
@@ -351,6 +364,7 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
             pass
         case _:
             raise ValueError(f"Неизвестная форма или ее отсутсвие : {selected_template}")
+
 
 def process_water_consumption_single(form_data: dict) -> OperationResult:
     try:
@@ -454,14 +468,18 @@ def send_extempl31or32(form_data: any) -> OperationResult:
         final_rez = add_to(WCLfor3132.__tablename__, oprez.data)
         return final_rez
     return oprez
+
 # ====================== File Parsing Functions ======================
+
 
 def parce_exel(typeform, xls_file):
     # todo: Валидация через цепочку обязанностей (аналогично для parce_word)
     ...
 
+
 def ocr_parce_pdf(pdf_file):
     ...
+
 
 def confirm_pase(typeform, data) -> OperationResult:
     # todo: целый список match case функций для добавления конкретных typeform
