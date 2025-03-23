@@ -22,9 +22,12 @@ const AdminPanel = () => {
         const getTableList = async () => {
             setIsLoading(true);
             try {
-                // Пример запроса: ожидаем массив объектов [{ "организации": "organisations" }, ...]
-                const data = await fetchStructureData("allModels");
-                setTableList(data);
+                const response = await fetchStructureData("allModels");
+                console.log('Полученные данные:', response.data);
+                // Преобразуем данные в нужный формат
+                const tableListData = response.data.map(([displayName, modelName]) => ({ [displayName]: modelName }));
+                console.log('Преобразованные данные:', tableListData);
+                setTableList(tableListData);
             } catch (error) {
                 console.error("Ошибка загрузки списка таблиц:", error);
             } finally {
@@ -33,6 +36,8 @@ const AdminPanel = () => {
         };
         getTableList();
     }, []);
+
+
 
     // При выборе таблицы получаем её записи и схему модели (если есть)
     const handleSelectTable = async (modelName) => {
@@ -44,7 +49,8 @@ const AdminPanel = () => {
             // Здесь можно сделать дополнительный запрос для получения схемы модели, если API предоставляет её
             // Пример: const schema = await fetchModelSchema(modelName);
             // Для демонстрации предполагаем, что схема содержит массив объектов { field: "имя_поля", type: "тип", foreignKey: true/false, options: [...] }
-            const schema = await fetchModelSchema(modelName);
+            // const schema = await fetchModelSchema(modelName); TODO
+            const schema = await fetchStructureData("schema_"+modelName);
             setModelSchema(schema);
         } catch (error) {
             console.error("Ошибка загрузки данных для таблицы", modelName, error);
@@ -72,18 +78,23 @@ const AdminPanel = () => {
         e.preventDefault();
         // Инициализация объекта данных. Можно добавить валидацию и проверки типов
         let dataToSend = {};
-        if (modelSchema) {
-            modelSchema.forEach((field) => {
+        if (modelSchema && modelSchema.data) {
+            modelSchema.data.filter((field) => field.field !== "id").forEach((field) => {
                 // В зависимости от типа поля можно выполнить преобразования
                 // Если значение отсутствует, можно задать значение по умолчанию
                 let value = formData[field.field] || "";
                 // Если поле связано с внешним ключом, значение должно быть выбрано из options
                 // Здесь можно добавить дополнительную логику, например, проверку, что value входит в options
+                if (field.type.includes("BOOLEAN")) {
+                    value = formData[field.field] === "on"; // Преобразуем значение checkbox в boolean
+                }
+
                 dataToSend[field.field] = value;
             });
         } else {
             // Если схема не получена, используем formData как есть (но это крайний случай)
             dataToSend = { ...formData };
+
         }
 
         try {
@@ -119,7 +130,6 @@ const AdminPanel = () => {
         {tableList.length === 0 && <div>Нет данных</div>}
         <ul>
         {tableList.map((table, idx) => {
-            // Каждый объект содержит единственную пару ключ-значение
             const [displayName, modelName] = Object.entries(table)[0];
             return (
                 <li key={idx}>
@@ -132,6 +142,7 @@ const AdminPanel = () => {
         </ul>
         </div>
     );
+
 
     // Рендер списка записей выбранной таблицы с CRUD-кнопками
     const renderTableRecords = () => (
@@ -191,21 +202,25 @@ const AdminPanel = () => {
         <Modal onClose={() => setModalVisible(false)}>
         <h3>{isEditMode ? "Редактировать запись" : "Добавить запись"}</h3>
         <form onSubmit={handleFormSubmit}>
-        {modelSchema ? (
-            modelSchema.map((field, index) => (
+        {modelSchema && modelSchema.data ? (
+            modelSchema.data.filter((field) => field.field !== "id").map((field, index) => (
+
                 <div key={index} style={{ marginBottom: "10px" }}>
                 <label style={{ display: "block", marginBottom: "5px" }}>
                 {field.field}:
                 </label>
                 {/* Если поле связано с внешним ключом, отрисовываем селект */}
                 {field.foreignKey ? (
-                    <ForeignKeySelect
-                    field={field}
-                    value={formData[field.field] || ""}
-                    onChange={(value) =>
-                        setFormData({ ...formData, [field.field]: value })
-                    }
-                    />
+                    <select value={formData[field.field] || ""} onChange={(e) =>
+                        setFormData({ ...formData, [field.field]: e.target.value })
+                    }>
+                    <option value="">Выберите значение</option>
+                    {field.options.map((opt, idx) => (
+                        <option key={idx} value={opt.value}>
+                        {opt.label}
+                        </option>
+                    ))}
+                    </select>
                 ) : (
                     <input
                     type={getInputType(field.type)}
@@ -230,14 +245,22 @@ const AdminPanel = () => {
     // Функция для определения типа input в зависимости от типа поля
     const getInputType = (type) => {
         switch (type) {
-            case "number":
-                return "number";
-            case "date":
+            case "VARCHAR":
+            case "TEXT":
+                return "text";
+            case "DATE":
                 return "date";
+            case "DATETIME":
+                return "datetime-local";
+            case "BOOLEAN":
+                return "checkbox";
+            case "INTEGER":
+                return "number";
             default:
                 return "text";
         }
     };
+
 
     // Пример компонента для внешнего ключа, который выполняет отдельный запрос для получения значений
     const ForeignKeySelect = ({ field, value, onChange }) => {

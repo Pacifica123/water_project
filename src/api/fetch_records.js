@@ -3,6 +3,10 @@ import axios from 'axios';
 
 const API_URL_STRUCT = "http://127.0.0.1:5000/api/get_struct";
 const API_URL_SINGLE = "http://127.0.0.1:5000/api/edit_reference";
+// const API_URL_SCHEMA = "http://127.0.0.1:5000/api/get_schema"; TODO
+
+
+// const fetchModelSchema = ... TODO
 
 /**
  * Универсальная функция для получения данных структуры из API.
@@ -21,7 +25,7 @@ const fetchStructureData = async (structName, filters = {}, token = null) => {
                 return acc;
             }, {})
         };
-
+        const token = localStorage.getItem('jwtToken');
         const headers = token ? { 'tokenJWTAuthorization': token } : {};
 
         const response = await axios.get(API_URL_STRUCT, {
@@ -38,7 +42,7 @@ const fetchStructureData = async (structName, filters = {}, token = null) => {
 
         console.log(JSON.stringify(data, null, 4));
 
-        if (!data.success) {
+        if (data.status !== "success") {
             throw new Error(`API Error: ${data.error}`);
         }
 
@@ -47,6 +51,7 @@ const fetchStructureData = async (structName, filters = {}, token = null) => {
         return data;
     } catch (error) {
         console.error("Ошибка при получении структуры:", error);
+        console.log("Структура была:", structName);
         throw error; // Пробрасываем ошибку дальше
     }
 };
