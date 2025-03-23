@@ -70,7 +70,7 @@ def rest_get():
     struct_name = request.args.get('struct_name')
     filter_k = request.args.get('filter_k')
     filter_v = request.args.get('filter_v')
-    if struct_name == "allModels":
+    if struct_name == "allModels" or "nof" in struct_name or "schema" in struct_name:
         # Фильтр не обязателен
         pass
     else:

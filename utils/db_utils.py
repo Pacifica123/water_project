@@ -62,9 +62,26 @@ def get_all_models() -> OperationResult:
     try:
         # Список моделей с русскоязычными именами
         models_list = [
-            ["Пользователи", "User"],
-            ["Протокол химического анализа", ],
-            ["Товары", "Product"],
+            ["Пользователи", User.__tablename__],
+            ["Протокол химического анализа", ChemicalAnalysisProtocol.__tablename__],
+            ["Место отбора проб", SamplingLocation.__tablename__],
+            ["КОДЫ", Codes.__tablename__],
+            ["Вещества", SubstancesRef.__tablename__],
+            ["Нормативы", StandartsRef.__tablename__],
+            ["Концентрации", Concentrates.__tablename__],
+            ["Марки приборов", MetersBrandRef.__tablename__],
+            ["Все журналы", WaterConsumptionLog.__tablename__],
+            ["Приборы", Meters.__tablename__],
+            ["Организации", Organisations.__tablename__],
+            ["Разрешения", Permissions.__tablename__],
+            ["Бассейны", WaterPoolRef.__tablename__],
+            ["Водохозяйственные участки", WaterAreaRef.__tablename__],
+            ["Водные объекты", WaterObjectRef.__tablename__],
+            ["Точки", WaterPoint.__tablename__],
+            ["История", History.__tablename__],
+            ["Квартальные справки", WaterConsumptionLogByCategories.__tablename__],
+            ["WCLfor3132", WCLfor3132.__tablename__],
+            ["Линки пока отсутствуют", "abc"],
             # Добавьте сюда другие модели
         ]
 

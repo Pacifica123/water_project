@@ -11,6 +11,7 @@ from utils.backend_utils import OperationResult, OperationStatus, print_data_in_
     get_model_class_by_tablename
 
 
+
 # СЕКЦИЯ CREATE
 # - - - - - - - - - - - - - - - - - - - -
 def create_record_entity(entity_class, data: dict) -> bool:
@@ -26,9 +27,17 @@ def create_record_entity(entity_class, data: dict) -> bool:
         # Извлечение значения created_by из data или оставляем по умолчанию
         created_by = data.get('created_by', "auto")
 
-        # Создаем экземпляр сущности с переданными данными
-        record_data = {**data, 'created_by': created_by}
+        # Установка текущей даты для created_at, если оно пустое или отсутствует
+        created_at = data.get('created_at')
+        if not created_at or created_at == '':
+            created_at = datetime.datetime.utcnow()  # Используем UTC для избежания проблем с часовыми поясами
 
+        # Исключаем поля, которые не должны быть заполнены при добавлении
+        exclude_fields = ['updated_at', 'updated_by', 'deleted_at', 'deleted_by']
+        record_data = {k: v for k, v in data.items() if k not in exclude_fields}
+        # Добавляем обязательные поля
+        record_data['created_by'] = created_by
+        record_data['created_at'] = created_at
         record = entity_class(**record_data)
 
         session.add(record)

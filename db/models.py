@@ -96,6 +96,14 @@ class ChemicalAnalysisProtocol(Base):
     file_path: Mapped[str] = mapped_column(String(255), nullable=False)
     location_id: Mapped[int] = mapped_column(ForeignKey('sampling_location.id'), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'protocol_number': self.protocol_number,
+            'protocol_date': self.protocol_date,
+            'file_path': self.file_path,
+        }
+
 
 class SamplingLocation(Base):
     """
@@ -111,6 +119,13 @@ class SamplingLocation(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     latitude_longitude: Mapped[str] = mapped_column(String(100), nullable=False)
     water_obj_id: Mapped[int] = mapped_column(ForeignKey('water_object_ref.id'), nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'latitude_longitude': self.latitude_longitude
+        }
 
 
 class Codes(Base):
@@ -299,6 +314,10 @@ class OrgHUCLink(Base):
     organisation_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), nullable=False)
     hydrographic_unit_code: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+        }
 
 
 class Permissions(Base):
@@ -480,6 +499,13 @@ class WaterConsumptionLog(Base):
     treatment_level: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=True)
     exploitation_org_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'consumption_value': self.consumption_value,
+            'treatment_level': self.treatment_level
+        }
+
 
 class History(Base):
     """
@@ -494,6 +520,13 @@ class History(Base):
     change_date: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), nullable=False)  # Дата изменения
     comment: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'table_name':self.table_name,
+            'change_date':self.change_date
+        }
+
 
 class PointMeterLink(Base):
     """
@@ -506,6 +539,10 @@ class PointMeterLink(Base):
     point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
     meter_id: Mapped[int] = mapped_column(ForeignKey('meters.id'), nullable=False)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+        }
 
 # class RecordPML(PointMeterLink):
 #     """
@@ -533,6 +570,14 @@ class RecordWCL(Base):
     water_consumption_m3_per_day: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     meter_readings: Mapped[dict] = mapped_column(JSON)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'measurement_date': self.measurement_date,
+            'operating_time_days': self.operating_time_days,
+            'water_consumption_m3_per_day': self.water_consumption_m3_per_day,
+            'meter_readings': self.meter_readings
+        }
 
 
 class WaterConsumptionLogByCategories(Base):
@@ -543,6 +588,13 @@ class WaterConsumptionLogByCategories(Base):
     value: Mapped[float] = mapped_column(Float, nullable=False)
     # water_object_code = ... TODO
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'category': self.category,
+            'month': self.month,
+            'value': self.value
+        }
 
 
 class WCLfor3132(Base):
@@ -558,6 +610,15 @@ class WCLfor3132(Base):
     # permission_id
     month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'coordinates': self.coordinates,
+            'code_category_quality': self.code_category_quality,
+            'month': self.month,
+            'value': self.value
+        }
 
 # class WCLxPMLrecordLink(Base):
 #     """

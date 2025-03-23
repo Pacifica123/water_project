@@ -2,20 +2,16 @@ from datetime import date, datetime
 from flask import Blueprint, g
 
 from data.examples import unwanted_columns
-from db.crudcore import (
-    read_all_employees, find_employee_by_username,
-    get_all_from_table, create_user, create_record_entity,
-    update_employee, update_record, soft_delete_record,
-    get_all_by_foreign_key, get_record_by_id
-)
-from db.models import (
-    Codes, CodeType, Permissions, StandartsRef, User, UserRoles, WaterConsumptionLogByCategories, RecordWCL, WaterConsumptionLog, ConsumersCategories, Month, PointPermissionLink, PointMeterLink, Permissions, Meters, Organisations, WCLfor3132, WaterPoint)
+from db.crudcore import *
+from db.models import *
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import *
-from utils.db_utils import (replace_fks, recognize_model, try_create_code)
+from utils.db_utils import (replace_fks, recognize_model, try_create_code, get_all_models)
 import pprint
 
 backend = Blueprint('backend', __name__)
+
+from sqlalchemy import inspect, types
 
 # ====================== CRUD Functions ======================
 
@@ -86,11 +82,11 @@ def edit_or_add_employee(user_data) -> OperationResult:
     return OperationResult(status=OperationStatus.UNDEFINE_ERROR)
 
 
-def edit_concrete_record(selected_model, selected_id, newdata) -> OperationResult:
-    """
-    ....
-    """
-    ...
+# def edit_concrete_record(selected_model, selected_id, newdata) -> OperationResult:
+#     """
+#     ....
+#     """
+#     ...
 
 
 def get_all_record_from(tablename: str) -> OperationResult:
@@ -176,9 +172,102 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
             return get_water_logs(filter_k, filter_v)
         case "allModels":
             return get_all_models()
+        case modelname if selected_template.startswith("schema_"):
+            modelname = modelname.replace("schema_", "")
+            return handle_schema(modelname)
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
             # raise ValueError(f"не поддерживаемая структура в get_structs")
+
+
+def _format_options(records, model_class):
+    # Определяем поля, которые будут использованы для формирования опций
+    inspector = inspect(model_class)
+    columns = inspector.columns
+    # Список строковых полей
+    text_columns = [col.name for col in columns if isinstance(col.type, (types.String, types.Text, types.VARCHAR))]
+    print(f"Строковые поля: {text_columns}")
+
+    options = []
+    for record in records:
+        # Формируем метку, соединяя все строковые поля
+        label_parts = []
+        for col in text_columns:
+            value = getattr(record, col)
+            print(f"Поле {col}: {value}")
+            if value and str(value) != "[object Object]":
+                label_parts.append(str(value))
+
+        label = ", ".join(label_parts)  # Используем запятую с пробелом в качестве разделителя
+
+        print(f"Метка до проверки: {label}")
+
+        # Если метка пустая, используем id в качестве метки
+        if not label:
+            print("Метка пустая, используем id")
+            label = str(record.id)
+
+        print(f"Метка после проверки: {label}")
+
+        options.append({"value": record.id, "label": label})
+
+    return options
+
+
+def handle_schema(modelName: str) -> OperationResult:
+    try:
+        # Ищем класс модели по __tablename__
+        model_class = None
+        for name, obj in globals().items():
+            if hasattr(obj, "__tablename__") and obj.__tablename__ == modelName:
+                model_class = obj
+                break
+
+        if model_class is None:
+            raise ValueError(f"Не найден класс модели для таблицы {modelName}")
+
+        # Используем model.__table__.columns для доступа к столбцам
+        columns = model_class.__table__.columns
+
+        schema = []
+        for column in columns:
+            field = {
+                "field": column.name,
+                "type": str(column.type),
+                "foreignKey": False,
+                "options": []  # Здесь можно добавить опции, если они нужны
+            }
+
+            # Проверяем, является ли столбец внешним ключом
+            if column.foreign_keys:
+                field["foreignKey"] = True
+
+                # Получаем записи из связанной таблицы
+                related_table_name = list(column.foreign_keys)[0].column.table.name
+                related_model_class = None
+                for name, obj in globals().items():
+                    if hasattr(obj, "__tablename__") and obj.__tablename__ == related_table_name:
+                        related_model_class = obj
+                        break
+
+                if related_model_class is None:
+                    raise ValueError(f"Не найден класс модели для таблицы {related_table_name}")
+
+                related_records_result = get_all_from_table(related_model_class)
+
+                if related_records_result.status == OperationStatus.SUCCESS:
+                    related_records = related_records_result.data
+                    # Формируем опции, используя комбинацию полей
+                    field["options"] = _format_options(related_records, related_model_class)
+
+            schema.append(field)
+
+        # Возвращаем результат только после обработки всех столбцов
+        return OperationResult(OperationStatus.SUCCESS, data=schema)
+
+    except Exception as e:
+        print(f"Error in handle_schema: {e}")
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
 
 def get_water_logs(filter_k: str, filter_v: any) -> OperationResult:
