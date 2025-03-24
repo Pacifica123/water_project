@@ -52,4 +52,46 @@ const sendSingleData = async (tableName, data, config = {}) => {
         throw new Error(`Ошибка при отправке данных формы "${tableName}": ${error.message}`);
     }
 };
-export {sendFormData, sendSingleData };
+
+
+const sendUpdateData = async (tableName, recordId, data, config = {}) => {
+    const token = localStorage.getItem('jwtToken');
+
+    try {
+        const response = await axios.put(`${API_BASE_URL}/records/${tableName}/${recordId}`, {
+            ...data // Добавляем данные формы
+        }, {
+            headers: {
+                'tokenJWTAuthorization': token
+            },
+            withCredentials: true
+        });
+
+        return response.data; // Возвращаем данные ответа
+    } catch (error) {
+        console.error("Ошибка при отправке данных для обновления:", error);
+        throw new Error(`Ошибка при отправке данных формы "${tableName}" для записи с ID ${recordId}: ${error.message}`);
+    }
+};
+
+
+const sendDeleteData = async (tableName, recordId, config = {}) => {
+    const token = localStorage.getItem('jwtToken');
+
+    try {
+        const response = await axios.delete(`${API_BASE_URL}/records/${tableName}/${recordId}`, {
+            headers: {
+                'tokenJWTAuthorization': token
+            },
+            withCredentials: true
+        });
+
+        return response.data; // Возвращаем данные ответа
+    } catch (error) {
+        console.error("Ошибка при отправке данных для удаления:", error);
+        throw new Error(`Ошибка при отправке запроса на удаление "${tableName}" для записи с ID ${recordId}: ${error.message}`);
+    }
+};
+
+
+export {sendFormData, sendSingleData, sendUpdateData, sendDeleteData };

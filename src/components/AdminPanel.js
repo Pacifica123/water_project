@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { fetchStructureData, fetchSingleTableData } from "../api/fetch_records.js"; // Функции получения данных
-import { sendSingleData } from "../api/add_records.js"; // Функция для отправки данных
+import { sendSingleData, sendUpdateData, sendDeleteData } from "../api/add_records.js"; // Функция для отправки данных
 import Modal from "./Modal"; // Компонент модального окна
 import axios from "axios";
 
@@ -98,8 +98,14 @@ const AdminPanel = () => {
         }
 
         try {
-            await sendSingleData(selectedTable, dataToSend);
-            // Перезагрузка записей после успешной операции
+            if (isEditMode) {
+                // Отправляем данные для обновления
+                await sendUpdateData(selectedTable, formData.id, dataToSend); // Передаем ID записи для обновления
+            } else {
+                // Отправляем данные для создания
+                await sendSingleData(selectedTable, dataToSend);
+            }
+
             handleSelectTable(selectedTable);
             setModalVisible(false);
         } catch (error) {
@@ -185,13 +191,8 @@ const AdminPanel = () => {
     // Функция для удаления записи
     const handleDeleteRecord = async (recordId) => {
         try {
-            // Предполагается, что API поддерживает метод DELETE для удаления записи
-            await axios.delete(`http://127.0.0.1:5000/api/records/${selectedTable}/${recordId}`, {
-                headers: {
-                    tokenJWTAuthorization: localStorage.getItem("jwtToken"),
-                },
-            });
-            handleSelectTable(selectedTable);
+            await sendDeleteData(selectedTable, recordId);
+            handleSelectTable(selectedTable); // Обновить таблицу после удаления
         } catch (error) {
             console.error("Ошибка удаления записи:", error);
         }
