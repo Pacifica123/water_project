@@ -60,6 +60,36 @@ def rest_add_record(tablename):
         return jsonify({'status': 'error', 'message': result.message}), 400
 
 
+@api.route('/api/records/<tablename>/<record_id>', methods=['PUT'])
+def rest_update_record(tablename, record_id):
+    record_data = request.json
+    try:
+        record_id = int(record_id)
+    except ValueError:
+        return jsonify({'status': 'error', 'message': 'Неверный формат ID записи.'}), 400
+
+    result = update_record_in(tablename, record_id, record_data)
+    if result.status == OperationStatus.SUCCESS:
+        return jsonify({'status': 'success', 'message': 'Запись успешно обновлена.'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': result.message}), 400
+
+
+@api.route('/api/records/<tablename>/<record_id>', methods=['DELETE'])
+def rest_del_record(tablename, record_id):
+    try:
+        record_id = int(record_id)
+    except ValueError:
+        return jsonify({'status': 'error', 'message': 'Неверный формат ID записи.'}), 400
+
+    result = delete_record_from(tablename, record_id)
+
+    if result.status == OperationStatus.SUCCESS:
+        return jsonify({'status': 'success', 'message': 'Запись успешно удалена.'}), 200
+    else:
+        return jsonify({'status': 'error', 'message': result.message}), 400
+
+
 @api.route('/api/get_struct', methods = ['GET'])
 def rest_get():
     token = request.headers.get('tokenJWTAuthorization')

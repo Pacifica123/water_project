@@ -393,20 +393,24 @@ def update_record(entity_class, record_id, data: dict, required_fields: list = N
                 msg=f"Запись с ID {record_id} не найдена в таблице {entity_class.__name__}."
             )
 
+        # Исключаем поля, которые не должны быть заполнены при добавлении
+        exclude_fields = ['deleted_at', 'deleted_by']
+        record_data = {k: v for k, v in data.items() if k not in exclude_fields}
+
         # Проверка обязательных полей
         if required_fields:
             for field in required_fields:
-                if field not in data:
+                if field not in record_data:
                     return OperationResult(
                         status=OperationStatus.DATABASE_ERROR,
                         msg=f"Недостаточно данных для обновления. Отсутствует обязательное поле: {field}."
                     )
 
         # Извлечение updated_by и установка текущего времени для updated_at
-        updated_by = data.get('updated_by')  # Получаем значение updated_by из данных
+        updated_by = record_data.get('updated_by')  # Получаем значение updated_by из данных
         current_time = func.now()  # Текущее время
 
-        for key, value in data.items():
+        for key, value in record_data.items():
             if hasattr(record, key):
                 setattr(record, key, value)
             else:
