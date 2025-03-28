@@ -76,8 +76,20 @@ const AdminPanel = () => {
     // Обработчик сабмита формы. Здесь динамически собираем объект данных, исходя из схемы
     const handleFormSubmit = async (e) => {
         e.preventDefault();
-        // Инициализация объекта данных. Можно добавить валидацию и проверки типов
-        let dataToSend = {};
+        // Инициализация объекта данных.
+        const dataToSend = {
+            ...formData,
+            created_by: "admin", // Автоподстановка
+            created_at: isEditMode ? undefined : new Date().toISOString() // Для новых записей
+        };
+        // Удаляем технические поля для редактирования
+        if(isEditMode) {
+            delete dataToSend.created_by;
+            delete dataToSend.created_at;
+            dataToSend.updated_by = "admin";
+            dataToSend.updated_at = new Date().toISOString();
+        }
+
         if (modelSchema && modelSchema.data) {
             modelSchema.data.filter((field) => field.field !== "id").forEach((field) => {
                 // В зависимости от типа поля можно выполнить преобразования
@@ -89,6 +101,17 @@ const AdminPanel = () => {
                     value = formData[field.field] === "on"; // Преобразуем значение checkbox в boolean
                 }
 
+                // Проверка, если поле является ENUM
+                if (field.isEnum) {
+                    // Находим ключ ENUM по значению
+                    const enumOptions = field.options || [];
+                    const enumKey = enumOptions.find(opt => opt.value === value);
+                    console.log("Был выбран вариант: ", enumKey);
+                    if (enumKey) {
+                        value = enumKey.label; // Используем ключ вместо значения
+                    }
+                }
+                console.log(value);
                 dataToSend[field.field] = value;
             });
         } else {
@@ -149,6 +172,22 @@ const AdminPanel = () => {
         </div>
     );
 
+    const renderCellValue = (value, fieldSchema) => {
+        if (typeof value === 'object' && value !== null && fieldSchema?.foreignKey) {
+            const id = value.id || '?';
+            const displayKey = findDisplayKey(value);
+            return displayKey ? `${id}. ${value[displayKey]}` : id;
+        }
+        return value !== null && value !== undefined ? value.toString() : '';
+    };
+
+    const findDisplayKey = (obj) => {
+        const priorityKeys = ['name', 'title', 'organisation_name', 'code_value'];
+        return priorityKeys.find(key => obj.hasOwnProperty(key));
+    };
+
+
+
 
     // Рендер списка записей выбранной таблицы с CRUD-кнопками
     const renderTableRecords = () => (
@@ -169,17 +208,25 @@ const AdminPanel = () => {
             </tr>
             </thead>
             <tbody>
-            {tableRecords.map((record) => (
-                <tr key={record.id}>
-                {Object.values(record).map((value, idx) => (
-                    <td key={idx}>{value?.toString()}</td>
-                ))}
-                <td>
-                <button onClick={() => handleEditButton(record)}>Редактировать</button>
-                <button onClick={() => handleDeleteRecord(record.id)}>Удалить</button>
-                </td>
-                </tr>
-            ))}
+            {tableRecords.map((record) => {
+                return (
+                    <tr key={record.id}>
+                    {Object.keys(record).map((key, idx) => {
+                        const fieldSchema = modelSchema?.data?.find(f => f.field === key);
+                        return (
+                            <td key={idx}>
+                            {renderCellValue(record[key], fieldSchema)}
+                            </td>
+                        );
+                    })}
+                    <td>
+                    <button onClick={() => handleEditButton(record)}>Редактировать</button>
+                    <button onClick={() => handleDeleteRecord(record.id)}>Удалить</button>
+                    </td>
+                    </tr>
+                );
+            })}
+
             </tbody>
             </table>
         ) : (
@@ -205,23 +252,20 @@ const AdminPanel = () => {
         <form onSubmit={handleFormSubmit}>
         {modelSchema && modelSchema.data ? (
             modelSchema.data.filter((field) => field.field !== "id").map((field, index) => (
-
                 <div key={index} style={{ marginBottom: "10px" }}>
                 <label style={{ display: "block", marginBottom: "5px" }}>
                 {field.field}:
                 </label>
-                {/* Если поле связано с внешним ключом, отрисовываем селект */}
-                {field.foreignKey ? (
-                    <select value={formData[field.field] || ""} onChange={(e) =>
-                        setFormData({ ...formData, [field.field]: e.target.value })
-                    }>
-                    <option value="">Выберите значение</option>
-                    {field.options.map((opt, idx) => (
-                        <option key={idx} value={opt.value}>
-                        {opt.label}
-                        </option>
-                    ))}
-                    </select>
+                {/* Если поле связано с внешним ключом или имеет опции, отрисовываем ForeignKeySelect */}
+                {(field.foreignKey || field.options?.length > 0 || field.isEnum) ? (
+                    <ForeignKeySelect
+                    field={field}
+                    value={formData[field.field] || ""}
+                    // onChange={(e) => setFormData({ ...formData, [field.field]: e.target.value })}
+                    onChange={(newValue) => {
+                        setFormData({ ...formData, [field.field]: newValue });
+                    }}
+                    />
                 ) : (
                     <input
                     type={getInputType(field.type)}
@@ -236,6 +280,7 @@ const AdminPanel = () => {
         ) : (
             <div>Схема модели не получена.</div>
         )}
+
         <button type="submit">
         {isEditMode ? "Сохранить изменения" : "Добавить"}
         </button>
@@ -248,14 +293,19 @@ const AdminPanel = () => {
         switch (type) {
             case "VARCHAR":
             case "TEXT":
+            case "STRING":
                 return "text";
             case "DATE":
                 return "date";
             case "DATETIME":
+            case "TIMESTAMP":
                 return "datetime-local";
             case "BOOLEAN":
                 return "checkbox";
             case "INTEGER":
+            case "BIGINT":
+            case "NUMERIC":
+            case "DECIMAL":
                 return "number";
             default:
                 return "text";
@@ -265,16 +315,26 @@ const AdminPanel = () => {
 
     // Пример компонента для внешнего ключа, который выполняет отдельный запрос для получения значений
     const ForeignKeySelect = ({ field, value, onChange }) => {
-        const [options, setOptions] = useState([]);
+        const [options, setOptions] = useState(field.options || []);
         const [loading, setLoading] = useState(false);
 
         useEffect(() => {
             const fetchOptions = async () => {
                 setLoading(true);
                 try {
-                    // Пример запроса: API должен вернуть список вариантов для данного внешнего ключа
-                    const response = await axios.get(`http://127.0.0.1:5000/api/options/${field.field}`);
-                    setOptions(response.data);
+                    if (field.isEnum) {
+                        console.log("В ForeignKeySelect попало!");
+                        // Если это перечисление, получаем варианты через API
+                        const response = await fetchStructureData("enum_"+field.enumType);
+                        console.log("Вот что попадет в setOptions: ", response.data)
+                        setOptions(response.data);
+                    } else if (field.foreignKey) {
+                        // Если это внешний ключ, используем существующие опции
+                        setOptions(field.options);
+                    } else {
+                        // Если это не перечисление и не внешний ключ, не делаем запрос
+                        setOptions([]);
+                    }
                 } catch (error) {
                     console.error("Ошибка получения опций для", field.field, error);
                 } finally {
@@ -282,16 +342,16 @@ const AdminPanel = () => {
                 }
             };
             fetchOptions();
-        }, [field.field]);
+        }, [field.field, field.enumType]);
 
         return (
-            <select value={value} onChange={(e) => onChange(e.target.value)}>
+            <select value={value} onChange={(e) => {onChange(e.target.value)}}>
             {loading ? (
                 <option>Загрузка...</option>
             ) : (
                 <>
                 <option value="">Выберите значение</option>
-                {options.map((opt, idx) => (
+                {options?.map((opt, idx) => (
                     <option key={idx} value={opt.value}>
                     {opt.label}
                     </option>
