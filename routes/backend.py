@@ -1,17 +1,19 @@
-from datetime import date, datetime
-from flask import Blueprint, g
+from flask import Blueprint
 
-from data.examples import unwanted_columns
+# from data.examples import unwanted_columns
 from db.crudcore import *
 from db.models import *
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import *
-from utils.db_utils import (replace_fks, recognize_model, try_create_code, get_all_models)
-import pprint
+from utils.db_utils import (replace_fks, try_create_code, get_all_models)
+# import pprint
+
+from routes.struct_getters import *
+from routes.struct_senders import *
 
 backend = Blueprint('backend', __name__)
 
-from sqlalchemy import inspect, types
+
 
 # ====================== CRUD Functions ======================
 
@@ -80,13 +82,6 @@ def edit_or_add_employee(user_data) -> OperationResult:
                 msg='Не удалось создать нового пользователя'
             )
     return OperationResult(status=OperationStatus.UNDEFINE_ERROR)
-
-
-# def edit_concrete_record(selected_model, selected_id, newdata) -> OperationResult:
-#     """
-#     ....
-#     """
-#     ...
 
 
 def get_all_record_from(tablename: str) -> OperationResult:
@@ -175,263 +170,37 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
         case modelname if selected_template.startswith("schema_"):
             modelname = modelname.replace("schema_", "")
             return handle_schema(modelname)
+        case enum_request if selected_template.startswith("enum_"):
+            enum_type = selected_template.replace("enum_", "")
+            print(f"в selected_template попал ENUM : {enum_type}")
+            return get_enum_options(enum_type)
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
-            # raise ValueError(f"не поддерживаемая структура в get_structs")
 
 
-def _format_options(records, model_class):
-    # Определяем поля, которые будут использованы для формирования опций
-    inspector = inspect(model_class)
-    columns = inspector.columns
-    # Список строковых полей
-    text_columns = [col.name for col in columns if isinstance(col.type, (types.String, types.Text, types.VARCHAR))]
-    print(f"Строковые поля: {text_columns}")
 
-    options = []
-    for record in records:
-        # Формируем метку, соединяя все строковые поля
-        label_parts = []
-        for col in text_columns:
-            value = getattr(record, col)
-            print(f"Поле {col}: {value}")
-            if value and str(value) != "[object Object]":
-                label_parts.append(str(value))
-
-        label = ", ".join(label_parts)  # Используем запятую с пробелом в качестве разделителя
-
-        print(f"Метка до проверки: {label}")
-
-        # Если метка пустая, используем id в качестве метки
-        if not label:
-            print("Метка пустая, используем id")
-            label = str(record.id)
-
-        print(f"Метка после проверки: {label}")
-
-        options.append({"value": record.id, "label": label})
-
-    return options
-
-
-def handle_schema(modelName: str) -> OperationResult:
-    try:
-        # Ищем класс модели по __tablename__
-        model_class = None
-        for name, obj in globals().items():
-            if hasattr(obj, "__tablename__") and obj.__tablename__ == modelName:
-                model_class = obj
-                break
-
-        if model_class is None:
-            raise ValueError(f"Не найден класс модели для таблицы {modelName}")
-
-        # Используем model.__table__.columns для доступа к столбцам
-        columns = model_class.__table__.columns
-
-        schema = []
-        for column in columns:
-            field = {
-                "field": column.name,
-                "type": str(column.type),
-                "foreignKey": False,
-                "options": []  # Здесь можно добавить опции, если они нужны
-            }
-
-            # Проверяем, является ли столбец внешним ключом
-            if column.foreign_keys:
-                field["foreignKey"] = True
-
-                # Получаем записи из связанной таблицы
-                related_table_name = list(column.foreign_keys)[0].column.table.name
-                related_model_class = None
-                for name, obj in globals().items():
-                    if hasattr(obj, "__tablename__") and obj.__tablename__ == related_table_name:
-                        related_model_class = obj
-                        break
-
-                if related_model_class is None:
-                    raise ValueError(f"Не найден класс модели для таблицы {related_table_name}")
-
-                related_records_result = get_all_from_table(related_model_class)
-
-                if related_records_result.status == OperationStatus.SUCCESS:
-                    related_records = related_records_result.data
-                    # Формируем опции, используя комбинацию полей
-                    field["options"] = _format_options(related_records, related_model_class)
-
-            schema.append(field)
-
-        # Возвращаем результат только после обработки всех столбцов
-        return OperationResult(OperationStatus.SUCCESS, data=schema)
-
-    except Exception as e:
-        print(f"Error in handle_schema: {e}")
-        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
-
-
-def get_water_logs(filter_k: str, filter_v: any) -> OperationResult:
-    try:
-        # 0) Сначала получить пункт учета и его id нужно:
-        print(filter_k)
-        if "°" in str(filter_v) and str(filter_k) == "point_id":
-            point_try = get_all_by_foreign_key(WaterPoint, "latitude_longitude", filter_v)
-            if point_try.status != OperationStatus.SUCCESS:
-                pprint.pprint(point_try)
-                return point_try
-            point_id = point_try.data[0].id
-            print(f"айдишка пункта учета - {point_id}")
-
-            # 1) Получить журналы учета водопотребления (скорее всего по пункту учета)
-            logs = get_all_by_foreign_key(WaterConsumptionLog, "point_id", point_id)
-            if logs.status != OperationStatus.SUCCESS:
-                pprint.pprint(logs)
-                return logs
-
-            # 2) Для каждого журнала получить записи
-            log_data = []
-            for log in logs.data:
-                records = get_all_by_foreign_key(RecordWCL, "log_id", log.id)
-                if records.status != OperationStatus.SUCCESS:
-                    pprint.pprint(records)
-                    return records
-
-                # 3) Дополнительные данные (точка водозабора, организация)
-                point = get_record_by_id(WaterPoint.__tablename__, point_id)
-                org = get_all_by_foreign_key(Organisations, "id", log.exploitation_org_id).data[0]
-
-                # 4) Компонуем данные
-                log_data.append({
-                    'log': log,
-                    'records': records.data,
-                    'water_point': point,
-                    'organisation': org
-                })
-
-            return OperationResult(OperationStatus.SUCCESS, data=log_data)
-        else:
-            return OperationResult(OperationStatus.NOT_REALIZED)
-
-    except Exception as e:
-        print(f"Error in get_water_logs: {e}")
-        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
-
-
-def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
-    try:
-        # 1) Добыча точек водозабора
-        points = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
-        if points.status != OperationStatus.SUCCESS:
-            pprint.pprint(points)
-            return points
-#         2) Для каждой точки ищем по внешключу связку точка-разрешенеи
-        consumption_data = []
-        for p in points.data:
-            links = get_all_by_foreign_key(PointPermissionLink, "point_id", p.id)
-            if links.status != OperationStatus.SUCCESS:
-                pprint.pprint(links)
-                return links
-
-#         3) Через каждую связку достать разрешение
-            for l in links.data:
-                permissions = get_all_by_foreign_key(Permissions, "id", l.permission_id)
-                if permissions.status != OperationStatus.SUCCESS:
-                    pprint.pprint(permissions)
-                    return permissions
-                permission = permissions.data[0]
-                org = get_all_by_foreign_key(Organisations, "id", permission.organisation_id).data
-#         4) Через организацию еще достать приборы
-            meter = get_all_by_foreign_key(Meters, "id", p.organisation_id).data
-
-#         5) компонуем
-            consumption_data.append({
-                'water_point': p,
-                'permission': permission,
-                'organisation': org,
-                'meter': meter
-            })
-        return OperationResult(OperationStatus.SUCCESS, data=consumption_data)
-
-    except Exception as e:
-        print(f"Error in get_points_consumption: {e}")
-        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
-
-
-def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
-    try:
-        # ищем по point_id скорее всего
-        logs = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
-        if logs.status != OperationStatus.SUCCESS:
-            pprint.pprint(logs)
-            return logs
-        replace_logs = replace_fks(logs, WCLfor3132.__tablename__)
-        if replace_logs.status != OperationStatus.SUCCESS:
-            pprint.pprint(replace_logs)
-        return replace_logs
-
-    except Exception as e:
-        print("в get_header_for_e31_32 что-то сломалось")
-        print(e)
-
-
-def get_fdata_by_selected(selected_template: str) -> OperationResult:
-    """Возвращает необходимые данные для формы заполнения."""
-    tables = {
-        'accounting_for_water_consumption': ['organisation', 'water_point', 'devices', 'water_body'],
-        'excel_template_3.1': ['organisation', 'water_pool', 'organisation_hydrounit_codes', 'water_area', 'permissions', 'device_brand', 'devices', 'water_body', 'water_treatment', 'sampling_location', 'surface_water_withdrawal'],
-        'excel_template_3.2': ['organisation', 'water_pool', 'organisation_hydrounit_codes', 'water_area', 'permissions', 'device_brand', 'devices', 'water_body'],
-        'Payment_calculation': []
-    }.get(selected_template)
-
-    if tables is None:
-        return OperationResult(OperationStatus.UNDEFINE_ERROR, "Неизвестный шаблон", None)
-
-    all_data = {}
-    for table in tables:
-        result = get_all_record_from(table)
-        if result.status == OperationStatus.SUCCESS:
-            all_data[table] = serialize_to_json(result.data)
-        else:
-            print_operation_result(result)
-            return OperationResult(result.status, f"Ошибка при получении данных из таблицы {table}", None)
-
-    return OperationResult(OperationStatus.SUCCESS, "Данные успешно получены", all_data)
-
-
-def find_water_consumption_log(water_point_id: int, month: int) -> OperationResult:
-    try:
-        # Получение журналов учета водопотребления для точки водозабора
-        logs_result = get_water_logs("point_id", water_point_id)
-        if logs_result.status != OperationStatus.SUCCESS:
-            return logs_result
-
-        # Поиск журнала, соответствующего указанному месяцу
-        target_log = None
-        for log_data in logs_result.data:
-            log = log_data['log']
-            records = log_data['records']
-
-            # Проверка записей на соответствие месяцу
-            for record in records:
-                record_month = record.measurement_date.month
-                if record_month == month:
-                    target_log = log
-                    break
-
-            if target_log:
-                break
-
-        if not target_log:
-            return OperationResult(
-                OperationStatus.DATABASE_ERROR,
-                msg=f"Не найден журнал учета водопотребления для точки {water_point_id} и месяца {month}"
-            )
-
-        return OperationResult(OperationStatus.SUCCESS, data=target_log)
-
-    except Exception as e:
-        print(f"Error in find_water_consumption_log: {e}")
-        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
+# def get_fdata_by_selected(selected_template: str) -> OperationResult:
+#     """Возвращает необходимые данные для формы заполнения."""
+#     tables = {
+#         'accounting_for_water_consumption': ['organisation', 'water_point', 'devices', 'water_body'],
+#         'excel_template_3.1': ['organisation', 'water_pool', 'organisation_hydrounit_codes', 'water_area', 'permissions', 'device_brand', 'devices', 'water_body', 'water_treatment', 'sampling_location', 'surface_water_withdrawal'],
+#         'excel_template_3.2': ['organisation', 'water_pool', 'organisation_hydrounit_codes', 'water_area', 'permissions', 'device_brand', 'devices', 'water_body'],
+#         'Payment_calculation': []
+#     }.get(selected_template)
+#
+#     if tables is None:
+#         return OperationResult(OperationStatus.UNDEFINE_ERROR, "Неизвестный шаблон", None)
+#
+#     all_data = {}
+#     for table in tables:
+#         result = get_all_record_from(table)
+#         if result.status == OperationStatus.SUCCESS:
+#             all_data[table] = serialize_to_json(result.data)
+#         else:
+#             print_operation_result(result)
+#             return OperationResult(result.status, f"Ошибка при получении данных из таблицы {table}", None)
+#
+#     return OperationResult(OperationStatus.SUCCESS, "Данные успешно получены", all_data)
 
 
 # --------- send form processing funstions --------- #
@@ -455,108 +224,7 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
             raise ValueError(f"Неизвестная форма или ее отсутсвие : {selected_template}")
 
 
-def process_water_consumption_single(form_data: dict) -> OperationResult:
-    try:
-        # Получение данных из формы
-        measurement_date = form_data.get("measurement_date")
-        water_point_id = form_data.get("water_point_id")  # Предполагаем, что water_point_id есть в форме
 
-        if not measurement_date or not water_point_id:
-            return OperationResult(
-                OperationStatus.VALIDATION_ERROR,
-                msg="Недостаточно данных для определения журнала учета водопотребления"
-            )
-
-        # Определение месяца
-        month = datetime.strptime(measurement_date, "%Y-%m-%d").month  # Пример формата даты
-
-        # Поиск журнала по water_point_id и месяцу
-        log_result = find_water_consumption_log(water_point_id, month)
-        if log_result.status != OperationStatus.SUCCESS:
-            return log_result
-
-        log = log_result.data
-
-        # Сопоставление полей формы с полями модели RecordWCL
-        mapping = {
-            "measurement_date": "measurement_date",
-            "operating_time_days": "operating_time_days",
-            "water_consumption_m3_per_day": "water_consumption_m3_per_day",
-            "meter_readings": "meter_readings",
-        }
-
-        # Создание словаря для записи в БД
-        record_data = {}
-        for field_name, value in form_data.items():
-            if field_name in mapping.values():
-                record_data[mapping[field_name]] = value
-
-        # Добавление log_id
-        record_data["log_id"] = log.id
-
-        # Добавление записи в БД
-        result = add_to(RecordWCL.__tablename__, record_data)
-        if result.status != OperationStatus.SUCCESS:
-            return result
-
-        return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
-
-    except Exception as e:
-        print(f"Error in process_water_consumption_single: {e}")
-        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
-
-
-def send_quarter(form_data: any):
-    # water_point_id = form_data["water_point_id"]
-    # water_point_name = form_data["waterObject"][""]
-    pprint.pprint(form_data)
-    water_object_code = form_data["waterObjectCode"]
-    quarter = form_data["quarter"]
-    report_data = form_data["data"]
-
-    month_mapping = {
-        1: [Month.JANUARY, Month.FEBRUARY, Month.MARCH],
-        2: [Month.APRIL, Month.MAY, Month.JUNE],
-        3: [Month.JULY, Month.AUGUST, Month.SEPTEMBER],
-        4: [Month.OCTOBER, Month.NOVEMBER, Month.DECEMBER],
-    }
-
-    months = month_mapping.get(quarter, [])
-    if not months:
-        raise ValueError(f"Invalid quarter: {quarter}")
-    # Создаем словарь для сопоставления категорий с их значениями
-    category_mapping = {
-        "fact": ConsumersCategories.ACTUAL,
-        "population": ConsumersCategories.POPULATION,
-        "other": ConsumersCategories.OTHER,
-    }
-
-    for month, data in zip(months, report_data):
-        for category_key, value in data.items():
-            if category_key in category_mapping:
-                entry = {
-                    "category": category_mapping[category_key],
-                    "month": month,
-                    "value": value,
-                }
-                result = add_to(WaterConsumptionLogByCategories.__tablename__, entry)
-                if result.status != OperationStatus.SUCCESS:
-                    return result
-
-    return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
-
-
-def send_extempl31or32(form_data: any) -> OperationResult:
-    # TODO ПЕРЕДЕЛАТЬ В ЦИКЛ ДЛЯ МНОЖЕСТВА ЗАПИСЕЙ
-    table31or32 = form_data["table31or32"]
-    pprint.pprint(table31or32)
-    oprez = recognize_model(table31or32)
-
-    print_operation_result(oprez, "send_extempl31or32")
-    if oprez.status == OperationStatus.SUCCESS:
-        final_rez = add_to(WCLfor3132.__tablename__, oprez.data)
-        return final_rez
-    return oprez
 
 # ====================== File Parsing Functions ======================
 

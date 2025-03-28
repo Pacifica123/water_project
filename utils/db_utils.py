@@ -4,11 +4,83 @@ from db.crudcore import (
 from utils.backend_utils import OperationStatus, OperationResult, get_model_class_by_tablename
 from sqlalchemy.inspection import inspect
 import json
-import inspect
+# import inspect
 from db.models import *
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import types
 import pprint
 import importlib
+
+
+def format_options(records, model_class):
+
+    # Определяем поля, которые будут использованы для формирования опций
+    inspector = inspect(model_class)
+    columns = inspector.columns
+
+    # Список строковых полей
+    text_columns = [col.name for col in columns if isinstance(col.type, (types.String, types.Text, types.VARCHAR))]
+    print(f"Строковые поля: {text_columns}")
+
+    options = []
+    for record in records:
+        # Формируем метку, соединяя все строковые поля
+        label_parts = []
+        for col in text_columns:
+            value = getattr(record, col)
+            print(f"Поле {col}: {value}")
+            if value and str(value) != "[object Object]":
+                label_parts.append(str(value))
+
+        label = ", ".join(label_parts)  # Используем запятую с пробелом в качестве разделителя
+
+        print(f"Метка до проверки: {label}")
+
+        # Если метка пустая, используем id в качестве метки
+        if not label:
+            print("Метка пустая, используем id")
+            label = str(record.id)
+
+        print(f"Метка после проверки: {label}")
+
+        options.append({"value": record.id, "label": label})
+
+    return options
+
+
+def find_water_consumption_log(water_point_id: int, month: int) -> OperationResult:
+    try:
+        # Получение журналов учета водопотребления для точки водозабора
+        logs_result = get_water_logs("point_id", water_point_id)
+        if logs_result.status != OperationStatus.SUCCESS:
+            return logs_result
+
+        # Поиск журнала, соответствующего указанному месяцу
+        target_log = None
+        for log_data in logs_result.data:
+            log = log_data['log']
+            records = log_data['records']
+
+            # Проверка записей на соответствие месяцу
+            for record in records:
+                record_month = record.measurement_date.month
+                if record_month == month:
+                    target_log = log
+                    break
+
+            if target_log:
+                break
+
+        if not target_log:
+            return OperationResult(
+                OperationStatus.DATABASE_ERROR,
+                msg=f"Не найден журнал учета водопотребления для точки {water_point_id} и месяца {month}"
+            )
+
+        return OperationResult(OperationStatus.SUCCESS, data=target_log)
+
+    except Exception as e:
+        print(f"Error in find_water_consumption_log: {e}")
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
 
 def try_create_code(code_symbol: str, code_type: CodeType, code_value: str) -> OperationResult:

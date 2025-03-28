@@ -1,5 +1,4 @@
-import datetime
-from datetime import datetime
+from datetime import datetime, date
 import json
 from typing import Any
 import re
@@ -168,24 +167,37 @@ def extract_value_from_json(json_str: str, key: str) -> OperationResult:
         )
 
 
-def process_enums(data):
+def process_enums(data, is_need_json=False):
     """
-    Обработка перечислений в списке словарей.
+    Обработка перечислений в списке словарей с возможностью сериализации для jsonify.
 
     :param data: Список словарей, содержащих перечисления.
-    :return: Список словарей с перечислениями, замененными на строковые значения.
+    :param is_need_json: Флаг, определяющий, требуется ли подготовка к JSON-сериализации.
+    :return: Список словарей с перечислениями и сложными объектами, приведенными к JSON-совместимым форматам.
     """
+
+    def convert_value(value):
+        """Преобразование значения для JSON-сериализации."""
+        if isinstance(value, enum.Enum):
+            return value.name  # Перечисление -> строка
+        elif isinstance(value, (datetime, date)):
+            return value.isoformat()  # Даты -> строка в ISO формате
+        elif isinstance(value, dict):
+            return {k: convert_value(v) for k, v in value.items()}  # Рекурсивно для вложенных словарей
+        elif isinstance(value, list):
+            return [convert_value(v) for v in value]  # Рекурсивно для списков
+        else:
+            return value  # Если это примитивный тип, оставляем без изменений
+
     processed_data = []
     for item in data:
         processed_item = {}
         for key, value in item.items():
-            # Проверка, является ли значение перечислением
-            if isinstance(value, enum.Enum):
-                # Если перечисление, то заменяем его на строковое значение
-                processed_item[key] = value.name
+            if is_need_json:
+                processed_item[key] = convert_value(value)
             else:
-                # Если не перечисление, то оставляем как есть
-                processed_item[key] = value
+                # Только замена перечислений, если флаг не поднят
+                processed_item[key] = value.name if isinstance(value, enum.Enum) else value
 
         processed_data.append(processed_item)
 

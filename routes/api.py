@@ -62,32 +62,47 @@ def rest_add_record(tablename):
 
 @api.route('/api/records/<tablename>/<record_id>', methods=['PUT'])
 def rest_update_record(tablename, record_id):
-    record_data = request.json
+    token = request.headers.get('tokenJWTAuthorization')
+    auth_res = auth_validate(token)
+    if auth_res.status != "success":
+        return jsonify({"error": "Пользователь неавторизован"}), 401
+
     try:
         record_id = int(record_id)
+        record_data = request.json
+        if 'is_deleted' not in record_data:
+            record_data['is_deleted'] = False
+
+        result = update_record_in(tablename, record_id, record_data)
+        if result.status == OperationStatus.SUCCESS:
+            return jsonify({'status': 'success', 'message': 'Запись успешно обновлена.'}), 200
+        else:
+            return jsonify({'status': 'error', 'message': result.message}), 400
     except ValueError:
         return jsonify({'status': 'error', 'message': 'Неверный формат ID записи.'}), 400
-
-    result = update_record_in(tablename, record_id, record_data)
-    if result.status == OperationStatus.SUCCESS:
-        return jsonify({'status': 'success', 'message': 'Запись успешно обновлена.'}), 200
-    else:
-        return jsonify({'status': 'error', 'message': result.message}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @api.route('/api/records/<tablename>/<record_id>', methods=['DELETE'])
 def rest_del_record(tablename, record_id):
+    token = request.headers.get('tokenJWTAuthorization')
+    auth_res = auth_validate(token)
+    if auth_res.status != "success":
+        return jsonify({"error": "Пользователь неавторизован"}), 401
+
     try:
         record_id = int(record_id)
+        result = delete_record_from(tablename, record_id)
+        if result.status == OperationStatus.SUCCESS:
+            return jsonify({'status': 'success', 'message': 'Запись успешно удалена.'}), 200
+        else:
+            return jsonify({'status': 'error', 'message': result.message}), 400
     except ValueError:
         return jsonify({'status': 'error', 'message': 'Неверный формат ID записи.'}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    result = delete_record_from(tablename, record_id)
-
-    if result.status == OperationStatus.SUCCESS:
-        return jsonify({'status': 'success', 'message': 'Запись успешно удалена.'}), 200
-    else:
-        return jsonify({'status': 'error', 'message': result.message}), 400
 
 
 @api.route('/api/get_struct', methods = ['GET'])
@@ -100,7 +115,7 @@ def rest_get():
     struct_name = request.args.get('struct_name')
     filter_k = request.args.get('filter_k')
     filter_v = request.args.get('filter_v')
-    if struct_name == "allModels" or "nof" in struct_name or "schema" in struct_name:
+    if struct_name == "allModels" or "nof" in struct_name or "schema" in struct_name or "enum" in struct_name:
         # Фильтр не обязателен
         pass
     else:
@@ -130,6 +145,10 @@ def rest_edit_reference():
         if not selected_reference:
             return jsonify({"error": "Не выбран справочник"}), 400
 
+        is_need_json_f = False
+        if selected_reference == "wcl_category":
+            is_need_json_f = True
+
         # Получение информации о модели и данных
         try:
             # entity_class = get_model_class_by_tablename(selected_reference)
@@ -144,7 +163,7 @@ def rest_edit_reference():
 
         return jsonify({
             "selected_reference": selected_reference,
-            "new_content": process_enums(new_content),
+            "new_content": process_enums(new_content, is_need_json_f),
             # "required_fields": required_fields
         }), 200
 

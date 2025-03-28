@@ -74,6 +74,7 @@ class Base(DeclarativeBase):
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     deleted_at: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     deleted_by: Mapped[int] = mapped_column(Integer, nullable=True)
+
     def save(self, session):
         session.add(self)
         session.commit()
@@ -229,6 +230,7 @@ class Concentrates(Base):
             'text': self.text,
         }
 
+
 class MetersBrandRef(Base):
     """
     Марка прибора учета водопотребления\n
@@ -271,7 +273,6 @@ class Meters(Base):
             'next_verification_date': self.next_verification_date,
             'brand': brand.to_dict()
         }
-
 
 
 class Organisations(Base):
@@ -447,7 +448,7 @@ class WaterPoint(Base):
     meter_id: Mapped[int] = mapped_column(ForeignKey('meters.id'), nullable=False)
     water_body_id: Mapped[int] = mapped_column(ForeignKey('water_object_ref.id'), nullable=False)
     latitude_longitude: Mapped[str] = mapped_column(String(100), nullable=False)
-    point_type: Mapped[PermissionType] = mapped_column(String(20), nullable=False)
+    point_type: Mapped[PermissionType] = mapped_column(SQLAEnum(PermissionType), nullable=False)
 
     def to_dict(self):
         return {
@@ -586,7 +587,7 @@ class WaterConsumptionLogByCategories(Base):
     category: Mapped[ConsumersCategories] = mapped_column(SQLAEnum(ConsumersCategories), nullable=False)
     month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
-    # water_object_code = ... TODO
+    water_point_id: Mapped[int] = mapped_column(ForeignKey("water_point.id"), nullable=False)
 
     def to_dict(self):
         return {

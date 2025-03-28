@@ -10,6 +10,7 @@ from db.models import User, UserRoles, History
 from utils.backend_utils import OperationResult, OperationStatus, print_data_in_func, get_required_fields, \
     get_model_class_by_tablename
 
+from sqlalchemy import Enum
 
 
 # СЕКЦИЯ CREATE
@@ -24,6 +25,16 @@ def create_record_entity(entity_class, data: dict) -> bool:
     """
     session = g.session
     try:
+
+        for column in entity_class.__table__.columns:
+            if isinstance(column.type, Enum):
+                enum_class = column.type.enum_class
+                enum_value = data.get(column.name)
+                if enum_value:
+                    enum_key = [e.name for e in enum_class if e.value == enum_value]
+                    if enum_key:
+                        data[column.name] = enum_key[0]
+
         # Извлечение значения created_by из data или оставляем по умолчанию
         created_by = data.get('created_by', "auto")
 
@@ -393,9 +404,20 @@ def update_record(entity_class, record_id, data: dict, required_fields: list = N
                 msg=f"Запись с ID {record_id} не найдена в таблице {entity_class.__name__}."
             )
 
+        for column in entity_class.__table__.columns:
+            if isinstance(column.type, Enum):
+                enum_class = column.type.enum_class
+                enum_value = data.get(column.name)
+                if enum_value:
+                    enum_key = [e.name for e in enum_class if e.value == enum_value]
+                    if enum_key:
+                        data[column.name] = enum_key[0]
+
         # Исключаем поля, которые не должны быть заполнены при добавлении
         exclude_fields = ['deleted_at', 'deleted_by']
         record_data = {k: v for k, v in data.items() if k not in exclude_fields}
+
+
 
         # Проверка обязательных полей
         if required_fields:

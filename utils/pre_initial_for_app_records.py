@@ -585,7 +585,7 @@ def init_permissions(session):
                 continue
 
             # Создаем или получаем точку забора/сброса
-            water_point = session.query(WaterPoint).filter_by(organisation_id=organisation.id, point_type=data['point_type'].value).first()
+            water_point = session.query(WaterPoint).filter_by(organisation_id=organisation.id, point_type=data['point_type']).first()
 
             if water_point is None:
                 # Получаем или создаем прибор учета
@@ -601,7 +601,7 @@ def init_permissions(session):
                     meter_id=meter.id,
                     water_body_id=water_body.id,
                     latitude_longitude=data['point_coordinates'],
-                    point_type=data['point_type'].value
+                    point_type=data['point_type']
                 )
                 new_water_point.save(session)  # Сохраняем запись в сессии
                 water_point = new_water_point
