@@ -16,6 +16,8 @@ const AdminPanel = () => {
     const [modelSchema, setModelSchema] = useState(null);
     // Состояние для режима редактирования (false - добавление, true - редактирование)
     const [isEditMode, setIsEditMode] = useState(false);
+    const [error, setError] = useState(null);
+
 
     // Получение списка таблиц при монтировании компонента
     useEffect(() => {
@@ -136,6 +138,8 @@ const AdminPanel = () => {
                 `Ошибка при ${isEditMode ? "редактировании" : "добавлении"} записи:`,
                 error
             );
+            setError(error.message);
+
         }
     };
 
@@ -154,15 +158,18 @@ const AdminPanel = () => {
 
     // Рендер списка таблиц
     const renderTableList = () => (
-        <div>
+        <div className="content-container_for_renderTableList">
         <h2>Список таблиц</h2>
         {tableList.length === 0 && <div>Нет данных</div>}
-        <ul>
+        <ul className="selectors_for_renderTableList">
         {tableList.map((table, idx) => {
             const [displayName, modelName] = Object.entries(table)[0];
             return (
                 <li key={idx}>
-                <button onClick={() => handleSelectTable(modelName)}>
+                <button
+                className="custom-button"
+                onClick={() => handleSelectTable(modelName)}
+                >
                 {displayName}
                 </button>
                 </li>
@@ -192,13 +199,28 @@ const AdminPanel = () => {
     // Рендер списка записей выбранной таблицы с CRUD-кнопками
     const renderTableRecords = () => (
         <div>
-        <button onClick={() => { setSelectedTable(null); setModelSchema(null); }}>Назад к таблицам</button>
+        <div className="content-container">
+        <button
+        className="back-button"
+        onClick={() => {
+            setSelectedTable(null);
+            setModelSchema(null);
+        }}
+        >
+        Назад к таблицам
+        </button>
         <h2>Записи таблицы: {selectedTable}</h2>
-        <button onClick={handleAddButton}>Добавить запись</button>
+        <button
+        className="submit-button"
+        onClick={handleAddButton}
+        >
+        Добавить запись
+        </button>
+        </div>
         {isLoading ? (
             <div>Загрузка...</div>
         ) : tableRecords && tableRecords.length > 0 ? (
-            <table>
+            <table className="data-table">
             <thead>
             <tr>
             {Object.keys(tableRecords[0]).map((key, index) => (
@@ -220,13 +242,22 @@ const AdminPanel = () => {
                         );
                     })}
                     <td>
-                    <button onClick={() => handleEditButton(record)}>Редактировать</button>
-                    <button onClick={() => handleDeleteRecord(record.id)}>Удалить</button>
+                    <button
+                    className="edit-button"
+                    onClick={() => handleEditButton(record)}
+                    >
+                    Редактировать
+                    </button>
+                    <button
+                    className="delete-button"
+                    onClick={() => handleDeleteRecord(record.id)}
+                    >
+                    Удалить
+                    </button>
                     </td>
                     </tr>
                 );
             })}
-
             </tbody>
             </table>
         ) : (
@@ -234,6 +265,7 @@ const AdminPanel = () => {
         )}
         </div>
     );
+
 
     // Функция для удаления записи
     const handleDeleteRecord = async (recordId) => {
@@ -247,8 +279,12 @@ const AdminPanel = () => {
 
     // Рендер модального окна с динамической формой
     const renderModal = () => (
-        <Modal onClose={() => setModalVisible(false)}>
+        <Modal onClose={() => {
+            setModalVisible(false);
+            setError(null); // Сбрасываем ошибку при закрытии модального окна
+        }}>
         <h3>{isEditMode ? "Редактировать запись" : "Добавить запись"}</h3>
+        {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleFormSubmit}>
         {modelSchema && modelSchema.data ? (
             modelSchema.data.filter((field) => field.field !== "id").map((field, index) => (
@@ -366,7 +402,11 @@ const AdminPanel = () => {
         <div className="admin-panel">
         <h1>Админ-панель</h1>
         {isLoading && <div>Загрузка...</div>}
-        {!selectedTable ? renderTableList() : renderTableRecords()}
+        {!selectedTable ? renderTableList() : (
+            <div className="table-container">
+            {renderTableRecords()}
+            </div>
+        )}
         {modalVisible && renderModal()}
         </div>
     );

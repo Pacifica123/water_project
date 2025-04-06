@@ -1,7 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
 const Modal = ({ children, onClose }) => {
+    const [error, setError] = useState(null);
+
     // Если на странице существует контейнер для модальных окон, используем его, иначе document.body
     const modalRoot = document.getElementById("modal-root") || document.body;
 

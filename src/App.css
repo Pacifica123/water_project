@@ -332,6 +332,26 @@ input {
   max-width: 1200px; /* Максимальная ширина */
 }
 
+.content-container_for_renderTableList {
+  background-color: #f9f9f9; /* Светлый фон */
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Тень */
+  display: flex; /* Добавляем flexbox */
+  flex-wrap: wrap; /* Позволяет элементам переходить на новую строку */
+  justify-content: space-around; /* Распределяет элементы по горизонтали */
+  gap: 20px; /* Добавляет пробел между элементами */
+}
+
+.selectors_for_renderTableList{
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex; /* Добавляем flexbox */
+  flex-wrap: wrap; /* Позволяет элементам переходить на новую строку */
+  gap: 10px; /* Добавляет пробел между кнопками */
+}
+
 .selectors {
   margin-bottom: 30px;
 }
@@ -473,4 +493,124 @@ input {
   display: flex;
   justify-content: center;
   margin-top: 20px;
+}
+
+/* ДЛЯ АДМИН-ПАНЕЛИ */
+.content-container {
+  padding: 20px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.custom-button {
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+.back-button {
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #6c757d;
+  color: white;
+  cursor: pointer;
+}
+
+.submit-button {
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #28a745;
+  color: white;
+  cursor: pointer;
+}
+
+.edit-button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #17a2b8;
+  color: white;
+  cursor: pointer;
+}
+
+.delete-button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #dc3545;
+  color: white;
+  cursor: pointer;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th, .data-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+
+.selectors {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.selectors li {
+  margin-bottom: 10px;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: auto; /* или min-width: 100% */
+  border-collapse: collapse;
+}
+
+/* Модальное окно */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5); /* Полупрозрачный фон */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 80%; /* Ширина модального окна */
+  max-width: 600px; /* Максимальная ширина */
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 24px;
+  cursor: pointer;
+  background-color: transparent;
+  border: none;
+}
+.error-message {
+  color: red;
+  margin-bottom: 10px;
 }

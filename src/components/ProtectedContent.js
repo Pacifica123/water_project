@@ -8,6 +8,7 @@ import HistoryTable from "./HistoryTable";
 import AccountingPost from "./AccountingPost";
 import AdminPanel from "./AdminPanel";
 import UserPage from "./UserPage";
+import Rates from "./Rates";
 
 function ProtectedContent({ onLogout }) {
   const [activeSection, setActiveSection] = useState("notifications");
@@ -57,7 +58,9 @@ function ProtectedContent({ onLogout }) {
       case "UserPage":
         return <UserPage />;
       case "AdminPanel":
-        return <AdminPanel />
+        return <AdminPanel />;
+      case "Rates":
+        return <Rates />;
       default:
         return <div>Выберите раздел</div>;
     }
@@ -81,20 +84,20 @@ function getAllowedSections(role) {
     case "UserRoles.ADMIN":
       return [
         "notifications", "UserPage", "waterReport", "AccountingPost", "Water", "paymentCalc", "AdminPanel",
-        "resourceAccounting", "wasteWater", "organizationInfo", "history"
+        "resourceAccounting", "wasteWater", "organizationInfo", "history", "Rates"
       ];
     case "UserRoles.ORG_ADMIN":
       return [
-        "notifications", "UserPage", "AccountingPost", "personalInfo", "organizationInfo", "history"
+        "notifications", "UserPage", "AccountingPost", "personalInfo", "organizationInfo", "history", "Rates"
       ];
     case "UserRoles.REPORT_ADMIN":
       return [
-        "notifications", "waterReport", "Water", "history"
+        "notifications", "waterReport", "Water", "history", "AccountingPost"
       ];
     case "UserRoles.EMPLOYEE":
       return [
         "notifications", "waterReport", "Water", "paymentCalc",
-        "resourceAccounting", "wasteWater", "organizationInfo",
+        "resourceAccounting", "wasteWater", "organizationInfo", "AccountingPost"
       ];
     default:
       return [];
@@ -150,6 +153,9 @@ function Sidebar({ setActiveSection, allowedSections }) {
     )}
     {allowedSections.includes("UserPage") && (
       <button onClick={() => setActiveSection("UserPage")}>О пользователях</button>
+    )}
+    {allowedSections.includes("Rates") && (
+      <button onClick={() => setActiveSection("Rates")}>Ставки оплаты</button>
     )}
     </div>
   );

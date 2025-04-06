@@ -3,8 +3,7 @@ import axios from 'axios';
 
 const API_URL_STRUCT = "http://127.0.0.1:5000/api/get_struct";
 const API_URL_SINGLE = "http://127.0.0.1:5000/api/edit_reference";
-// const API_URL_SCHEMA = "http://127.0.0.1:5000/api/get_schema"; TODO
-
+const API_URL_SINGLE_MULTIFILTERS = "http://127.0.0.1:5000/api/get_single_with_mf";
 
 // const fetchModelSchema = ... TODO
 
@@ -56,29 +55,47 @@ const fetchStructureData = async (structName, filters = {}, token = null) => {
     }
 };
 
-// export default fetchStructureData;
+const fetchSingleTableDataWithFilters = async (tableName, filters) => {
+    try {
+        const token = localStorage.getItem('jwtToken');
+        console.log(tableName);
+        const headers = token ? { 'tokenJWTAuthorization': token } : {};
 
-// Пример использования:
-// 1. Импортировать функцию в ваш компонент:
-//    import fetchStructureData from './path/to/fetchStructureData';
+        // Преобразуем объект фильтров в параметры запроса
+        const params = {
+            reference_select: tableName,
+            ...filters
+        };
 
-// 2. Вызвать функцию, передав необходимые параметры:
-//    const fetchData = async () => {
-//      try {
-//        const data = await fetchStructureData(
-//          'point_consumption',
-//          { organisation_id: '2' },
-//          localStorage.getItem('jwtToken')
-//        );
-//        // Обработайте полученные данные
-//        console.log(data);
-//      } catch (error) {
-//        // Обработайте ошибку
-//        console.error(error);
-//      }
-//    };
+        const response = await axios.get(API_URL_SINGLE_MULTIFILTERS, {
+            headers: headers,
+            params: params,
+            withCredentials: true
+        });
 
-//    fetchData();
+        if (response.status >= 400) {
+            console.log("Ошибка HTTP: ", response);
+            return null;
+        }
+
+        const data = response.data;
+        const records = data.new_content;
+
+        console.log(" --> Сейчас будет - ", data.selected_reference)
+        console.log(records);
+
+        if (!records || records.length === 0) {
+            console.log("Нет записей в таблице");
+            return null;
+        }
+
+        return records;
+    } catch (error) {
+        console.log("Ошибка при получении данных таблицы:", error.message);
+        return null;
+    }
+};
+
 
 const fetchSingleTableData = async (tableName) => {
     try {
@@ -115,4 +132,4 @@ const fetchSingleTableData = async (tableName) => {
     }
 };
 
-export {fetchStructureData, fetchSingleTableData};
+export {fetchStructureData, fetchSingleTableData, fetchSingleTableDataWithFilters};
