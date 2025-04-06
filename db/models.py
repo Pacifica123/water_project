@@ -7,6 +7,12 @@ from sqlalchemy import JSON
 from flask import g
 
 
+class RatesType(PyEnum):
+    ORG = "org"
+    POPULATION = "population"
+    OTHER = "other"
+
+
 class PermissionType(PyEnum):
     WATER_WITHDRAWAL = "water_withdrawal"
     DISCHARGE = "discharge"
@@ -35,10 +41,10 @@ class WaterTreatmentLevel(PyEnum):
 
 
 class UserRoles(PyEnum):
-    ADMIN = "admin" # главный админ
-    ORG_ADMIN = "org_admin"  # Администратор Министерства, отвечающий за внесение организаций
+    ADMIN = "admin"  # главный админ
+    ORG_ADMIN = "org_admin"  # Администратор Министерства, вносящий организации
     REPORT_ADMIN = "report_admin"  # Администратор отчетов со стороны Министерства
-    EMPLOYEE = "employee" # Сотрудник органиазции
+    EMPLOYEE = "employee"  # Сотрудник органиазции
 
 
 class ConsumersCategories(PyEnum):
@@ -60,6 +66,13 @@ class Month(PyEnum):
     OCTOBER = "октябрь"
     NOVEMBER = "ноябрь"
     DECEMBER = "декабрь"
+
+
+class log_status(PyEnum):
+    IN_PROGRESS = "in_progress"
+    SENT = "sent"
+    UNDER_CORRECTION = "under_correction"
+    CLOSED = "closed"
 
 
 class Base(DeclarativeBase):
@@ -351,6 +364,7 @@ class Permissions(Base):
             'allowed_volume': self.allowed_volume,
         }
 
+
 class PointPermissionLink(Base):
     """
     Связка Точки забора/сброса с разрешением
@@ -371,6 +385,7 @@ class PointPermissionLink(Base):
             'active': self.active,
         }
 
+
 class WaterPoolRef(Base):
     """
     Водный бассейн\n
@@ -388,6 +403,7 @@ class WaterPoolRef(Base):
             'id': self.id,
             'pool_name': self.pool_name,
         }
+
 
 class WaterAreaRef(Base):
     """
@@ -408,6 +424,7 @@ class WaterAreaRef(Base):
             'id': self.id,
 
         }
+
 
 class WaterObjectRef(Base):
     """
@@ -457,6 +474,7 @@ class WaterPoint(Base):
             'point_type': self.point_type,
         }
 
+
 # Сотрудники
 class User(Base):
     __tablename__ = 'users'
@@ -499,12 +517,16 @@ class WaterConsumptionLog(Base):
     consumption_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=True) # на удаление...
     treatment_level: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=True)
     exploitation_org_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), nullable=False)
+    month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
+    log_status: Mapped[log_status] = mapped_column(SQLAEnum(log_status), nullable=False)
 
     def to_dict(self):
         return {
             'id': self.id,
             'consumption_value': self.consumption_value,
-            'treatment_level': self.treatment_level
+            'treatment_level': self.treatment_level,
+            'month': self.month,
+            'log_status': self.log_status
         }
 
 
@@ -620,6 +642,14 @@ class WCLfor3132(Base):
             'month': self.month,
             'value': self.value
         }
+
+
+class Rates(Base):
+    __tablename__ = 'rates'
+
+    start_date: Mapped[Date] = mapped_column(Date, nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    rate_type: Mapped[RatesType] = mapped_column(SQLAEnum(RatesType), nullable=False)
 
 # class WCLxPMLrecordLink(Base):
 #     """

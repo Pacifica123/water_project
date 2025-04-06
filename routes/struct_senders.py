@@ -5,9 +5,11 @@ from sqlalchemy import inspect, types
 from datetime import date, datetime
 from db.crudcore import *
 from db.models import *
+import sys
 
 
 def process_water_consumption_single(form_data: dict) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
         # Получение данных из формы
         measurement_date = form_data.get("measurement_date")
@@ -20,7 +22,7 @@ def process_water_consumption_single(form_data: dict) -> OperationResult:
             )
 
         # Определение месяца
-        month = datetime.strptime(measurement_date, "%Y-%m-%d").month  # Пример формата даты
+        month = datetime.datetime.strptime(measurement_date, "%Y-%m-%d").month  # Пример формата даты
 
         # Поиск журнала по water_point_id и месяцу
         log_result = find_water_consumption_log(water_point_id, month)
@@ -47,18 +49,25 @@ def process_water_consumption_single(form_data: dict) -> OperationResult:
         record_data["log_id"] = log.id
 
         # Добавление записи в БД
-        result = add_to(RecordWCL.__tablename__, record_data)
-        if result.status != OperationStatus.SUCCESS:
-            return result
+        # result = add_to(RecordWCL.__tablename__, record_data)
+        print(" --- Метка перед if create_record_entity ---")
+        if create_record_entity(RecordWCL, record_data):
+            return OperationResult(
+                status=OperationStatus.SUCCESS,
+                msg=f"Запись успешно добавилась в БД {RecordWCL.__tablename__}"
+            )
 
-        return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
-
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg=f"Ошибка при создании записи в {RecordWCL.__tablename__} или запись уже существует или такой сущности нет в БД"
+        )
     except Exception as e:
         print(f"Error in process_water_consumption_single: {e}")
         return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
 
 def send_quarter(form_data: any):
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     water_point_id = form_data["waterPointId"]
     # water_point_name = form_data["waterObject"][""]
     pprint.pprint(form_data)
@@ -105,6 +114,7 @@ def send_quarter(form_data: any):
 
 
 def send_extempl31or32(form_data: any) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     # TODO ПЕРЕДЕЛАТЬ В ЦИКЛ ДЛЯ МНОЖЕСТВА ЗАПИСЕЙ
     table31or32 = form_data["table31or32"]
     pprint.pprint(table31or32)

@@ -12,6 +12,8 @@ from db.models import Base
 import inspect
 
 import enum
+import sys
+
 
 class OperationStatus:
     SUCCESS = "success"
@@ -55,6 +57,7 @@ def print_operation_result(result, func_name=None):
 
 
 def clear_fields(json_str, fields):
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     # Десериализуем JSON-строку в словарь
     data = json.loads(json_str)
     # Удаляем указанные поля
@@ -71,6 +74,7 @@ def get_required_fields(entity_class) -> list:
     :param entity_class: Класс сущности SQLAlchemy.
     :return: Список обязательных полей.
     """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     required_fields = []
     for column in sqlalchemy.inspect(entity_class).c:
         if column.nullable is False and column.name != 'id':  # Исключаем поле id
@@ -144,6 +148,7 @@ def extract_value_from_json(json_str: str, key: str) -> OperationResult:
     :param key: Ключ, значение которого нужно извлечь.
     :return: Экземпляр OperationResult с результатом операции.
     """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
         # Попытка распарсить строку JSON
         parsed_json = json.loads(json_str)
@@ -175,7 +180,7 @@ def process_enums(data, is_need_json=False):
     :param is_need_json: Флаг, определяющий, требуется ли подготовка к JSON-сериализации.
     :return: Список словарей с перечислениями и сложными объектами, приведенными к JSON-совместимым форматам.
     """
-
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     def convert_value(value):
         """Преобразование значения для JSON-сериализации."""
         if isinstance(value, enum.Enum):
@@ -210,6 +215,7 @@ def serialize_to_json_records(records: list) -> str:
     :param records: Список объектов для сериализации.
     :return: OperationResult с сериализованным JSON.
     """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
         json_records = []
         for record in records:
@@ -231,6 +237,7 @@ def serialize_to_json(obj: Any) -> Any:
     :param obj: Объект, который нужно сериализовать.
     :return: Строка в формате JSON или сериализуемый объект.
     """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     if isinstance(obj, list):
         return [serialize_to_json(item) for item in obj]
     elif isinstance(obj, dict):
@@ -249,6 +256,7 @@ def serialize_to_json_old(obj: Any) -> str:
     :param obj: Объект, который нужно сериализовать.
     :return: Строка в формате JSON.
     """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     print_data_in_func(obj, "serialize_to_json_old")
     # Проверка, является ли объект экземпляром класса
     if hasattr(obj, '__dict__'):

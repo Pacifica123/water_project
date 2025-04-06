@@ -10,7 +10,12 @@ from db import models
 from sqlalchemy import Enum
 
 
+import sys
+
+
 def get_enum_options(enum_type: str) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+
     try:
         print(" --> до сюда дошло")
         enum_class = getattr(models, enum_type)
@@ -24,6 +29,8 @@ def get_enum_options(enum_type: str) -> OperationResult:
 
 
 def handle_schema(modelName: str) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    from utils.db_utils import format_options
     try:
         # Ищем класс модели по __tablename__
         model_class = None
@@ -90,11 +97,12 @@ def handle_schema(modelName: str) -> OperationResult:
         return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
 
-
 def get_water_logs(filter_k: str, filter_v: any) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
         # 0) Сначала получить пункт учета и его id нужно:
-        print(filter_k)
+        print(f"Ключ фильтра в get_water_logs такой: {filter_k}")
+        print(f"Значение фильтра в get_water_logs такой: {filter_v}")
         if "°" in str(filter_v) and str(filter_k) == "point_id":
             point_try = get_all_by_foreign_key(WaterPoint, "latitude_longitude", filter_v)
             if point_try.status != OperationStatus.SUCCESS:
@@ -118,7 +126,7 @@ def get_water_logs(filter_k: str, filter_v: any) -> OperationResult:
                     return records
 
                 # 3) Дополнительные данные (точка водозабора, организация)
-                point = get_record_by_id(WaterPoint.__tablename__, point_id)
+                point = get_record_by_id(WaterPoint, point_id)
                 org = get_all_by_foreign_key(Organisations, "id", log.exploitation_org_id).data[0]
 
                 # 4) Компонуем данные
@@ -139,6 +147,7 @@ def get_water_logs(filter_k: str, filter_v: any) -> OperationResult:
 
 
 def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
         # 1) Добыча точек водозабора
         points = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
@@ -179,6 +188,7 @@ def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
 
 
 def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
         # ищем по point_id скорее всего
         logs = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)

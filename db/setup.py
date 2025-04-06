@@ -1,10 +1,11 @@
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
 from db.config import DATABASE_URI
-from db.models import (Base, ChemicalAnalysisProtocol, Codes, Concentrates, MetersBrandRef,
-                           Meters, Organisations, Permissions, PointPermissionLink,
-                           SamplingLocation, StandartsRef, SubstancesRef, WaterAreaRef, WaterObjectRef,
-                           WaterConsumptionLog, WaterPoint, WaterPoolRef, User)
+from db.models import (
+    Base, ChemicalAnalysisProtocol, Codes, Concentrates, MetersBrandRef,
+    Meters, Organisations, Permissions, PointPermissionLink,
+    SamplingLocation, StandartsRef, SubstancesRef, WaterAreaRef, WaterObjectRef,
+    WaterConsumptionLog, WaterPoint, WaterPoolRef, User)
 from utils.pre_initial_for_app_records import init_records
 
 

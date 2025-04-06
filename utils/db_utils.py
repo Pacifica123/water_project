@@ -1,7 +1,7 @@
 from db.crudcore import (
     get_record_by_id, create_record_entity, get_all_by_foreign_key, get_all_by_conditions, create_records_entities
 )
-from utils.backend_utils import OperationStatus, OperationResult, get_model_class_by_tablename
+from utils.backend_utils import OperationStatus, OperationResult, get_model_class_by_tablename, print_operation_result
 from sqlalchemy.inspection import inspect
 import json
 # import inspect
@@ -9,10 +9,12 @@ from db.models import *
 from sqlalchemy import types
 import pprint
 import importlib
+from routes.struct_getters import get_water_logs
+import sys
 
 
 def format_options(records, model_class):
-
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     # Определяем поля, которые будут использованы для формирования опций
     inspector = inspect(model_class)
     columns = inspector.columns
@@ -48,24 +50,43 @@ def format_options(records, model_class):
 
 
 def find_water_consumption_log(water_point_id: int, month: int) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
         # Получение журналов учета водопотребления для точки водозабора
         logs_result = get_water_logs("point_id", water_point_id)
+        print_operation_result(logs_result, "find_water_consumption_log")
         if logs_result.status != OperationStatus.SUCCESS:
             return logs_result
+        month_enum_map = {
+            1: Month.JANUARY,
+            2: Month.FEBRUARY,
+            3: Month.MARCH,
+            4: Month.APRIL,
+            5: Month.MAY,
+            6: Month.JUNE,
+            7: Month.JULY,
+            8: Month.AUGUST,
+            9: Month.SEPTEMBER,
+            10: Month.OCTOBER,
+            11: Month.NOVEMBER,
+            12: Month.DECEMBER
+        }
+        target_month = month_enum_map.get(month)
+        if target_month is None:
+            return OperationResult(
+                OperationStatus.VALIDATION_ERROR,
+                msg=f"Недопустимый номер месяца: {month}"
+            )
 
         # Поиск журнала, соответствующего указанному месяцу
         target_log = None
+
         for log_data in logs_result.data:
             log = log_data['log']
             records = log_data['records']
-
-            # Проверка записей на соответствие месяцу
-            for record in records:
-                record_month = record.measurement_date.month
-                if record_month == month:
-                    target_log = log
-                    break
+            if log.month == target_month:
+                target_log = log
+                break
 
             if target_log:
                 break
@@ -87,6 +108,7 @@ def try_create_code(code_symbol: str, code_type: CodeType, code_value: str) -> O
     """
     Если код существует то SUCCESS
     """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     # Проверяем, существует ли уже такой код
     conditions = [
         {'code_symbol': code_symbol},
@@ -131,6 +153,7 @@ def try_create_code(code_symbol: str, code_type: CodeType, code_value: str) -> O
 
 
 def get_all_models() -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
         # Список моделей с русскоязычными именами
         models_list = [
@@ -169,7 +192,7 @@ def is_valid_foreign_key(table_name, id) -> bool:
 
 
 def replace_fks(operation_result: OperationResult, tablename: str) -> OperationResult:
-    print(' ->Сюда зашло')
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     if operation_result.status != OperationStatus.SUCCESS:
         print("Сработал if operation_result.status != OperationStatus.SUCCESS")
         return operation_result
@@ -225,6 +248,7 @@ def recognize_model(data: any) -> OperationResult:
     """
     Универсальная функция для определения соответствующей модели по данным формы.
     """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
         if isinstance(data, str):  # Если пришел JSON в виде строки, пытаемся распарсить
 #             TODO на свое

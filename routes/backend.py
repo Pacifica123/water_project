@@ -13,12 +13,13 @@ from routes.struct_senders import *
 
 backend = Blueprint('backend', __name__)
 
+import sys
 
-
-# ====================== CRUD Functions ======================
+# ====================== CRUD Single Functions ======================
 
 
 def get_users() -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     employees = read_all_employees()
     if not employees:
         return OperationResult(
@@ -34,6 +35,7 @@ def get_users() -> OperationResult:
 
 
 def backend_login(username: str, password: str) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     employee = find_employee_by_username(username)
 
     if employee is None:
@@ -66,6 +68,7 @@ def check_login(username: str, need_role: UserRoles) -> bool:
 
 
 def edit_or_add_employee(user_data) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     username = user_data.get('username')
     if username:
         emply = find_employee_by_username(username)
@@ -85,13 +88,45 @@ def edit_or_add_employee(user_data) -> OperationResult:
 
 
 def get_all_record_from(tablename: str) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
     res = get_all_from_table(cls)
     print_operation_result(res)
     return replace_fks(res, tablename)
 
 
+def get_single_with_mf(tablename: str, filters: dict) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+
+    # Вызов функции для получения всех записей
+    result = get_all_record_from(tablename)
+
+    if result.status != OperationStatus.SUCCESS:
+        return result
+
+    # Преобразование данных в список словарей
+    data = [convert_to_dict(record) for record in result.data]
+
+    # Фильтрация данных
+    filtered_data = []
+    for record in data:
+        is_match = True
+        for key, value in filters.items():
+            if key not in record or record[key] != value:
+                is_match = False
+                break
+        if is_match:
+            filtered_data.append(record)
+
+    # Обработка результатов
+    if not filtered_data:
+        return OperationResult(OperationStatus.SUCCESS, msg="Нет записей, удовлетворяющих фильтрам", data=filtered_data)
+
+    return OperationResult(OperationStatus.SUCCESS, msg="Данные успешно получены и отфильтрованы", data=filtered_data)
+
+
 def add_to(tablename: str, data) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
 
     if tablename == "organisations":
@@ -135,6 +170,7 @@ def add_to(tablename: str, data) -> OperationResult:
 
 
 def update_record_in(tablename: str, record_id: int, data: dict) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     cls = get_model_class_by_tablename(tablename)
     if cls is None:
         return OperationResult(status=OperationStatus.UNDEFINE_ERROR)
@@ -158,6 +194,7 @@ def delete_users(tablename: str, users_id: int) -> OperationResult:
 
 
 def get_structs(selected_template: str, filter_k: str, filter_v: any) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     match selected_template:
         case "point_consumption":
             return get_points_consumption(filter_k, filter_v)
@@ -207,6 +244,7 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
 
 
 def form_processing_to_entity(selected_template: str, form_data: any) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     match selected_template:
         case "send_quarter":
             return send_quarter(form_data)
