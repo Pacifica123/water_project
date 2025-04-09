@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { fetchSingleTableData } from "../api/fetch_records";
+import { fetchSingleTableData, fetchStructDataWithFilters } from "../api/fetch_records";
 import "../css/Water.css";
 
 const PaymentCalculationForm = () => {
@@ -54,6 +54,67 @@ const PaymentCalculationForm = () => {
     }
   }, [ratesData]);
 
+  // ........... Фетчим разрешения ..............
+  const [permisionPointLink, setPPL] = useState({});
+  const orgData = JSON.parse(localStorage.getItem("org"));
+  const orgId = orgData?.id;
+  useEffect(() => {
+    const fetchPermissions = async () => {
+
+      const data = await fetchStructDataWithFilters("permisionpointlink", {
+        organisation_id: orgId
+      });
+
+      if (data) {
+        console.log("[Результаты для setPPL]: ", data);
+        setPPL(data); // сохраняем результат
+      }
+    };
+
+    fetchPermissions();
+  }, [orgId]);
+
+  const permissionOptions = permisionPointLink?.data || [];
+  console.log("permissionOptions = ", permissionOptions);
+  const [selectedPermission, setSelectedPermissionId] = useState(null);
+
+  const updateValuePermission = (filteredPermission) => {
+    setRows((prevRows) => {
+      console.log("[updateValuePermission]:", filteredPermission);
+      const updateValuePermission = prevRows.parameters.map((rate) => {
+        if (rate.id === "1.1.1") return {
+          ...rate,
+          establishedVolume: filteredPermission.POPULATION?.value || 0,
+          // actualVolume: filteredPermission.POPULATION?.value || 0,
+          // withinLimitsVolume: filteredPermission.POPULATION?.value || 0,
+          // exceededVolume: filteredPermission.POPULATION?.value || 0
+        };
+        if (rate.id === "1.1.2") return {
+          ...rate,
+          establishedVolume: filteredPermission.ORG?.value || 0,
+          // actualVolume: filteredPermission.ORG?.value || 0,
+          // withinLimitsVolume: filteredPermission.ORG?.value || 0,
+          // exceededVolume: filteredPermission.ORG?.value || 0
+        };
+        return rate;
+      });
+      return { ...prevRows, parameters: updateValuePermission };
+    });
+  };
+
+  useEffect(() => {
+    if (selectedPermission) {
+      const permission = selectedPermission.permission_id;
+
+      const newRates = {
+        POPULATION: { value: parseFloat(permission.allowed_volume_pop || 0) },
+            ORG: { value: parseFloat(permission.allowed_volume_org || 0) }
+      };
+
+      updateValuePermission(newRates); // подставляем объёмы в ставки
+    }
+  }, [selectedPermission]);
+
 
   // .......................................
 
@@ -73,7 +134,7 @@ const PaymentCalculationForm = () => {
         id: "1.1",
         indicator: "Забор (изъятие) водных ресурсов из поверхностного водного объекта",
         unit: "тыс.м3",
-        establishedVolume: "DB stub",
+        establishedVolume: 0,
         actualVolume: 0,
         withinLimitsVolume: 0,
         exceededVolume: 0,
@@ -84,7 +145,7 @@ const PaymentCalculationForm = () => {
         indicator:
         "Забор (изъятие) водных ресурсов из поверхностного водного объекта (Qн.)",
         unit: "тыс.м3",
-        establishedVolume: "DB stub", // будет меткой (из БД) если потребуется
+        establishedVolume: 0, // будет меткой (из БД) если потребуется
         actualVolume: 0,
         withinLimitsVolume: 0,
         exceededVolume: 0,
@@ -95,7 +156,7 @@ const PaymentCalculationForm = () => {
         indicator:
         "Забор (изъятие) водных ресурсов из поверхностного водного объекта (Qп.)",
         unit: "тыс.м3",
-        establishedVolume: "тестDB stub", // будет меткой (из БД) если потребуется
+        establishedVolume: 0, // будет меткой (из БД) если потребуется
         actualVolume: 0,
         withinLimitsVolume: 0,
         exceededVolume: 0,
@@ -224,13 +285,13 @@ const PaymentCalculationForm = () => {
           ...row,
           establishedVolume:
           (child1.establishedVolume || 0) + (child2.establishedVolume || 0),
-                               actualVolume:
-                               (child1.actualVolume || 0) + (child2.actualVolume || 0),
-                               withinLimitsVolume:
-                               (child1.withinLimitsVolume || 0) + (child2.withinLimitsVolume || 0),
-                               exceededVolume:
-                               (child1.exceededVolume || 0) + (child2.exceededVolume || 0),
-                               totalPayment: ""
+          actualVolume:
+          (child1.actualVolume || 0) + (child2.actualVolume || 0),
+          withinLimitsVolume:
+          (child1.withinLimitsVolume || 0) + (child2.withinLimitsVolume || 0),
+          exceededVolume:
+          (child1.exceededVolume || 0) + (child2.exceededVolume || 0),
+          totalPayment: ""
         };
       }
       // Для строк 1.1.1 и 1.1.2 – считаем «в пределах установленных» и «превышение»
@@ -284,7 +345,13 @@ const PaymentCalculationForm = () => {
     if (section === "parameters") {
       if (row.id === "1" || row.id === "1.1") return false;
       if (field === "establishedVolume") return false;
+      if ((row.id === "1.1.1" || row.id === "1.1.2") && (field === "exceededVolume" || field === "withinLimitsVolume" || field === "totalPayment")) return false;
       return true;
+    }
+    else if (section === "payment") {
+      // Для секции "payment" можно добавить дополнительные условия,
+      // если они необходимы. Например, для определенных id строк.
+      return false;
     }
     return false;
   };
@@ -380,6 +447,30 @@ const PaymentCalculationForm = () => {
   return (
     <div className="payment-container">
     <h2>Расчет суммы оплаты</h2>
+
+
+
+    <div>
+      <label htmlFor="permission-select">Выберите разрешение:</label>
+      {permisionPointLink?.data?.length > 0 && (
+        <select
+        onChange={(e) => {
+          const selectedId = parseInt(e.target.value);
+          const permission = permisionPointLink.data.find(p => p.id === selectedId);
+          setSelectedPermissionId(permission);
+        }}
+        >
+        <option value="">Выберите разрешение</option>
+        {permisionPointLink.data.map((p) => (
+          <option key={p.id} value={p.id}>
+          {p.permission_id?.permission_number} — {p.permission_id?.permission_type}
+          </option>
+        ))}
+        </select>
+      )}
+
+    </div>
+
     {renderTableSection("1. Параметры водопользования", "parameters")}
     {renderTableSection("2. Ставки платы", "rates")}
     {renderTableSection("3. Размер платы", "payment")}

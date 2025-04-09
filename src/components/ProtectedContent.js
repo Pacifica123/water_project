@@ -11,7 +11,10 @@ import UserPage from "./UserPage";
 import Rates from "./Rates";
 
 function ProtectedContent({ onLogout }) {
-  const [activeSection, setActiveSection] = useState("notifications");
+  const [activeSection, setActiveSection] = useState(() => {
+    const userInfo = JSON.parse(localStorage.getItem("user"));
+    return userInfo.role === "UserRoles.ADMIN" ? "AdminPanel" : "notifications";
+  });
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
   let orgInfo = {};
@@ -83,8 +86,7 @@ function getAllowedSections(role) {
   switch (role) {
     case "UserRoles.ADMIN":
       return [
-        "notifications", "UserPage", "waterReport", "AccountingPost", "Water", "paymentCalc", "AdminPanel",
-        "resourceAccounting", "wasteWater", "organizationInfo", "history", "Rates"
+        "AdminPanel"
       ];
     case "UserRoles.ORG_ADMIN":
       return [
@@ -92,7 +94,7 @@ function getAllowedSections(role) {
       ];
     case "UserRoles.REPORT_ADMIN":
       return [
-        "notifications", "waterReport", "Water", "history", "AccountingPost"
+        "notifications", "waterReport", "history", "AccountingPost"
       ];
     case "UserRoles.EMPLOYEE":
       return [

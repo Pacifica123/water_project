@@ -4,6 +4,7 @@ import axios from 'axios';
 const API_URL_STRUCT = "http://127.0.0.1:5000/api/get_struct";
 const API_URL_SINGLE = "http://127.0.0.1:5000/api/edit_reference";
 const API_URL_SINGLE_MULTIFILTERS = "http://127.0.0.1:5000/api/get_single_with_mf";
+const API_URL_STRUCT_MULTIFILTERS = "http://127.0.0.1:5000/api/get_struct_mf";
 
 // const fetchModelSchema = ... TODO
 
@@ -132,4 +133,32 @@ const fetchSingleTableData = async (tableName) => {
     }
 };
 
-export {fetchStructureData, fetchSingleTableData, fetchSingleTableDataWithFilters};
+const fetchStructDataWithFilters = async (structName, filters) => {
+    try {
+        const token = localStorage.getItem('jwtToken');
+        const headers = token ? { 'tokenJWTAuthorization': token } : {};
+
+        const params = {
+            struct_name: structName,
+            ...filters
+        };
+
+        const response = await axios.get(API_URL_STRUCT_MULTIFILTERS, {
+            headers: headers,
+            params: params,
+            withCredentials: true
+        });
+
+        if (response.status >= 400) {
+            console.log("Ошибка HTTP: ", response);
+            return null;
+        }
+
+        return response.data; // Можно уточнить формат, если знаешь заранее
+    } catch (error) {
+        console.error("Ошибка при запросе данных структуры:", error);
+        return null;
+    }
+};
+
+export {fetchStructureData, fetchSingleTableData, fetchSingleTableDataWithFilters, fetchStructDataWithFilters};
