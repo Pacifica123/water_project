@@ -8,9 +8,58 @@ from db.models import *
 from db import models
 
 from sqlalchemy import Enum
-
-
 import sys
+
+
+def permisionpointlink_by_mf(filters: dict) -> OperationResult:
+    """
+    Функция для получения связок разрешений точек забора/сброса по фильтрам.
+
+    :param filters: Словарь фильтров, где ключ - имя столбца, а значение - значение для фильтрации.
+    :return: OperationResult с отфильтрованными данными.
+    """
+
+    # Шаг 1: Извлечь organisation_id из словаря filters
+    organisation_id = filters.get('organisation_id')
+    if organisation_id is None:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Отсутствует organisation_id в фильтрах")
+
+    # Шаг 2: Получить все записи WaterPoint
+    water_points_result = get_all_from_table(WaterPoint)
+
+    if water_points_result.status != OperationStatus.SUCCESS:
+        return OperationResult(water_points_result.status, msg=water_points_result.message)
+
+    # Шаг 3: Отфильтровать записи WaterPoint по organisation_id
+    filtered_water_points = [point for point in water_points_result.data if point.organisation_id == int(organisation_id)]
+
+    pprint.pprint(filtered_water_points)
+
+    # Шаг 4: Получить все записи PointPermissionLink
+    point_permission_links_result = get_all_from_table(PointPermissionLink)
+
+    if point_permission_links_result.status != OperationStatus.SUCCESS:
+        return OperationResult(point_permission_links_result.status, msg=point_permission_links_result.message)
+
+    # Шаг 5: Отфильтровать записи PointPermissionLink по совпадению с отфильтрованными WaterPoint
+    filtered_point_permission_links = [
+        link for link in point_permission_links_result.data
+        if link.point_id in [point.id for point in filtered_water_points]
+    ]
+    pprint.pprint(filtered_point_permission_links)
+
+    # Применить функцию replace_fks
+    from utils.db_utils import replace_fks
+    result_with_replaced_fks = replace_fks(OperationResult(OperationStatus.SUCCESS, data=filtered_point_permission_links), 'point_permission_link')
+
+    if result_with_replaced_fks.status != OperationStatus.SUCCESS:
+        return result_with_replaced_fks
+
+    # Преобразовать каждую запись в словарь
+    converted_links = [convert_to_dict(link) for link in result_with_replaced_fks.data]
+
+    return OperationResult(OperationStatus.SUCCESS, data=converted_links)
+
 
 
 def get_enum_options(enum_type: str) -> OperationResult:

@@ -338,7 +338,7 @@ class Permissions(Base):
     """
     Разрешения
 
-    Атрибуты:
+    Атрибуты (устаревшая документация):
         organisation_id (int): Идентификатор организации, к которой относится разрешение (внешний ключ).
         permission_number (str): Номер разрешения, уникальный для каждой записи.
         registration_date (Date): Дата регистрации разрешения.
@@ -353,7 +353,8 @@ class Permissions(Base):
     registration_date: Mapped[Date] = mapped_column(Date, nullable=False)
     expiration_date: Mapped[Date] = mapped_column(Date, nullable=False)
     permission_type: Mapped[PermissionType] = mapped_column(SQLAEnum(PermissionType), nullable=False)
-    allowed_volume: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    allowed_volume_org: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    allowed_volume_pop: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
 
     def to_dict(self):
         return {
@@ -361,7 +362,8 @@ class Permissions(Base):
             'permission_number': self.permission_number,
             'registration_date': self.registration_date,
             'permission_type': self.permission_type,
-            'allowed_volume': self.allowed_volume,
+            'allowed_volume_org': self.allowed_volume_org,
+            'allowed_volume_pop': self.allowed_volume_pop,
         }
 
 

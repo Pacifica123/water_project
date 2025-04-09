@@ -519,7 +519,8 @@ def init_permissions(session):
             "registration_date": date(2022, 1, 1),  # Дата регистрации
             "expiration_date": date(2025, 1, 1),  # Дата истечения срока действия
             "permission_type": PermissionType.WATER_WITHDRAWAL,  # Тип разрешения
-            "allowed_volume": 1000.0,  # Допустимый объем
+            "allowed_volume_org": 3000.0,  # Допустимый объем для организации
+            "allowed_volume_pop": 1000.0,  # Допустимый объем для населения (если применимо)
             "point_type": PermissionType.WATER_WITHDRAWAL,  # Тип точки
             "point_name": "Точка забора 1",  # Название точки
             "point_coordinates": "52°21′45″ с. ш. 36°13′20″ в. д.",  # Координаты точки
@@ -534,7 +535,8 @@ def init_permissions(session):
             "registration_date": date(2023, 6, 1),  # Дата регистрации
             "expiration_date": date(2026, 6, 1),  # Дата истечения срока действия
             "permission_type": PermissionType.DISCHARGE,  # Тип разрешения
-            "allowed_volume": 500.0,  # Допустимый объем
+            "allowed_volume_org": 4500.0,  # Допустимый объем для организации
+            "allowed_volume_pop": 1000.0,  # Допустимый объем для населения (если применимо)
             "point_type": PermissionType.DISCHARGE,  # Тип точки
             "point_name": "Точка сброса 1",  # Название точки
             "point_coordinates": "53°21′45″ с. ш. 37°13′20″ в. д.",  # Координаты точки
@@ -569,7 +571,8 @@ def init_permissions(session):
                 registration_date=data['registration_date'],
                 expiration_date=data['expiration_date'],
                 permission_type=data['permission_type'],
-                allowed_volume=data['allowed_volume']
+                allowed_volume_org=data['allowed_volume_org'],
+                allowed_volume_pop=data['allowed_volume_pop']
             )
             new_permission.save(session)  # Сохраняем запись в сессии
             print(f"Добавлено новое разрешение: {permission_name}.")

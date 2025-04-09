@@ -176,7 +176,7 @@ def get_all_models() -> OperationResult:
             ["История", History.__tablename__],
             ["Квартальные справки", WaterConsumptionLogByCategories.__tablename__],
             ["WCLfor3132", WCLfor3132.__tablename__],
-            ["Линки пока отсутствуют", "abc"],
+            ["Связка точка-разрешение", PointPermissionLink.__tablename__],
             # Добавьте сюда другие модели
         ]
 

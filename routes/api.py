@@ -133,6 +133,38 @@ def rest_get():
     return jsonify({"status": res.status, 'message': res.message, 'data': res.data}), 200
 
 
+@api.route('/api/get_struct_mf', methods=['GET'])
+def rest_get_mf():
+    token = request.headers.get('tokenJWTAuthorization')
+    auth_res = auth_validate(token)
+    # print_operation_result(auth_res, 'auth_validate')
+    if auth_res.status != OperationStatus.SUCCESS:
+        return jsonify({"error": "Пользователь неавторизован", "message": auth_res.data }), 401
+
+    struct_name = request.args.get('struct_name')
+    filters = {}
+
+    # Получаем все фильтры из запроса
+    for key, value in request.args.items():
+        if key not in ['struct_name', 'tokenJWTAuthorization']:
+            filters[key] = value
+
+    # Проверяем, что переданы необходимые фильтры
+    if struct_name is None:
+        return jsonify({"success": False, "error": "Необходимо передать struct_name"}), 400
+
+    print(f" --> struct is : {struct_name}")
+
+    # Вызываем функцию с фильтрами
+    res = get_structs_mf(struct_name, filters)
+    print_operation_result(res, 'get_structs_mf на выходе в /api/get_struct_')
+
+    if res.status != OperationStatus.SUCCESS:
+        return jsonify({"error": res.message, "message": res.data})
+
+    return jsonify({"status": res.status, 'message': res.message, 'data': process_enums(res.data, True)}), 200
+
+
 @api.route('/api/edit_reference', methods=['GET', 'POST'], strict_slashes=False)
 def rest_edit_reference():
     print("Текущий токен:", request.headers.get('tokenJWTAuthorization'))

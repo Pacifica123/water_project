@@ -190,7 +190,17 @@ def delete_users(tablename: str, users_id: int) -> OperationResult:
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
     return soft_delete_record(cls, users_id)
 
+
 # ====================== Data Processing Functions ======================
+
+
+def get_structs_mf(selected_template: str, filters: dict) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    match selected_template:
+        case "permisionpointlink":
+            return permisionpointlink_by_mf(filters)
+        case _:
+            return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
 
 
 def get_structs(selected_template: str, filter_k: str, filter_v: any) -> OperationResult:
@@ -213,7 +223,6 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
             return get_enum_options(enum_type)
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
-
 
 
 # def get_fdata_by_selected(selected_template: str) -> OperationResult:
