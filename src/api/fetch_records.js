@@ -6,6 +6,13 @@ const API_URL_SINGLE = "http://127.0.0.1:5000/api/edit_reference";
 const API_URL_SINGLE_MULTIFILTERS = "http://127.0.0.1:5000/api/get_single_with_mf";
 const API_URL_STRUCT_MULTIFILTERS = "http://127.0.0.1:5000/api/get_struct_mf";
 
+
+const handleTokenExpiration = () => {
+    localStorage.clear();
+    window.location.reload();
+};
+
+
 // const fetchModelSchema = ... TODO
 
 /**
@@ -50,6 +57,9 @@ const fetchStructureData = async (structName, filters = {}, token = null) => {
 
         return data;
     } catch (error) {
+        if (error.response.statusText === "UNAUTHORIZED") {
+            handleTokenExpiration();
+        }
         console.error("Ошибка при получении структуры:", error);
         console.log("Структура была:", structName);
         throw error; // Пробрасываем ошибку дальше
@@ -92,6 +102,9 @@ const fetchSingleTableDataWithFilters = async (tableName, filters) => {
 
         return records;
     } catch (error) {
+        if (error.response.statusText === "UNAUTHORIZED") {
+            handleTokenExpiration();
+        }
         console.log("Ошибка при получении данных таблицы:", error.message);
         return null;
     }
@@ -128,6 +141,9 @@ const fetchSingleTableData = async (tableName) => {
 
         return records;
     } catch (error) {
+        if (error.response.statusText === "UNAUTHORIZED") {
+            handleTokenExpiration();
+        }
         console.log("Ошибка при получении данных таблицы:", error.message);
         return null;
     }
@@ -150,12 +166,16 @@ const fetchStructDataWithFilters = async (structName, filters) => {
         });
 
         if (response.status >= 400) {
+
             console.log("Ошибка HTTP: ", response);
             return null;
         }
 
-        return response.data; // Можно уточнить формат, если знаешь заранее
+        return response.data;
     } catch (error) {
+        if (error.response.statusText === "UNAUTHORIZED") {
+            handleTokenExpiration();
+        }
         console.error("Ошибка при запросе данных структуры:", error);
         return null;
     }

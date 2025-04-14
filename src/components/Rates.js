@@ -5,6 +5,15 @@ import { fetchSingleTableData } from "../api/fetch_records";
 function Rates() {
     const [rates, setRates] = useState(null);
     const [newRate, setNewRate] = useState({ start_date: "", value: "", rate_type: "population" });
+    const [showModal, setShowModal] = useState(false);
+    const [alertVisible, setAlertVisible] = useState(false);
+
+    const showAlert = () => {
+        setAlertVisible(true);
+        setTimeout(() => {
+            setAlertVisible(false);
+        }, 20000);
+    };
 
     useEffect(() => {
         async function fetchRates() {
@@ -25,7 +34,7 @@ function Rates() {
             "ORG": "Предприятие",
             "OTHER": "Другое"
         };
-        return typeMap[rateType] || rateType;
+        return typeMap[rateType.toUpperCase()] || rateType;
     };
 
     const handleChange = (e) => {
@@ -36,42 +45,55 @@ function Rates() {
         e.preventDefault();
         await sendSingleData("rates", newRate);
         setNewRate({ start_date: "", value: "", rate_type: "population" });
+        setShowModal(false);
         const updatedData = await fetchSingleTableData("rates");
         setRates(updatedData || []);
+        showAlert();
+    };
+
+    const getLatestRatesByType = () => {
+        if (!rates || rates.length === 0) return {};
+
+        const latestRates = {};
+
+        rates.forEach(rate => {
+            const type = rate.rate_type.toLowerCase();
+            if (
+                !latestRates[type] ||
+                new Date(rate.start_date) > new Date(latestRates[type].start_date)
+            ) {
+                latestRates[type] = rate;
+            }
+        });
+
+        return latestRates;
     };
 
     return (
-        <div className="water-report-form">
+        <div className="water-Rates-form">
         <div className="content-container">
-        <h2>Ставки за водопотребление</h2>
-        <form onSubmit={handleSubmit}>
-        <div className="selectors">
-        <div className="selector-row">
-        <label>
-        Дата начала:
-        <input type="date" name="start_date" className="custom-select" value={newRate.start_date} onChange={handleChange} required />
-        </label>
-        <label>
-        Ставка:
-        <input type="number" step="0.01" name="value" className="narrow-input" value={newRate.value} onChange={handleChange} required />
-        </label>
-        <label>
-        Тип ставки:
-        <select name="rate_type" className="custom-select" value={newRate.rate_type} onChange={handleChange}>
-        <option value="population">Население</option>
-        <option value="org">Предприятие</option>
-        <option value="other">Другое</option>
-        </select>
-        </label>
-        </div>
-        </div>
-        <button type="submit" className="submit-button">Добавить</button>
-        </form>
-        <h3>История ставок</h3>
-        {rates === null ? (
-            <p>Загрузка...</p>
+        <h2 align="center">Ставки за водопотребление</h2>
+
+        <div className="current-rate" text-align="left" align="center">
+        <h3>Текущие ставки по типам</h3>
+        {Object.entries(getLatestRatesByType()).length > 0 ? (
+            <div>
+            {Object.entries(getLatestRatesByType()).map(([type, rate]) => (
+                <div key={type}>
+                <strong>{formatRateType(type)}:</strong> {rate.value} руб. (с {formatDate(rate.start_date)})
+                </div>
+            ))}
+            </div>
         ) : (
-            <table className="data-table">
+            <p>Нет данных о текущих ставках</p>
+        )}
+        </div>
+
+        <h3 align="center">История ставок</h3>
+        {rates === null ? (
+            <p align="center">Загрузка...</p>
+        ) : (
+            <table className="data-Rates-table">
             <thead>
             <tr>
             <th>Дата</th>
@@ -80,15 +102,49 @@ function Rates() {
             </tr>
             </thead>
             <tbody>
-            {rates.map(rate => (
-                <tr key={rate.id}>
-                <td>{formatDate(rate.start_date)}</td>
-                <td>{rate.value}</td>
-                <td>{formatRateType(rate.rate_type)}</td>
-                </tr>
-            ))}
-            </tbody>
-            </table>
+            {[...rates]
+                .sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
+                .map(rate => (
+                    <tr key={rate.id}>
+                    <td>{formatDate(rate.start_date)}</td>
+                    <td>{rate.value}</td>
+                    <td>{formatRateType(rate.rate_type)}</td>
+                    </tr>
+                ))}
+                </tbody>
+                </table>
+        )}
+
+        <button className="submit-button-WaterReportForm" onClick={() => setShowModal(true)}>Добавить</button>
+        {alertVisible && (<div className="custom-alert">✅ Ставка успешно добавлена!</div>)}
+        {showModal && (
+            <div className="modal-overlay">
+            <div className="modal">
+            <h3>Добавить ставку</h3>
+            <form onSubmit={handleSubmit}>
+            <label>
+            Дата начала:
+            <input type="date" name="start_date" value={newRate.start_date} onChange={handleChange} required />
+            </label>
+            <label>
+            Ставка:
+            <input type="number" step="0.01" name="value" value={newRate.value} onChange={handleChange} required />
+            </label>
+            <label>
+            Тип ставки:
+            <select name="rate_type" value={newRate.rate_type} onChange={handleChange}>
+            <option value="population">Население</option>
+            <option value="org">Предприятие</option>
+            <option value="other">Другое</option>
+            </select>
+            </label>
+            <div className="modal-buttons">
+            <button className="modal-edit-button" type="submit">Сохранить</button>
+            <button className="modal-back-button" type="button" onClick={() => setShowModal(false)}>Отмена</button>
+            </div>
+            </form>
+            </div>
+            </div>
         )}
         </div>
         </div>
@@ -96,3 +152,6 @@ function Rates() {
 }
 
 export default Rates;
+
+
+

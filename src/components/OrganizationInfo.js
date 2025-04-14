@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { sendSingleData } from "../api/add_records"; // Импорт функции для отправки данных
-import "../App.css"; // Подключение стилей
+import React, { useState, useEffect } from "react";
+import { sendSingleData } from "../api/add_records";
+import { fetchStructureData } from "../api/fetch_records";
+import "../App.css";
 
 function OrganizationInfo() {
     const userData = localStorage.getItem("user");
@@ -17,12 +18,29 @@ function OrganizationInfo() {
     }
 
     const [newOrgInfo, setNewOrgInfo] = useState({
+        legal_form: "",
         organisation_name: "",
         inn: "",
         organization_code: "",
-        legal_form: "",
         postal_address: "",
     });
+
+    const [pointCount, setPointCount] = useState(null);
+
+    useEffect(() => {
+        const loadPointCount = async () => {
+            if (orgInfo.id) {
+                try {
+                    const response = await fetchStructureData("nof_statistics", { org_id: orgInfo.id });
+                    setPointCount(response.data.point_count);
+                } catch (error) {
+                    console.error("Ошибка при загрузке статистики:", error);
+                }
+            }
+        };
+
+        loadPointCount();
+    }, [orgInfo]);
 
     const legalForms = ["ООО", "АО", "ИП", "ЗАО", "ПАО"];
 
@@ -59,21 +77,30 @@ function OrganizationInfo() {
     return (
         <div className="organization-info-container">
         <div className="organization-info">
-        <h2>Информация об организации</h2>
+        <h2 align="center">Информация об организации</h2>
         {role === "EMPLOYEE" ? (
             <table className="info-table">
             <tbody>
+            <tr><td>Юридическая форма:</td><td>{orgInfo.legal_form}</td></tr>
             <tr><td>Наименование организации:</td><td>{orgInfo.organisation_name}</td></tr>
             <tr><td>ИНН:</td><td>{orgInfo.inn}</td></tr>
             <tr><td>Код организации:</td><td>{orgInfo.organization_code}</td></tr>
-            <tr><td>Юридическая форма:</td><td>{orgInfo.legal_form}</td></tr>
-            <tr><td>Почтовый адрес:</td><td>{orgInfo.postal_address}</td></tr>
+            <tr><td>Email:</td><td>{orgInfo.postal_address}</td></tr>
             </tbody>
             </table>
         ) : role === "ORG_ADMIN" ? (
             <div className="form-container">
             <h3>Добавление/Редактирование информации об организации</h3>
             <form onSubmit={handleSubmit}>
+            <div className="input-group">
+            <label>Юридическая форма:</label>
+            <select name="legal_form" value={newOrgInfo.legal_form} onChange={handleInputChange} required>
+            <option value="">Выберите юридическую форму</option>
+            {legalForms.map((form) => (
+                <option key={form} value={form}>{form}</option>
+            ))}
+            </select>
+            </div>
             <div className="input-group">
             <label>Наименование организации:</label>
             <input type="text" name="organisation_name" value={newOrgInfo.organisation_name} onChange={handleInputChange} required />
@@ -87,16 +114,7 @@ function OrganizationInfo() {
             <input type="text" name="organization_code" value={newOrgInfo.organization_code} onChange={handleInputChange} required />
             </div>
             <div className="input-group">
-            <label>Юридическая форма:</label>
-            <select name="legal_form" value={newOrgInfo.legal_form} onChange={handleInputChange} required>
-            <option value="">Выберите юридическую форму</option>
-            {legalForms.map((form) => (
-                <option key={form} value={form}>{form}</option>
-            ))}
-            </select>
-            </div>
-            <div className="input-group">
-            <label>Почтовый адрес:</label>
+            <label>Email:</label>
             <input type="text" name="postal_address" value={newOrgInfo.postal_address} onChange={handleInputChange} required />
             </div>
             <div className="button-container">
@@ -106,6 +124,20 @@ function OrganizationInfo() {
             </div>
         ) : (
             <p>Доступ ограничен</p>
+        )}
+
+        {(role === "EMPLOYEE") && (
+            <div className="statistics">
+            <h3>Статистика</h3>
+            <table className="info-table">
+            <tbody>
+            <tr>
+            <td>Количество водных точек:</td>
+            <td>{pointCount !== null ? pointCount : "Загрузка..."}</td>
+            </tr>
+            </tbody>
+            </table>
+            </div>
         )}
         </div>
         </div>

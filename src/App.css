@@ -317,7 +317,7 @@ input {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 50vh; /* Высота на весь экран */
+  height: 65vh; /* Высота на весь экран */
   padding: 20px;
   font-family: Arial, sans-serif;
 
@@ -381,8 +381,17 @@ input {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
+  margin-inline: auto;
+  margin-bottom: auto;
 }
+
+.data-table-result {
+  width: 63%;
+  border-collapse: collapse;
+  margin-inline: auto;
+  margin-bottom: auto;
+}
+
 
 .data-table th,
 .data-table td {
@@ -404,6 +413,7 @@ input {
   border-radius: 5px;
   cursor: pointer;
   font-size: 16px;
+
 }
 
 .submit-button:hover {
@@ -522,13 +532,42 @@ input {
   cursor: pointer;
 }
 
-.submit-button {
-  padding: 10px;
-  border: none;
+.success-message {
+  margin-top: 15px;
+  margin-left: 38%;
+  padding: 10px 15px;
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
   border-radius: 5px;
+  font-size: 16px;
+  text-align: center;
+  width: fit-content;
+}
+
+
+.submit-button {
+  margin-top: 20px; /* Отступ сверху */
+  margin-left: auto;
+  padding: 15px;
+  border: 20px;
+  border-radius: 10px;
   background-color: #28a745;
   color: white;
   cursor: pointer;
+
+}
+
+.submit-button-WaterReportForm {
+  margin-top: 20px; /* Отступ сверху */
+  margin-left: 45%;
+  padding: 20px;
+  border: 100px;
+  border-radius: 10px;
+  background-color: #28a745;
+  color: white;
+  cursor: pointer;
+
 }
 
 .edit-button {
@@ -557,7 +596,7 @@ input {
 .data-table th, .data-table td {
   border: 1px solid #ddd;
   padding: 10px;
-  text-align: left;
+  text-align: center;
 }
 
 .selectors {
@@ -575,42 +614,190 @@ input {
 }
 
 .data-table {
-  width: auto; /* или min-width: 100% */
+  width: 100px; /* или min-width: 100% */
   border-collapse: collapse;
 }
 
-/* Модальное окно */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5); /* Полупрозрачный фон */
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 200px;
+  max-width: 90%;
+}
+.modal-edit-button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #17a2b8;
+  color: white;
+  cursor: pointer;
+}
+
+.modal-back-button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #dc3545;
+  color: white;
+  cursor: pointer;
+}
+
+.modal label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.modal input,
+.modal select {
+  width: 100%;
+  margin-top: 5px;
+  padding: 8px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+
+.custom-alert {
+  position: fixed;
+  top: 30px;
+  left: 55%;
+  transform: translateX(-50%);
+  background-color: #e6ffed;
+  color: #1b5e20;
+  border: 2px solid #66bb6a;
+  padding: 20px 40px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  animation: slideFade 3s ease-in-out;
+}
+
+@keyframes slideFade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30px);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  90% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -30px);
+  }
+}
+.table-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.table-scroll-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+/* Таблица внутри scroll-блока */
+.table-scroll-wrapper .data-table {
+  min-width: 1000px; /* ширина, чтобы вызвать прокрутку */
+  width: max-content;
+  border-collapse: collapse;
+}
+
+/* Чёткие ячейки и предотвращение переносов */
+.table-scroll-wrapper .data-table th,
+.table-scroll-wrapper .data-table td {
+  white-space: nowrap;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+
+
+
+
+.water-Rates-form {
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 65vh; /* Высота на весь экран */
+  padding: 25px;
+  font-family: Arial, sans-serif;
+
 }
 
-.modal-content {
-  background-color: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  width: 80%; /* Ширина модального окна */
-  max-width: 600px; /* Максимальная ширина */
+
+.data-Rates-table {
+  width: 50%;
+  border-collapse: collapse;
+  margin-inline: auto;
+  margin-bottom: auto;
 }
 
-.modal-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  font-size: 24px;
+
+/* Для фильтров в AccountingPost.js */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 5px;
   cursor: pointer;
-  background-color: transparent;
-  border: none;
 }
-.error-message {
-  color: red;
-  margin-bottom: 10px;
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  padding: 10px;
+  display: none;
+  min-width: 200px;
 }
+.dropdown-menu .form-check {
+  display: flex;
+
+}
+
+.dropdown-menu .form-check-label {
+  flex: 1; /* Занять оставшееся пространство */
+  white-space: nowrap;
+}
+
+.dropdown-menu.show {
+  display: block;
+}
+
+.dropdown:hover .dropdown-menu {
+  display: block;
+}
+
