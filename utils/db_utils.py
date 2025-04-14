@@ -13,6 +13,95 @@ from routes.struct_getters import get_water_logs
 import sys
 
 
+def process_water_point_fks(record):
+    print("===== Вошли в process_water_point_fks =====")
+
+    # Преобразуем объект записи в словарь
+    record_dict = record.__dict__.copy()
+    record_dict.pop('_sa_instance_state', None)  # Удаляем ненужные атрибуты SQLAlchemy
+
+    if 'point_id' in record_dict:
+        point_id = record_dict['point_id']
+
+        # Если point_id — это целое число, загружаем объект WaterPoint из базы данных
+        if isinstance(point_id, int):
+            print(f"point_id — это целое число: {point_id}, загружаем WaterPoint из БД")
+            point_result = get_record_by_id(WaterPoint, point_id)
+            if point_result.status == OperationStatus.SUCCESS:
+                print("Точка найдена успешно")
+                point_data = point_result.data.to_dict()
+                print(f"Данные точки: {point_data}")
+                record_dict['point_id'] = point_data
+            else:
+                print("Не удалось найти точку по идентификатору")
+                return record_dict
+
+        # Если point_id уже является словарем
+        elif isinstance(point_id, dict):
+            print("point_id уже является словарем")
+            point_data = point_id
+
+        else:
+            print(f"Неизвестный тип point_id: {type(point_id)}")
+            return record_dict
+
+        # Проверяем наличие water_body_id в данных точки
+        if 'water_body_id' in record_dict['point_id']:
+            water_body_id = record_dict['point_id']['water_body_id']
+            print(f"Идентификатор водного объекта: {water_body_id}")
+
+            water_object_result = get_record_by_id(WaterObjectRef, water_body_id)
+            if water_object_result.status == OperationStatus.SUCCESS:
+                print("Водный объект найден успешно")
+                water_object_data = water_object_result.data.to_dict()
+                print(f"Данные водного объекта: {water_object_data}")
+
+                record_dict['point_id']['water_body_id'] = water_object_data
+
+                # Обработка связей для Codes
+                if 'code_type_id' in water_object_data:
+                    code_type_id = water_object_data['code_type_id']
+                    code_type_result = get_record_by_id(Codes, code_type_id)
+                    if code_type_result.status == OperationStatus.SUCCESS:
+                        code_type_data = code_type_result.data.to_dict()
+                        water_object_data['code_type_id'] = code_type_data
+
+                if 'code_obj_id' in water_object_data:
+                    code_obj_id = water_object_data['code_obj_id']
+                    code_obj_result = get_record_by_id(Codes, code_obj_id)
+                    if code_obj_result.status == OperationStatus.SUCCESS:
+                        code_obj_data = code_obj_result.data.to_dict()
+                        water_object_data['code_obj_id'] = code_obj_data
+            else:
+                print("Водный объект не найден")
+        else:
+            print("В данных точки нет water_body_id")
+    else:
+        print("В записи нет point_id")
+
+    print("===== Вышли из process_water_point_fks =====")
+    return record_dict
+
+def process_water_consumption_logs_fks(result: OperationResult) -> OperationResult:
+    print("===== Вошли в process_water_consumption_logs_fks =====")
+
+    if result.status != OperationStatus.SUCCESS:
+        print("Результат операции не успешный")
+        return result
+
+    records = result.data
+    print(f"Количество записей: {len(records)}")
+
+    processed_records = [process_water_point_fks(record) for record in records]
+
+    print("===== Вышли из process_water_consumption_logs_fks =====")
+
+    return OperationResult(status=OperationStatus.SUCCESS, data=processed_records)
+
+
+
+
+
 def format_options(records, model_class):
     print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     # Определяем поля, которые будут использованы для формирования опций
@@ -176,8 +265,7 @@ def get_all_models() -> OperationResult:
             ["История", History.__tablename__],
             ["Квартальные справки", WaterConsumptionLogByCategories.__tablename__],
             ["WCLfor3132", WCLfor3132.__tablename__],
-            ["Связка точка-разрешение", PointPermissionLink.__tablename__],
-            # Добавьте сюда другие модели
+            ["RecordWCL", RecordWCL.__tablename__],
         ]
 
         return OperationResult(OperationStatus.SUCCESS, data=models_list)
@@ -225,6 +313,9 @@ def replace_fks(operation_result: OperationResult, tablename: str) -> OperationR
         # print(f"--- сейчас идет {  } ---")
         # Проходим по всем полям модели
         for column in model_class.__table__.columns:
+            pprint.pprint(model_class)
+            print(f"Столбец: {column.name}, Внешние ключи: {column.foreign_keys}")
+
             # Проверяем, является ли атрибут внешним ключом
             if column.foreign_keys:
                 foreign_key_value = getattr(record, column.name)

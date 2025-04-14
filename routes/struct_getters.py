@@ -9,13 +9,135 @@ from db import models
 
 from sqlalchemy import Enum
 import sys
+import pprint
+
+
+def log_datails_by_mf(filters: dict) -> OperationResult:
+    """
+    Функция для получения подробное информации о записях журнала
+    :param filters: ожидается log_id.
+    :return: OperationResult с отфильтрованными данными.
+    """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    res_data = {
+        "exploitation_org": {
+            "id": 0,
+            "organisation_name": "_notfound_"
+        },
+        "wcl_list": []
+    }
+    log_id = filters.get("log_id")
+    headlog = get_record_by_id(WaterConsumptionLog, log_id)
+    if headlog.status != OperationStatus.SUCCESS:
+        return headlog
+    org = get_record_by_id(Organisations, headlog.data.exploitation_org_id)
+    if org.status != OperationStatus.SUCCESS:
+        return org
+    res_data["exploitation_org"]["id"] = org.data.id
+    res_data["exploitation_org"]["organisation_name"] = org.data.organisation_name
+
+    logres = get_all_by_foreign_key(RecordWCL, "log_id", log_id)
+    #  отсутствие записей допустимо:
+    if logres.status != OperationStatus.SUCCESS and not ("Не найдено ни одной записи" in logres.message):
+        return logres
+    print_operation_result(logres)
+    if len(logres.data) == 0 or len(logres.data) is None:
+        res_data["wcl_list"] = []
+    else:
+        wcl_list = [convert_to_dict(record_wcl) for record_wcl in logres.data]
+        res_data["wcl_list"] = wcl_list
+    print_data_in_func(res_data, "log_datails_by_mf")
+    print(f" ===== Вышло из функции {sys._getframe().f_code.co_name} ===== ")
+    return OperationResult(OperationStatus.SUCCESS, data=res_data)
+
+
+
+def waterlogs_by_mf(filters: dict) -> OperationResult:
+    """
+    Функция для получения журналов водопотребления по ролям.
+
+    :param filters: ожидается role.
+    :return: OperationResult с отфильтрованными данными.
+    """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    wpoints = get_all_from_table(WaterPoint).data
+    water_object_refs = get_all_from_table(WaterObjectRef).data
+    codes = get_all_from_table(Codes).data
+    organisations = get_all_from_table(Organisations).data
+
+    # Преобразуем записи WaterObjectRef, Codes и Organisations в словари
+    water_object_refs_dicts = [convert_to_dict(wor) for wor in water_object_refs]
+    codes_dicts = [convert_to_dict(code) for code in codes]
+    organisations_dicts = [convert_to_dict(org) for org in organisations]
+
+    from utils.db_utils import process_water_consumption_logs_fks, replace_fks
+    role = filters.get('role')
+    org_id = filters.get('org_id')
+    logs = get_all_from_table(WaterConsumptionLog)
+    result = replace_fks(logs, 'water_consumption_log')
+    final_result = process_water_consumption_logs_fks(logs)
+
+    # Объединяем данные
+    for log in final_result.data:
+        point_id = log.get('point_id', {}).get('id')
+        if point_id:
+            # Находим соответствующую запись в WaterPoint
+            wpoint = next((wp for wp in wpoints if wp.id == point_id), None)
+            if wpoint:
+                water_body_id = wpoint.water_body_id
+                organisation_id = wpoint.organisation_id
+
+                # Находим соответствующую запись в WaterObjectRef
+                water_object_ref = next((wor for wor in water_object_refs_dicts if wor['id'] == water_body_id), None)
+                if water_object_ref:
+                    # Добавляем информацию о water_body_id в лог
+                    log['point_id']['water_body_id'] = water_object_ref
+
+                    # Добавляем информацию о code_type_id и code_obj_id
+                    code_type_id = water_object_ref.get('code_type_id')
+                    code_obj_id = water_object_ref.get('code_obj_id')
+
+                    # Находим соответствующие записи в Codes
+                    code_type = next((code for code in codes_dicts if code['id'] == code_type_id), None)
+                    code_obj = next((code for code in codes_dicts if code['id'] == code_obj_id), None)
+
+                    if code_type:
+                        water_object_ref['code_type_id'] = code_type
+                    if code_obj:
+                        water_object_ref['code_obj_id'] = code_obj
+
+                # Находим соответствующую запись в Organisations
+                organisation = next((org for org in organisations_dicts if org['id'] == organisation_id), None)
+                if organisation:
+                    log['point_id']['organisation_id'] = organisation
+
+    match role:
+        case "UserRoles.ADMIN":
+            return final_result
+        case "UserRoles.ORG_ADMIN":
+            return final_result
+        case "UserRoles.REPORT_ADMIN":
+            return final_result
+        case "UserRoles.EMPLOYEE":
+            if org_id is None:
+                return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Отсутствует org_id в фильтрах для EMPLOYEE")
+
+            # Фильтруем по org_id для EMPLOYEE
+
+            # pprint.pprint(final_result.data[0].get('point_id'))
+            filtered_logs = [log for log in final_result.data if log.get('point_id', {}).get('organisation_id', {}).get('id') == int(org_id)]
+            return OperationResult(status=OperationStatus.SUCCESS, data=filtered_logs)
+        case _:
+            return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Отсутствует role в фильтрах")
+
+
 
 
 def permisionpointlink_by_mf(filters: dict) -> OperationResult:
     """
     Функция для получения связок разрешений точек забора/сброса по фильтрам.
 
-    :param filters: Словарь фильтров, где ключ - имя столбца, а значение - значение для фильтрации.
+    :param filters: ожидается organisation_id.
     :return: OperationResult с отфильтрованными данными.
     """
 
@@ -66,7 +188,6 @@ def get_enum_options(enum_type: str) -> OperationResult:
     print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
 
     try:
-        print(" --> до сюда дошло")
         enum_class = getattr(models, enum_type)
         if not enum_class:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg=f"ENUM '{enum_type}' не найден")
@@ -252,3 +373,22 @@ def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
     except Exception as e:
         print("в get_header_for_e31_32 что-то сломалось")
         print(e)
+
+
+def get_orgstatistics(org_id) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print("Организаци №", org_id)
+    # Получаем все записи WaterPoint из БД
+    result = get_all_from_table(WaterPoint)
+
+    if result.status != OperationStatus.SUCCESS:
+        return result  # Возвращаем ошибку, если она произошла
+
+    # Фильтруем записи по org_id
+    filtered_points = [point for point in result.data if point.organisation_id == int(org_id)]
+
+    # Создаём словарь с количеством точек
+    result_dict = {"point_count": len(filtered_points)}
+
+    # Возвращаем результат
+    return OperationResult(OperationStatus.SUCCESS, data=result_dict)

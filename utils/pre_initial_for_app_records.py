@@ -68,8 +68,8 @@ def init_test_user(session):
             "role": UserRoles.ADMIN
         },
         {
-            "last_name": "Организатор",
-            "first_name": "Организатор",
+            "last_name": "Артамонов",
+            "first_name": "Владимир",
             "birth_date": "01.01.1990",
             "username": "orgadmin",
             "email": "orgadmin@test.test",
@@ -77,8 +77,8 @@ def init_test_user(session):
             "role": UserRoles.ORG_ADMIN
         },
         {
-            "last_name": "Отчетник",
-            "first_name": "Отчетник",
+            "last_name": "Сидоров",
+            "first_name": "Олег",
             "birth_date": "02.02.1990",
             "username": "report_admin",
             "email": "report_admin@test.test",
@@ -86,21 +86,21 @@ def init_test_user(session):
             "role": UserRoles.REPORT_ADMIN
         },
         {
-            "last_name": "Сотрудник 1",
-            "first_name": "Сотрудник 1",
+            "last_name": "ОАО",
+            "first_name": "СКЭК",
             "birth_date": "03.03.1990",
-            "username": "employee1",
-            "email": "employee1@test.test",
+            "username": "employee3",
+            "email": "csc@skek.ru",
             "password": "123",
             "role": UserRoles.EMPLOYEE,
             "organisation_id": 1  # Принадлежит к первой организации
         },
         {
-            "last_name": "Сотрудник 2",
-            "first_name": "Сотрудник 2",
+            "last_name": "ООО",
+            "first_name": "ЛКС",
             "birth_date": "04.04.1990",
-            "username": "employee2",
-            "email": "employee2@test.test",
+            "username": "employee4",
+            "email": "employee4@test.test",
             "password": "123",
             "role": UserRoles.EMPLOYEE,
             "organisation_id": 2  # Принадлежит ко второй организации
@@ -248,19 +248,19 @@ def init_water_area_records(session):
 def init_organisation_test(session):
     # Данные для инициализации организаций
     organisations_data = {
-        "Организация 1": {
-            "organisation_name": "Организация 1",
-            "postal_address": "Адрес организации 1",
-            "legal_form": "ООО",
-            "inn": "123456789012",
-            "organisation_code": "1"
+        "Северо-Кузбасская Энергетическая компания (СКЭК)": {
+            "organisation_name": "Северо-Кузбасская Энергетическая компания (СКЭК)",
+            "postal_address": "csc@skek.ru",
+            "legal_form": "ОАО",
+            "inn": "4205153492",
+            "organisation_code": "420501001"
         },
-        "Организация 2": {
-            "organisation_name": "Организация 2",
-            "postal_address": "Адрес организации 2",
-            "legal_form": "ЗАО",
-            "inn": "987654321098",
-            "organisation_code": "2"
+        "Ленинск-Кузнецкие коммунальные системы (ЛКС)": {
+            "organisation_name": "Ленинск-Кузнецкие коммунальные системы (ЛКС)",
+            "postal_address": "",
+            "legal_form": "ООО",
+            "inn": "4212040940",
+            "organisation_code": "421201001"
         }
     }
 

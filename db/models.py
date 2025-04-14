@@ -5,6 +5,7 @@ from typing import Optional
 from enum import Enum as PyEnum
 from sqlalchemy import JSON
 from flask import g
+from datetime import date
 
 
 class RatesType(PyEnum):
@@ -70,7 +71,9 @@ class Month(PyEnum):
 
 class log_status(PyEnum):
     IN_PROGRESS = "in_progress"
+    IS_DONE = "is_done"  # подписан (УТОЧНИТЬ)
     SENT = "sent"
+    UNDER_WATCH = "under_watch"
     UNDER_CORRECTION = "under_correction"
     CLOSED = "closed"
 
@@ -516,19 +519,20 @@ class WaterConsumptionLog(Base):
     __tablename__ = 'water_consumption_log'
 
     point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
-    consumption_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=True) # на удаление...
+    # consumption_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=True) # на удаление...
     treatment_level: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=True)
     exploitation_org_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), nullable=False)
     month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
     log_status: Mapped[log_status] = mapped_column(SQLAEnum(log_status), nullable=False)
+    start_date: Mapped[Date] = mapped_column(Date, default=date.today, nullable=False)
 
     def to_dict(self):
         return {
             'id': self.id,
-            'consumption_value': self.consumption_value,
             'treatment_level': self.treatment_level,
             'month': self.month,
-            'log_status': self.log_status
+            'log_status': self.log_status,
+            'start_date': self.start_date
         }
 
 
@@ -594,6 +598,7 @@ class RecordWCL(Base):
     operating_time_days: Mapped[int] = mapped_column(Integer, nullable=False)
     water_consumption_m3_per_day: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     meter_readings: Mapped[dict] = mapped_column(JSON)
+    person_signature: Mapped[str] = mapped_column(String(255), nullable=False)
 
     def to_dict(self):
         return {
@@ -601,7 +606,8 @@ class RecordWCL(Base):
             'measurement_date': self.measurement_date,
             'operating_time_days': self.operating_time_days,
             'water_consumption_m3_per_day': self.water_consumption_m3_per_day,
-            'meter_readings': self.meter_readings
+            'meter_readings': self.meter_readings,
+            'person_signature': self.person_signature
         }
 
 

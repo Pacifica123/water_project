@@ -448,10 +448,10 @@ def water_consumption_log_validate(data):
         errors.append("Показания расхода обязательны")
 
     # Проверка, что consumption_value является числом и в допустимом диапазоне
-    if isinstance(data['consumption_value'], (int, float)) is False:
-        errors.append("Показания расхода должны быть числом")
-    elif data['consumption_value'] < 0:
-        errors.append("Показания расхода не могут быть отрицательными")
+    # if isinstance(data['consumption_value'], (int, float)) is False:
+    #     errors.append("Показания расхода должны быть числом")
+    # elif data['consumption_value'] < 0:
+    #     errors.append("Показания расхода не могут быть отрицательными")
 
     # Проверка существования точки водозабора
     if not is_valid_foreign_key('water_point', data['point_id']):

@@ -196,9 +196,14 @@ def delete_users(tablename: str, users_id: int) -> OperationResult:
 
 def get_structs_mf(selected_template: str, filters: dict) -> OperationResult:
     print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    pprint.pprint(filters)
     match selected_template:
         case "permisionpointlink":
             return permisionpointlink_by_mf(filters)
+        case "logs_for_AP":
+            return waterlogs_by_mf(filters)
+        case "log_details":
+            return log_datails_by_mf(filters)
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
 
@@ -221,6 +226,8 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
             enum_type = selected_template.replace("enum_", "")
             print(f"в selected_template попал ENUM : {enum_type}")
             return get_enum_options(enum_type)
+        case "nof_statistics":
+            return get_orgstatistics(filter_v)
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
 

@@ -279,6 +279,7 @@ def find_employee_by_username(username: str) -> Optional[User]:
         print(f'\n ---> ОШИБКА БД: {e}\n')
         return None
 
+
 def get_all_by_foreign_key(entity: Type[Any], foreign_key_column: str, foreign_key_id: any) -> OperationResult:
     """
     Получение всех записей из указанной таблицы по значению внешнего ключа.

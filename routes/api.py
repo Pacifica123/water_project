@@ -162,6 +162,9 @@ def rest_get_mf():
     if res.status != OperationStatus.SUCCESS:
         return jsonify({"error": res.message, "message": res.data})
 
+    if struct_name == "log_details":
+        return jsonify({"status": res.status, 'message': res.message, 'data': res.data}), 200
+
     return jsonify({"status": res.status, 'message': res.message, 'data': process_enums(res.data, True)}), 200
 
 
