@@ -11,6 +11,7 @@ import sys
 def process_water_consumption_single(form_data: dict) -> OperationResult:
     print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     try:
+        print_data_in_func(form_data, "process_water_consumption_single")
         # Получение данных из формы
         measurement_date = form_data.get("measurement_date")
         water_point_id = form_data.get("water_point_id")  # Предполагаем, что water_point_id есть в форме
@@ -37,6 +38,7 @@ def process_water_consumption_single(form_data: dict) -> OperationResult:
             "operating_time_days": "operating_time_days",
             "water_consumption_m3_per_day": "water_consumption_m3_per_day",
             "meter_readings": "meter_readings",
+            "person_signature": "person_signature"
         }
 
         # Создание словаря для записи в БД

@@ -1,5 +1,9 @@
-from sqlalchemy import String, DateTime, Enum as SQLAEnum, func, ForeignKey, Text, BigInteger, Numeric, Integer, Boolean, Date, \
-    Float, CheckConstraint
+from sqlalchemy import (
+    String, DateTime, Enum as SQLAEnum,
+    func, ForeignKey, Text, BigInteger,
+    Numeric, Integer, Boolean, Date,
+    Float, CheckConstraint, LargeBinary
+    )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Optional
 from enum import Enum as PyEnum
@@ -78,6 +82,12 @@ class log_status(PyEnum):
     CLOSED = "closed"
 
 
+class FileType(PyEnum):
+    SIGNATURE = "signature"
+    MONTH_CLOSURE_SCAN = "month_closure_scan"
+    PERMISSION_SCAN = "permission_scan"
+
+
 class Base(DeclarativeBase):
     """
     МЕТАИНФОРМАЦИЯ
@@ -94,6 +104,18 @@ class Base(DeclarativeBase):
     def save(self, session):
         session.add(self)
         session.commit()
+
+
+class FileRecord(Base):
+    __tablename__ = 'file_records'
+
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[FileType] = mapped_column(SQLAEnum(FileType), nullable=False)
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)  # BYTEA в PostgreSQL
+    mimetype: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=True)
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False) # название таблицы к которой логически привязан файл
+    entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class ChemicalAnalysisProtocol(Base):

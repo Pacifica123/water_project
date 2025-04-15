@@ -204,6 +204,8 @@ def get_structs_mf(selected_template: str, filters: dict) -> OperationResult:
             return waterlogs_by_mf(filters)
         case "log_details":
             return log_datails_by_mf(filters)
+        case "organisations_familiar":
+            return organisations_familiar_by_mf(filters)
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
 
@@ -278,6 +280,119 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
             raise ValueError(f"Неизвестная форма или ее отсутсвие : {selected_template}")
 
 
+
+# ====================== File Processing Functions ======================
+def save_file_to_db_or_fs(
+    filename: str,
+    file_bytes: bytes,
+    file_type: FileType,
+    mimetype: str,
+    entity_type: str,
+    entity_id: int,
+    description: str = None,
+    created_by: str = "auto"
+) -> OperationResult:
+    """
+    Функция сохранения файла
+    """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+
+    if not is_valid_entity_type(entity_type):
+        return OperationResult(OperationStatus.VALIDATION_ERROR, f"Неверный entity_type: {entity_type}")
+
+    check_id = get_record_by_id(get_model_class_by_tablename(entity_type), entity_id)
+    if check_id.status != OperationStatus.SUCCESS:
+        return check_id
+
+    data = {
+        "filename": filename,
+        "file_type": file_type.value,
+        "content": file_bytes,
+        "mimetype": mimetype,
+        "description": description,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "created_by": created_by
+    }
+
+    success = create_record_entity(FileRecord, data)
+    if success:
+        return OperationResult(OperationStatus.SUCCESS, "Файл успешно сохранён")
+    else:
+        return OperationResult(OperationStatus.DATABASE_ERROR, "Ошибка при сохранении файла")
+
+
+def get_files(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[int] = None,
+    file_type: Optional[FileType] = None,
+    filename: Optional[str] = None,
+    limit: Optional[int] = 100
+) -> OperationResult:
+    """
+    Функция получения файлов с параметрами фильтрации
+    """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    session = g.session
+    try:
+        query = session.query(FileRecord).filter(FileRecord.is_deleted == False)
+
+        if entity_type:
+            if not is_valid_entity_type(entity_type):
+                return OperationResult(OperationStatus.VALIDATION_ERROR, f"Неверный entity_type: {entity_type}")
+            query = query.filter(FileRecord.entity_type == entity_type)
+
+        if entity_id is not None:
+            query = query.filter(FileRecord.entity_id == entity_id)
+
+        if file_type:
+            query = query.filter(FileRecord.file_type == file_type)
+
+        if filename:
+            query = query.filter(FileRecord.filename.ilike(f"%{filename}%"))
+
+        files = query.order_by(FileRecord.created_at.desc()).limit(limit).all()
+
+        data = [{
+            "id": f.id,
+            "filename": f.filename,
+            "file_type": f.file_type.value if isinstance(f.file_type, FileType) else f.file_type,
+            "mimetype": f.mimetype,
+            "entity_type": f.entity_type,
+            "entity_id": f.entity_id,
+            "description": f.description,
+            "created_at": f.created_at.isoformat()
+        } for f in files]
+
+        return OperationResult(OperationStatus.SUCCESS, data=data)
+
+    except Exception as e:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, f"Ошибка при получении файлов: {e}")
+
+
+def get_file_by_id(file_id: int) -> OperationResult:
+    """
+    Функция получения конкретного файла по file_id (для скачивания)
+    """
+    session = g.session
+    try:
+        file_record = session.query(FileRecord).filter(
+            FileRecord.id == file_id,
+            FileRecord.is_deleted == False
+        ).one_or_none()
+
+        if not file_record:
+            return OperationResult(OperationStatus.DATABASE_ERROR, "Файл не найден")
+
+        data = {
+            "filename": file_record.filename,
+            "content": file_record.content,
+            "mimetype": file_record.mimetype
+        }
+        return OperationResult(OperationStatus.SUCCESS, data=data)
+
+    except Exception as e:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, f"Ошибка при получении файла: {e}")
 
 
 # ====================== File Parsing Functions ======================

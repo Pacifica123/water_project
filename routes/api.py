@@ -162,7 +162,7 @@ def rest_get_mf():
     if res.status != OperationStatus.SUCCESS:
         return jsonify({"error": res.message, "message": res.data})
 
-    if struct_name == "log_details":
+    if struct_name in ["log_details", "organisations_familiar"]:
         return jsonify({"status": res.status, 'message': res.message, 'data': res.data}), 200
 
     return jsonify({"status": res.status, 'message': res.message, 'data': process_enums(res.data, True)}), 200
@@ -293,3 +293,53 @@ def send_to():
     except Exception as e:
         print(e)
         return jsonify({"error": str(e)}), 500
+
+
+#  ---------- File Routers ----------
+
+
+@api.route('/api/upload_file', methods=['POST'])
+def upload_file():
+    token = request.headers.get('tokenJWTAuthorization')
+    auth_res = auth_validate(token)
+    if auth_res.status != OperationStatus.SUCCESS:
+        return jsonify({"error": "Пользователь неавторизован", "message": auth_res.data}), 401
+
+    if 'file' not in request.files:
+        return jsonify({"error": "Файл не передан"}), 400
+
+    file = request.files['file']
+    filename = file.filename
+
+    # Можно добавить проверку расширения, размера и т.п.
+    # Сохраняем файл в базу или файловую систему
+    res = save_file_to_db_or_fs(filename, file)
+
+    if res.status != OperationStatus.SUCCESS:
+        return jsonify({"error": res.message}), 500
+
+    return jsonify({"status": res.status, "message": "Файл успешно загружен"}), 200
+
+
+@api.route('/api/download_file', methods=['GET'])
+def download_file():
+    token = request.headers.get('tokenJWTAuthorization')
+    auth_res = auth_validate(token)
+    if auth_res.status != OperationStatus.SUCCESS:
+        return jsonify({"error": "Пользователь неавторизован", "message": auth_res.data}), 401
+
+    file_id = request.args.get('file_id')
+    if not file_id:
+        return jsonify({"error": "Не передан file_id"}), 400
+
+    res = get_file_from_db_or_fs(file_id)
+    if res.status != OperationStatus.SUCCESS:
+        return jsonify({"error": res.message}), 404
+
+    # Возвращаем файл как поток с правильным mime-типом
+    return send_file(
+        BytesIO(res.data),
+        attachment_filename=res.filename,
+        mimetype=res.mimetype,
+        as_attachment=True
+    )

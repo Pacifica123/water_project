@@ -12,6 +12,60 @@ import sys
 import pprint
 
 
+def organisations_familiar_by_mf(filters: dict) -> OperationResult:
+    """
+    Функция для получения организаций, связанных с данной + все точки
+    :param filters: ожидается org_id
+    :return: OperationResult с отфильтрованными данными.
+    """
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    from utils.db_utils import  replace_fks
+    res_data = {
+        "orgs": [],
+        "points": []
+    }
+    #  Получаем все точки
+    org_id = int(filters.get("org_id"))
+    all_point = get_all_by_foreign_key(WaterPoint, "organisation_id", org_id)
+    if all_point.status != OperationStatus.SUCCESS:
+        return all_point
+    all_point_fks = replace_fks(all_point, WaterPoint.__tablename__)
+    if all_point_fks.status != OperationStatus.SUCCESS:
+        return all_point_fks
+    all_point_enum_processed = process_enums([convert_to_dict(point) for point in all_point_fks.data], True)
+    res_data["points"] = all_point_enum_processed
+    # res_data["points"] = all_point.data
+    #  Получаем все журналы
+    logs = [get_all_by_foreign_key(WaterConsumptionLog, "point_id", p.id) for p in all_point.data]
+    all_logs = []
+    for res in logs:
+        if res.status == OperationStatus.SUCCESS:
+            all_logs.extend(res.data)
+        else:
+            print_operation_result(res)
+            pass
+    #  Достаем из них организации
+    exploitation_org_ids = set()
+    for log in all_logs:
+        if hasattr(log, "exploitation_org_id") and log.exploitation_org_id is not None:
+            exploitation_org_ids.add(log.exploitation_org_id)
+
+    # Получаем организации по id
+    orgs = []
+    for org_id in exploitation_org_ids:
+        org_res = get_all_by_foreign_key(Organisations, "id", org_id)
+        if org_res.status == OperationStatus.SUCCESS:
+            orgs.extend(org_res.data)
+        else:
+            print_operation_result(org_res)
+            pass
+    orgsd = [convert_to_dict(o) for o in orgs]
+    res_data["orgs"] = orgsd
+    # res_data["orgs"] = orgs
+
+    return OperationResult(status=OperationStatus.SUCCESS, data=res_data)
+
+
 def log_datails_by_mf(filters: dict) -> OperationResult:
     """
     Функция для получения подробное информации о записях журнала

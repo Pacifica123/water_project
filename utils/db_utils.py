@@ -82,6 +82,7 @@ def process_water_point_fks(record):
     print("===== Вышли из process_water_point_fks =====")
     return record_dict
 
+
 def process_water_consumption_logs_fks(result: OperationResult) -> OperationResult:
     print("===== Вошли в process_water_consumption_logs_fks =====")
 
@@ -99,6 +100,12 @@ def process_water_consumption_logs_fks(result: OperationResult) -> OperationResu
     return OperationResult(status=OperationStatus.SUCCESS, data=processed_records)
 
 
+def is_valid_entity_type(entity_type: str) -> bool:
+    res = get_all_models()
+    if res.status != OperationStatus.SUCCESS:
+        return False
+    valid_types = [item[1] for item in res.data]  # берем __tablename__
+    return entity_type in valid_types
 
 
 
