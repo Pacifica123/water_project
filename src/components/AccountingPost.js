@@ -5,15 +5,15 @@ import {
   fetchSingleTableDataWithFilters,
   fetchStructDataWithFilters,
 } from "../api/fetch_records";
+import {translate} from "../utils/translations.js"
 
 const AccountingPost = () => {
-  const [filteredLogs, setFilteredLogs] = useState([]); // Данные журнала
-  const [waterObjectsByPoints, setwaterObjectsByPoints] = useState([]);
-  const [isLoading, setIsLoading] = useState(true); // Статус загрузки
-  const [error, setError] = useState(null); // Ошибки при фетчинге данных
-  const [allLogs, setAllLogs] = useState([]); // Все загруженные журналы
-  const [monthFilter, setMonthFilter] = useState(new Date().getMonth()); // Фильтр по месяцу
-  const [yearFilter, setYearFilter] = useState(new Date().getFullYear()); // Фильтр по году
+  const [filteredLogs, setFilteredLogs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [allLogs, setAllLogs] = useState([]);
+  const [monthFilter, setMonthFilter] = useState(new Date().getMonth());
+  const [yearFilter, setYearFilter] = useState(new Date().getFullYear());
   const [statusFilters, setStatusFilters] = useState({
     in_progress: true,
     is_done: true,
@@ -21,9 +21,9 @@ const AccountingPost = () => {
     under_watch: true,
     under_correction: true,
     closed: true,
-  }); // Фильтры по статусу
-  const [expandedLogs, setExpandedLogs] = useState({}); // Раскрытые журналы
-  const [logDetails, setLogDetails] = useState({}); // Детали журналов
+  });
+  const [expandedLogs, setExpandedLogs] = useState({});
+  const [logDetails, setLogDetails] = useState({});
 
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
@@ -47,8 +47,6 @@ const AccountingPost = () => {
         });
 
         if (response && response.data) {
-          console.log("Все Журналы: ", response);
-          // Преобразуем данные в нужный формат
           const enrichedLogs = response.data.map((log) => {
             const waterBody = log.point_id?.water_body_id;
             const org = log.point_id?.organisation_id;
@@ -90,11 +88,10 @@ const AccountingPost = () => {
         const logMonth = startDate.getMonth();
         const logYear = startDate.getFullYear();
 
-        // Фильтр по месяцу и году
-        const dateFilter = (monthFilter === new Date().getMonth() || logMonth === monthFilter) &&
+        const dateFilter =
+        (monthFilter === new Date().getMonth() || logMonth === monthFilter) &&
         (yearFilter === new Date().getFullYear() || logYear === yearFilter);
 
-        // Фильтр по статусу
         const status = log.status.toLowerCase();
         const statusFilter = Object.keys(statusFilters).some((key) => {
           return statusFilters[key] && status.includes(key);
@@ -119,32 +116,47 @@ const AccountingPost = () => {
 
   const handleStatusChange = (event) => {
     const { name, checked } = event.target;
-    setStatusFilters((prevStatus) => ({ ...prevStatus, [name]: checked }));
+    setStatusFilters((prev) => ({ ...prev, [name]: checked }));
   };
 
   const handleExpandLog = async (logId) => {
     if (expandedLogs[logId]) {
-      setExpandedLogs((prevExpanded) => ({ ...prevExpanded, [logId]: false }));
-      setLogDetails((prevDetails) => ({ ...prevDetails, [logId]: null }));
+      setExpandedLogs((prev) => ({ ...prev, [logId]: false }));
+      setLogDetails((prev) => ({ ...prev, [logId]: null }));
     } else {
       try {
         const response = await fetchStructDataWithFilters("log_details", {
           log_id: logId,
         });
-        console.log(response);
         if (response && response.data) {
-          console.log(response.data);
-          setLogDetails((prevDetails) => ({ ...prevDetails, [logId]: response.data }));
+          setLogDetails((prev) => ({ ...prev, [logId]: response.data }));
         } else {
-          setLogDetails((prevDetails) => ({ ...prevDetails, [logId]: null }));
+          setLogDetails((prev) => ({ ...prev, [logId]: null }));
         }
       } catch (error) {
         console.error("Ошибка загрузки деталей журнала", error);
-        setLogDetails((prevDetails) => ({ ...prevDetails, [logId]: null }));
+        setLogDetails((prev) => ({ ...prev, [logId]: null }));
       }
-
-      setExpandedLogs((prevExpanded) => ({ ...prevExpanded, [logId]: true }));
+      setExpandedLogs((prev) => ({ ...prev, [logId]: true }));
     }
+  };
+
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+
+  const toggleStatusDropdown = () => {
+    setStatusDropdownOpen((prev) => !prev);
+  };
+
+  const getStatusName = (key) => {
+    const labels = {
+      in_progress: 'В процессе',
+      is_done: 'Подписан',
+      sent: 'Отправлен',
+      under_watch: 'На рассмотрении',
+      under_correction: 'На доработке',
+      closed: 'Закрыт',
+    };
+    return labels[key] || key;
   };
 
   return (
@@ -157,97 +169,53 @@ const AccountingPost = () => {
       <p>{error}</p>
     ) : (
       <div>
-      <div className="filters">
+      <div className="filters-container">
+      <div className="filter-block">
+      <label>Месяц</label>
       <select value={monthFilter} onChange={handleMonthChange}>
-      <option value={new Date().getMonth()}>Текущий месяц</option>
-      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((month) => (
-        <option key={month} value={month}>{new Date(2024, month, 1).toLocaleString('default', { month: 'long' })}</option>
+      {[...Array(12)].map((_, month) => (
+        <option key={month} value={month}>
+        {new Date(2024, month, 1).toLocaleString('default', { month: 'long' })}
+        </option>
       ))}
       </select>
+      </div>
 
+      <div className="filter-block">
+      <label>Год</label>
       <select value={yearFilter} onChange={handleYearChange}>
-      <option value={new Date().getFullYear()}>Текущий год</option>
-      {[2020, 2021, 2022, 2023, 2024].map((year) => (
+      {[2020, 2021, 2022, 2023, 2024, 2025].map((year) => (
         <option key={year} value={year}>{year}</option>
       ))}
       </select>
+      </div>
 
-      <div className="status-filters">
-      <div className="dropdown">
-      <button className="dropdown-toggle" type="button" id="statusDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-      Статус
+      <div className="filter-block">
+      <label>Статус: </label>
+      <button className="status-toggle" onClick={toggleStatusDropdown}>
+      {statusDropdownOpen ? "Скрыть" : "Выбрать статусы"}
       </button>
-      <div className="dropdown-menu" aria-labelledby="statusDropdown">
-      <div className="form-check">
-      <input
-      type="checkbox"
-      name="in_progress"
-      checked={statusFilters.in_progress}
-      onChange={handleStatusChange}
-      className="form-check-input"
-      />
-      <label className="form-check-label">В процессе</label>
-      </div>
-
-      <div className="form-check">
-      <input
-      type="checkbox"
-      name="is_done"
-      checked={statusFilters.is_done}
-      onChange={handleStatusChange}
-      className="form-check-input"
-      />
-      <label className="form-check-label">Подписан</label>
-      </div>
-
-      <div className="form-check">
-      <input
-      type="checkbox"
-      name="sent"
-      checked={statusFilters.sent}
-      onChange={handleStatusChange}
-      className="form-check-input"
-      />
-      <label className="form-check-label">Отправлен</label>
-      </div>
-
-      <div className="form-check">
-      <input
-      type="checkbox"
-      name="under_watch"
-      checked={statusFilters.under_watch}
-      onChange={handleStatusChange}
-      className="form-check-input"
-      />
-      <label className="form-check-label">На рассмотрении</label>
-      </div>
-
-      <div className="form-check">
-      <input
-      type="checkbox"
-      name="under_correction"
-      checked={statusFilters.under_correction}
-      onChange={handleStatusChange}
-      className="form-check-input"
-      />
-      <label className="form-check-label">На доработке</label>
-      </div>
-
-      <div className="form-check">
-      <input
-      type="checkbox"
-      name="closed"
-      checked={statusFilters.closed}
-      onChange={handleStatusChange}
-      className="form-check-input"
-      />
-      <label className="form-check-label">Закрыт</label>
-      </div>
-      </div>
-      </div>
+      {statusDropdownOpen && (
+        <div className="status-dropdown">
+        {Object.keys(statusFilters).map((key) => (
+          <label className="status-item" key={key}>
+          <span className="status-label">{getStatusName(key)}</span>
+          <input
+          type="checkbox"
+          name={key}
+          checked={statusFilters[key]}
+          onChange={handleStatusChange}
+          />
+          </label>
+        ))}
+        </div>
+      )}
       </div>
       </div>
 
+
+
+      {/* Таблица */}
       {filteredLogs.length === 0 ? (
         <p>Нет данных</p>
       ) : (
@@ -275,53 +243,53 @@ const AccountingPost = () => {
           )}
           <td>{log.water_body_name}</td>
           <td>{log.coordinates}</td>
-          <td>{log.point_type}</td>
+          <td>{translate(log.point_type)}</td>
           <td>{log.start_date}</td>
-          <td>{log.status}</td>
+          <td>{translate(log.status)}</td>
           {userInfo.role === "UserRoles.EMPLOYEE" && (
             <td>
-            <button onClick={() => handleExpandLog(log.id)}>Открыть журнал</button>
-            {expandedLogs[log.id] && (
-              <div className="log-details">
-              {logDetails[log.id] ? (
-                <div>
-                <h3>Организация эксплуатации:</h3>
-                <p>Название: {logDetails[log.id].exploitation_org.organisation_name}</p>
-                <p>ID: {logDetails[log.id].exploitation_org.id}</p>
-
-                <h3>Список измерений:</h3>
-                <table>
-                <thead>
-                <tr>
-                <th>Дата измерения</th>
-                <th>Дней эксплуатации</th>
-                <th>Расход воды (м³/день)</th>
-                <th>Подпись лица</th>
-                </tr>
-                </thead>
-                <tbody>
-                {logDetails[log.id].wcl_list.map((measurement) => (
-                  <tr key={measurement.measurement_date}>
-                  <td>{measurement.measurement_date}</td>
-                  <td>{measurement.operating_time_days}</td>
-                  <td>{measurement.water_consumption_m3_per_day}</td>
-                  <td>{measurement.person_signature}</td>
-                  </tr>
-                ))}
-                </tbody>
-                </table>
-                </div>
-              ) : (
-                <p>Ошибка загрузки деталей журнала</p>
-              )}
-              </div>
-            )}
+            <button onClick={() => handleExpandLog(log.id)}>
+            {expandedLogs[log.id] ? "Скрыть журнал" : "Открыть журнал"}
+            </button>
             </td>
           )}
           </tr>
         ))}
         </tbody>
         </table>
+      )}
+
+      {/* 📘 Третий блок — журнал */}
+      {Object.entries(expandedLogs).map(([logId, isExpanded]) =>
+        isExpanded && logDetails[logId] ? (
+          <div key={logId} className="log-details-container">
+          <h3>Детали журнала (ID: {logId})</h3>
+          <p>
+          <strong>Эксплуатирующая организация:</strong>{" "}
+          {logDetails[logId].exploitation_org.organisation_name}
+          </p>
+          <table className="data-table">
+          <thead>
+          <tr>
+          <th>Дата измерения</th>
+          <th>Дней эксплуатации</th>
+          <th>Расход воды (м³/день)</th>
+          <th>Подпись лица</th>
+          </tr>
+          </thead>
+          <tbody>
+          {logDetails[logId].wcl_list.map((m) => (
+            <tr key={m.measurement_date}>
+            <td>{m.measurement_date}</td>
+            <td>{m.operating_time_days}</td>
+            <td>{m.water_consumption_m3_per_day}</td>
+            <td>{m.person_signature}</td>
+            </tr>
+          ))}
+          </tbody>
+          </table>
+          </div>
+        ) : null
       )}
       </div>
     )}
