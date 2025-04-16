@@ -50,11 +50,14 @@ function OrganizationInfo() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
+        let data;
         try {
             const response = await sendSingleData("organisations", newOrgInfo);
-            alert("Данные успешно отправлены!");
             console.log("Ответ сервера:", response);
+            data = response?.data;
+            alert("Данные успешно отправлены! \nЛогин: " + data?.username + "\nВременный пароль: " + data?.password);
+
+
             setNewOrgInfo({
                 organisation_name: "",
                 inn: "",
@@ -84,7 +87,7 @@ function OrganizationInfo() {
             <tr><td>Юридическая форма:</td><td>{orgInfo.legal_form}</td></tr>
             <tr><td>Наименование организации:</td><td>{orgInfo.organisation_name}</td></tr>
             <tr><td>ИНН:</td><td>{orgInfo.inn}</td></tr>
-            <tr><td>Код организации:</td><td>{orgInfo.organization_code}</td></tr>
+            <tr><td>Код организации(КПП):</td><td>{orgInfo.organization_code}</td></tr>
             <tr><td>Email:</td><td>{orgInfo.postal_address}</td></tr>
             </tbody>
             </table>
@@ -110,7 +113,7 @@ function OrganizationInfo() {
             <input type="text" name="inn" value={newOrgInfo.inn} onChange={handleInputChange} required />
             </div>
             <div className="input-group">
-            <label>Код организации:</label>
+            <label>Код организации (КПП):</label>
             <input type="text" name="organization_code" value={newOrgInfo.organization_code} onChange={handleInputChange} required />
             </div>
             <div className="input-group">

@@ -106,6 +106,11 @@ const translations = {
     "treatment_level": "Степень очистки",
     "category": "Категория",
     "water_point_id": "id точки",
+    "log_id": "id Журнала",
+    "measurement_date": "Дата измерения",
+    "meter_readings": "Показания приборов",
+    "operating_time_days": "Время работы прибора",
+    "exploitation_org_id": "Эксплуатирующая организация",
 };
 
 const translate = (key) => {

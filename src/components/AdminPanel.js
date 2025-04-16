@@ -82,8 +82,19 @@ const AdminPanel = () => {
     setModalVisible(true);
   };
 
+  const [alertVisible, setAlertVisible] = useState(false);
+
+  const showAlert = () => {
+    setAlertVisible(true);
+    setTimeout(() => {
+      setAlertVisible(false);
+    }, 10000);
+  };
+
+
   // Обработчик сабмита формы. Здесь динамически собираем объект данных, исходя из схемы
   const handleFormSubmit = async (e) => {
+
     e.preventDefault();
     // Инициализация объекта данных.
     const dataToSend = {
@@ -101,30 +112,30 @@ const AdminPanel = () => {
 
     if (modelSchema && modelSchema.data) {
       modelSchema.data
-        .filter((field) => field.field !== "id")
-        .forEach((field) => {
-          // В зависимости от типа поля можно выполнить преобразования
-          // Если значение отсутствует, можно задать значение по умолчанию
-          let value = formData[field.field] || "";
-          // Если поле связано с внешним ключом, значение должно быть выбрано из options
-          // Здесь можно добавить дополнительную логику, например, проверку, что value входит в options
-          if (field.type.includes("BOOLEAN")) {
-            value = formData[field.field] === "on"; // Преобразуем значение checkbox в boolean
-          }
+      .filter((field) => field.field !== "id")
+      .forEach((field) => {
+        // В зависимости от типа поля можно выполнить преобразования
+        // Если значение отсутствует, можно задать значение по умолчанию
+        let value = formData[field.field] || "";
+        // Если поле связано с внешним ключом, значение должно быть выбрано из options
+        // Здесь можно добавить дополнительную логику, например, проверку, что value входит в options
+        if (field.type.includes("BOOLEAN")) {
+          value = formData[field.field] === "on"; // Преобразуем значение checkbox в boolean
+        }
 
-          // Проверка, если поле является ENUM
-          if (field.isEnum) {
-            // Находим ключ ENUM по значению
-            const enumOptions = field.options || [];
-            const enumKey = enumOptions.find((opt) => opt.value === value);
-            console.log("Был выбран вариант: ", enumKey);
-            if (enumKey) {
-              value = enumKey.label; // Используем ключ вместо значения
-            }
+        // Проверка, если поле является ENUM
+        if (field.isEnum) {
+          // Находим ключ ENUM по значению
+          const enumOptions = field.options || [];
+          const enumKey = enumOptions.find((opt) => opt.value === value);
+          console.log("Был выбран вариант: ", enumKey);
+          if (enumKey) {
+            value = enumKey.label; // Используем ключ вместо значения
           }
-          console.log(value);
-          dataToSend[field.field] = value;
-        });
+        }
+        console.log(value);
+        dataToSend[field.field] = value;
+      });
     } else {
       // Если схема не получена, используем formData как есть (но это крайний случай)
       dataToSend = { ...formData };
@@ -141,6 +152,7 @@ const AdminPanel = () => {
 
       handleSelectTable(selectedTable);
       setModalVisible(false);
+      showAlert();
     } catch (error) {
       console.error(
         `Ошибка при ${isEditMode ? "редактировании" : "добавлении"} записи:`,
@@ -168,23 +180,23 @@ const AdminPanel = () => {
   // Рендер списка таблиц
   const renderTableList = () => (
     <div className="content-container_for_renderTableList">
-      <h2>Список таблиц</h2>
-      {tableList.length === 0 && <div>Нет данных</div>}
-      <ul className="selectors_for_renderTableList">
-        {tableList.map((table, idx) => {
-          const [displayName, modelName] = Object.entries(table)[0];
-          return (
-            <li key={idx}>
-              <button
-                className="custom-button"
-                onClick={() => handleSelectTable(modelName)}
-              >
-                {displayName}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+    <h2>Список таблиц</h2>
+    {tableList.length === 0 && <div>Нет данных</div>}
+    <ul className="selectors_for_renderTableList">
+    {tableList.map((table, idx) => {
+      const [displayName, modelName] = Object.entries(table)[0];
+      return (
+        <li key={idx}>
+        <button
+        className="custom-button"
+        onClick={() => handleSelectTable(modelName)}
+        >
+        {displayName}
+        </button>
+        </li>
+      );
+    })}
+    </ul>
     </div>
   );
 
@@ -209,69 +221,69 @@ const AdminPanel = () => {
   // Рендер списка записей выбранной таблицы с CRUD-кнопками
   const renderTableRecords = () => (
     <div>
-      <div className="content-container">
-        <button
-          className="back-button"
-          onClick={() => {
-            setSelectedTable(null);
-            setModelSchema(null);
-          }}
-        >
-          Назад к таблицам
-        </button>
-        <h2>Записи таблицы: {translate(selectedTable)}</h2>
-        <button className="submit-button" onClick={handleAddButton}>
-          Добавить запись
-        </button>
-      </div>
-      {isLoading ? (
-        <div>Загрузка...</div>
-      ) : tableRecords && tableRecords.length > 0 ? (
-        <table className="data-table">
-          <thead>
-            <tr>
-              {Object.keys(tableRecords[0]).map((key, index) => (
-                <th key={index}>{translate(key)}</th>
-              ))}
-              <th>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tableRecords.map((record) => {
-              return (
-                <tr key={record.id}>
-                  {Object.keys(record).map((key, idx) => {
-                    const fieldSchema = modelSchema?.data?.find(
-                      (f) => f.field === key,
-                    );
-                    return (
-                      <td key={idx}>
-                        {translate(renderCellValue(record[key], fieldSchema))}
-                      </td>
-                    );
-                  })}
-                  <td>
-                    <button
-                      className="edit-button"
-                      onClick={() => handleEditButton(record)}
-                    >
-                      Редактировать
-                    </button>
-                    <button
-                      className="delete-button"
-                      onClick={() => handleDeleteRecord(record.id)}
-                    >
-                      Удалить
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      ) : (
-        <div>Записей не найдено</div>
-      )}
+    <div className="content-container">
+    <button
+    className="back-button"
+    onClick={() => {
+      setSelectedTable(null);
+      setModelSchema(null);
+    }}
+    >
+    Назад к таблицам
+    </button>
+    <h2>Записи таблицы: {translate(selectedTable)}</h2>
+    <button className="submit-button" onClick={handleAddButton}>
+    Добавить запись
+    </button>
+    </div>
+    {isLoading ? (
+      <div>Загрузка...</div>
+    ) : tableRecords && tableRecords.length > 0 ? (
+      <table className="data-table">
+      <thead>
+      <tr>
+      {Object.keys(tableRecords[0]).map((key, index) => (
+        <th key={index}>{translate(key)}</th>
+      ))}
+      <th>Действия</th>
+      </tr>
+      </thead>
+      <tbody>
+      {tableRecords.map((record) => {
+        return (
+          <tr key={record.id}>
+          {Object.keys(record).map((key, idx) => {
+            const fieldSchema = modelSchema?.data?.find(
+              (f) => f.field === key,
+            );
+            return (
+              <td key={idx}>
+              {translate(renderCellValue(record[key], fieldSchema))}
+              </td>
+            );
+          })}
+          <td>
+          <button
+          className="edit-button"
+          onClick={() => handleEditButton(record)}
+          >
+          Редактировать
+          </button>
+          <button
+          className="delete-button"
+          onClick={() => handleDeleteRecord(record.id)}
+          >
+          Удалить
+          </button>
+          </td>
+          </tr>
+        );
+      })}
+      </tbody>
+      </table>
+    ) : (
+      <div>Записей не найдено</div>
+    )}
     </div>
   );
 
@@ -288,68 +300,68 @@ const AdminPanel = () => {
   // Рендер модального окна с динамической формой
   const renderModal = () => (
     <Modal
-      onClose={() => {
-        setModalVisible(false);
-        setError(null); // Сбрасываем ошибку при закрытии модального окна
-      }}
+    onClose={() => {
+      setModalVisible(false);
+      setError(null); // Сбрасываем ошибку при закрытии модального окна
+    }}
     >
-      <h3>{isEditMode ? "Редактировать запись" : "Добавить запись"}</h3>
-      {error && <div className="error-message">{error}</div>}
-      <form onSubmit={handleFormSubmit}>
-        {modelSchema && modelSchema.data ? (
-          modelSchema.data
-            .filter((field) => field.field !== "id")
-            .map((field, index) => (
-              <div key={index} style={{ marginBottom: "10px" }}>
-                <label style={{ display: "block", marginBottom: "5px" }}>
-                  {translate(field.field)}:
-                </label>
-                {/* Если поле связано с внешним ключом или имеет опции, отрисовываем ForeignKeySelect */}
-                {field.foreignKey ||
-                field.options?.length > 0 ||
-                field.isEnum ? (
-                  <ForeignKeySelect
-                    field={field}
-                    value={formData[field.field] || ""}
-                    onChange={(newValue) => {
-                      setFormData({ ...formData, [field.field]: newValue });
-                      if (formData[field.field]) {
-                        // Автоматическое сворачивание поля после заполнения
-                        document
-                          .getElementById(field.field)
-                          ?.classList.add("filled");
-                      }
-                    }}
-                  />
-                ) : (
-                  <input
-                    type={getInputType(field.type)}
-                    value={formData[field.field] || ""}
-                    onChange={(e) => {
-                      setFormData({
-                        ...formData,
-                        [field.field]: e.target.value,
-                      });
-                      if (e.target.value) {
-                        // Автоматическое сворачивание поля после заполнения
-                        document
-                          .getElementById(field.field)
-                          ?.classList.add("filled");
-                      }
-                    }}
-                    id={field.field} // Добавление ID для управления классами
-                  />
-                )}
-              </div>
-            ))
-        ) : (
-          <div>Схема модели не получена.</div>
-        )}
+    <h3>{isEditMode ? "Редактировать запись" : "Добавить запись"}</h3>
+    {error && <div className="error-message">{error}</div>}
+    <form onSubmit={handleFormSubmit}>
+    {modelSchema && modelSchema.data ? (
+      modelSchema.data
+      .filter((field) => field.field !== "id")
+      .map((field, index) => (
+        <div key={index} style={{ marginBottom: "10px" }}>
+        <label style={{ display: "block", marginBottom: "5px" }}>
+        {translate(field.field)}:
+        </label>
+        {/* Если поле связано с внешним ключом или имеет опции, отрисовываем ForeignKeySelect */}
+        {field.foreignKey ||
+          field.options?.length > 0 ||
+          field.isEnum ? (
+            <ForeignKeySelect
+            field={field}
+            value={formData[field.field] || ""}
+            onChange={(newValue) => {
+              setFormData({ ...formData, [field.field]: newValue });
+              if (formData[field.field]) {
+                // Автоматическое сворачивание поля после заполнения
+                document
+                .getElementById(field.field)
+                ?.classList.add("filled");
+              }
+            }}
+            />
+          ) : (
+            <input
+            type={getInputType(field.type)}
+            value={formData[field.field] || ""}
+            onChange={(e) => {
+              setFormData({
+                ...formData,
+                [field.field]: e.target.value,
+              });
+              if (e.target.value) {
+                // Автоматическое сворачивание поля после заполнения
+                document
+                .getElementById(field.field)
+                ?.classList.add("filled");
+              }
+            }}
+            id={field.field} // Добавление ID для управления классами
+            />
+          )}
+          </div>
+      ))
+    ) : (
+      <div>Схема модели не получена.</div>
+    )}
 
-        <button type="submit">
-          {isEditMode ? "Сохранить изменения" : "Добавить"}
-        </button>
-      </form>
+    <button type="submit">
+    {isEditMode ? "Сохранить изменения" : "Добавить"}
+    </button>
+    </form>
     </Modal>
   );
 
@@ -417,37 +429,42 @@ const AdminPanel = () => {
 
     return (
       <select
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-        }}
+      value={value}
+      onChange={(e) => {
+        onChange(e.target.value);
+      }}
       >
-        {loading ? (
-          <option>Загрузка...</option>
-        ) : (
-          <>
-            <option value="">Выберите значение</option>
-            {options?.map((opt, idx) => (
-              <option key={idx} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </>
-        )}
+      {loading ? (
+        <option>Загрузка...</option>
+      ) : (
+        <>
+        <option value="">Выберите значение</option>
+        {options?.map((opt, idx) => (
+          <option key={idx} value={opt.value}>
+          {opt.label}
+          </option>
+        ))}
+        </>
+      )}
       </select>
     );
   };
 
   return (
     <div className="admin-panel">
-      <h1>Админ-панель</h1>
-      {isLoading && <div>Загрузка...</div>}
-      {!selectedTable ? (
-        renderTableList()
-      ) : (
-        <div className="table-container">{renderTableRecords()}</div>
-      )}
-      {modalVisible && renderModal()}
+    {alertVisible && (
+      <div className="custom-alert">
+      ✅ Данные успешно добавлены!
+      </div>
+    )}
+    <h1>Админ-панель</h1>
+    {isLoading && <div>Загрузка...</div>}
+    {!selectedTable ? (
+      renderTableList()
+    ) : (
+      <div className="table-container">{renderTableRecords()}</div>
+    )}
+    {modalVisible && renderModal()}
     </div>
   );
 };

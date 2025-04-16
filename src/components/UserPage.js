@@ -61,7 +61,7 @@ function UsersPage() {
 
     return (
         <div className="users-page-container">
-        <h2>Управление пользователями</h2>
+        <h2>Пользователи и организации</h2>
         <button onClick={() => setShowForm(!showForm)} className="add-button">
         {showForm ? "Скрыть форму" : "Добавить пользователя"}
         </button>

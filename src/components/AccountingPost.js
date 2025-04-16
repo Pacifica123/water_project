@@ -161,7 +161,7 @@ const AccountingPost = () => {
 
   return (
     <div className="accounting-container">
-    <h2>Журнал учета водопотребления</h2>
+    <h2 align="center">Журнал учета водопотребления</h2>
 
     {isLoading ? (
       <p>Загрузка данных...</p>
@@ -171,7 +171,7 @@ const AccountingPost = () => {
       <div>
       <div className="filters-container">
       <div className="filter-block">
-      <label>Месяц</label>
+      <label>Месяц: </label>
       <select value={monthFilter} onChange={handleMonthChange}>
       {[...Array(12)].map((_, month) => (
         <option key={month} value={month}>
@@ -182,7 +182,7 @@ const AccountingPost = () => {
       </div>
 
       <div className="filter-block">
-      <label>Год</label>
+      <label>Год: </label>
       <select value={yearFilter} onChange={handleYearChange}>
       {[2020, 2021, 2022, 2023, 2024, 2025].map((year) => (
         <option key={year} value={year}>{year}</option>
@@ -219,7 +219,7 @@ const AccountingPost = () => {
       {filteredLogs.length === 0 ? (
         <p>Нет данных</p>
       ) : (
-        <table className="accounting-table">
+        <table className="data-table-accountingPost">
         <thead>
         <tr>
         {userInfo.role !== "UserRoles.EMPLOYEE" && (
@@ -263,18 +263,18 @@ const AccountingPost = () => {
       {Object.entries(expandedLogs).map(([logId, isExpanded]) =>
         isExpanded && logDetails[logId] ? (
           <div key={logId} className="log-details-container">
-          <h3>Детали журнала (ID: {logId})</h3>
-          <p>
-          <strong>Эксплуатирующая организация:</strong>{" "}
+          <h3 align="center">Детали журнала (Номер журнала: {logId})</h3>
+          <p align="center">
+          <strong >Эксплуатирующая организация:</strong>{" "}
           {logDetails[logId].exploitation_org.organisation_name}
           </p>
-          <table className="data-table">
+          <table className="data-table-accountingPost">
           <thead>
           <tr>
           <th>Дата измерения</th>
           <th>Дней эксплуатации</th>
           <th>Расход воды (м³/день)</th>
-          <th>Подпись лица</th>
+          <th className="data-table-accountingPost-th">Подпись лица</th>
           </tr>
           </thead>
           <tbody>

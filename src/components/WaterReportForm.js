@@ -76,6 +76,8 @@ function WaterReportForm() {
   }, [selectedWaterObject, year, quarter, role]); // Вызываем, когда изменяется выбранная точка
 
   useEffect(() => {
+
+
     const checkRole = async () => {
       try {
         const userData = JSON.parse(localStorage.getItem("user"));
@@ -99,6 +101,15 @@ function WaterReportForm() {
       loadWaterObjects();
     }
   }, [role]);
+
+  const [alertVisible, setAlertVisible] = useState(false);
+
+  const showAlert = () => {
+    setAlertVisible(true);
+    setTimeout(() => {
+      setAlertVisible(false);
+    }, 20000);
+  };
 
 
   const quarters = {
@@ -142,16 +153,19 @@ function WaterReportForm() {
     try {
       const response = await sendFormData("send_quarter", {'waterPointId': selectedWaterObject, 'quarter': quarter, 'data': data});
       console.log("Данные успешно отправлены", response);
+      showAlert();
     } catch (error) {
+      alert("Ошибка при отправке данных");
       console.error("Ошибка при отправке данных", error.message);
     }
   };
+
   const totals = calculateTotals();
 
   return (
     <div className="water-report-form">
     <div className="content-container">
-    <h2>
+    <h2  align="center" >
     {role === "EMPLOYEE"
       ? 'Ввод показаний "Забор поверхностной воды за квартал"'
       : 'Просмотр данных "Забор поверхностной воды за квартал"'}
@@ -243,13 +257,33 @@ function WaterReportForm() {
         ))}
         </tbody>
         </table>
-        <div className="totals">
-        <strong>Итого:</strong>
-        <div>Факт: {totals.fact} тыс. м3</div>
-        <div>Население: {totals.population} тыс. м3</div>
-        <div>Прочее: {totals.other} тыс. м3</div>
+        <div>
+        <table className="data-table-result">
+        <thead>
+        <tr>
+        <th colSpan="3" >Итого</th>
+        </tr>
+        <tr>
+        <th>Факт, тыс. м3</th>
+        <th>Население, тыс. м3</th>
+        <th>Прочее, тыс. м3</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+        <td>{totals.fact}</td>
+        <td>{totals.population}</td>
+        <td>{totals.other}</td>
+        </tr>
+        </tbody>
+        </table>
         </div>
-        <button className="submit-button" onClick={handleSubmit}>
+        {alertVisible && (
+          <div className="custom-alert">
+          ✅ Данные успешно отправлены!
+          </div>
+        )}
+        <button className="submit-button-WaterReportForm" onClick={handleSubmit}>
         Отправить
         </button>
         </>
@@ -329,11 +363,26 @@ function WaterReportForm() {
         ))}
         </tbody>
         </table>
-        <div className="totals">
-        <strong>Итого:</strong>
-        <div>Факт: {totals.fact} тыс. м3</div>
-        <div>Население: {totals.population} тыс. м3</div>
-        <div>Прочее: {totals.other} тыс. м3</div>
+        <div>
+        <table className="data-table-result">
+        <thead>
+        <tr>
+        <th colSpan="3" >Итого</th>
+        </tr>
+        <tr>
+        <th>Факт, тыс. м3</th>
+        <th>Население, тыс. м3</th>
+        <th>Прочее, тыс. м3</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+        <td>{totals.fact}</td>
+        <td>{totals.population}</td>
+        <td>{totals.other}</td>
+        </tr>
+        </tbody>
+        </table>
         </div>
         </>
 
@@ -342,6 +391,7 @@ function WaterReportForm() {
       </div>
   );
 }
+
 
 
 export default WaterReportForm;
