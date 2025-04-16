@@ -128,6 +128,7 @@ def get_single_with_mf(tablename: str, filters: dict) -> OperationResult:
 def add_to(tablename: str, data) -> OperationResult:
     print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
+    resdata = []
 
     if tablename == "organisations":
         # 1. Получить organization_code из data
@@ -157,15 +158,38 @@ def add_to(tablename: str, data) -> OperationResult:
         # 4. Пересобрать data с новым organization_code
         data['organization_code'] = code_id
 
+        if create_record_entity(cls, data):
+            # 5. Создать пользователя EMPLOYEE для организации
+            org_id = get_last_record_id(Organisations)
+            data['organisation_id'] = org_id
+            resdata = create_org_user(data)
+            if resdata.status != OperationStatus.SUCCESS:
+                return resdata
+            else:
+                resdata = resdata.data
+            return OperationResult(
+                status=OperationStatus.SUCCESS,
+                msg=f"Запись успешно добавилась в БД {tablename}",
+                data=resdata
+            )
+
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg=f"Ошибка при создании записи в {tablename} или запись уже существует или такой сущности нет в БД",
+            data=resdata
+        )
+
     if create_record_entity(cls, data):
         return OperationResult(
             status=OperationStatus.SUCCESS,
-            msg=f"Запись успешно добавилась в БД {tablename}"
+            msg=f"Запись успешно добавилась в БД {tablename}",
+            data=resdata
         )
 
     return OperationResult(
         status=OperationStatus.DATABASE_ERROR,
-        msg=f"Ошибка при создании записи в {tablename} или запись уже существует или такой сущности нет в БД"
+        msg=f"Ошибка при создании записи в {tablename} или запись уже существует или такой сущности нет в БД",
+        data=resdata
     )
 
 
@@ -296,11 +320,12 @@ def save_file_to_db_or_fs(
     Функция сохранения файла
     """
     print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
-
+    print(f"Параметры: {filename}, {file_type.name}, {mimetype}, {entity_type} = {entity_id}, {created_by}")
     if not is_valid_entity_type(entity_type):
         return OperationResult(OperationStatus.VALIDATION_ERROR, f"Неверный entity_type: {entity_type}")
-
+    print(f"Сущность {entity_type} является валидной")
     check_id = get_record_by_id(get_model_class_by_tablename(entity_type), entity_id)
+    print(f"check_id =  {check_id.status} ")
     if check_id.status != OperationStatus.SUCCESS:
         return check_id
 

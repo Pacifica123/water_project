@@ -12,6 +12,43 @@ import importlib
 from routes.struct_getters import get_water_logs
 import sys
 
+import secrets
+import string
+
+
+def generate_password(length=12):
+    """
+    Генерирует случайный пароль заданной длины.
+
+    :param length: Длина пароля (по умолчанию 12 символов).
+    :return: Сгенерированный пароль.
+    """
+    alphabet = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(secrets.choice(alphabet) for i in range(length))
+    return password
+
+
+def create_org_user(orgdata) -> OperationResult:
+    users_data = {
+            "last_name": orgdata['legal_form'],
+            "first_name": orgdata['organisation_name'],
+            "username": "employee"+str(orgdata['organisation_id']),
+            "email": orgdata['postal_address'],
+            "password": generate_password(),
+            "role": UserRoles.EMPLOYEE,
+            "organisation_id": orgdata['organisation_id']
+    }
+    if create_record_entity(User, users_data):
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            msg=f"Пользователь организации создан, временные данные: логин - {users_data['username']} временный пароль - {users_data['password']}",
+            data={'username': users_data['username'], 'password': users_data['password']}
+        )
+    return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg=f"Не удалось создать аккаунт для организации"
+        )
+
 
 def process_water_point_fks(record):
     print("===== Вошли в process_water_point_fks =====")

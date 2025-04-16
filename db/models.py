@@ -589,6 +589,7 @@ class PointMeterLink(Base):
 
     point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
     meter_id: Mapped[int] = mapped_column(ForeignKey('meters.id'), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     def to_dict(self):
         return {

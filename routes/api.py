@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, send_file
+from io import BytesIO
 # from sqlalchemy.sql.functions import user
 # from sqlalchemy.testing import db
 
@@ -56,8 +57,11 @@ def rest_add_record(tablename):
     record_data = request.json  # Получаем данные как JSON
     result = add_to(tablename, record_data)
     print_operation_result(result, 'add_to')
+    resdata = []
+    if result.data:
+        resdata = result.data
     if result.status == OperationStatus.SUCCESS:
-        return jsonify({'status': 'success', 'message': 'Запись успешно добавлена.'}), 201
+        return jsonify({'status': 'success', 'message': 'Запись успешно добавлена.', 'data': resdata}), 201
     else:
         return jsonify({'status': 'error', 'message': result.message}), 400
 
@@ -310,15 +314,47 @@ def upload_file():
 
     file = request.files['file']
     filename = file.filename
+    file_bytes = file.read()
+    mimetype = file.mimetype
 
-    # Можно добавить проверку расширения, размера и т.п.
-    # Сохраняем файл в базу или файловую систему
-    res = save_file_to_db_or_fs(filename, file)
+    # Получаем дополнительные параметры из формы или query params
+    entity_type = request.form.get('entity_type') or request.args.get('entity_type')
+    entity_id = request.form.get('entity_id') or request.args.get('entity_id')
+    file_type_str = request.form.get('file_type') or request.args.get('file_type')
+    description = request.form.get('description') or request.args.get('description')
+
+    if not entity_type or not entity_id or not file_type_str:
+        return jsonify({"error": "Не переданы обязательные параметры: entity_type, entity_id, file_type"}), 400
+
+    try:
+        entity_id = int(entity_id)
+    except ValueError:
+        return jsonify({"error": "entity_id должен быть числом"}), 400
+
+    # Преобразуем file_type из строки в enum
+    try:
+        file_type = FileType(file_type_str)
+    except ValueError:
+        return jsonify({"error": f"Неверный file_type: {file_type_str}"}), 400
+
+    # TODO: получить user из токена или контекста
+    created_by = auth_res.data.get('user_id', 'auto') if isinstance(auth_res.data, dict) else 'auto'
+
+    res = save_file_to_db_or_fs(
+        filename=filename,
+        file_bytes=file_bytes,
+        file_type=file_type,
+        mimetype=mimetype,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        description=description,
+        created_by=created_by
+    )
 
     if res.status != OperationStatus.SUCCESS:
         return jsonify({"error": res.message}), 500
 
-    return jsonify({"status": res.status, "message": "Файл успешно загружен"}), 200
+    return jsonify({"status": res.status, "message": res.message}), 200
 
 
 @api.route('/api/download_file', methods=['GET'])
@@ -332,14 +368,78 @@ def download_file():
     if not file_id:
         return jsonify({"error": "Не передан file_id"}), 400
 
-    res = get_file_from_db_or_fs(file_id)
+    try:
+        file_id = int(file_id)
+    except ValueError:
+        return jsonify({"error": "file_id должен быть числом"}), 400
+
+    res = get_file_by_id(file_id)
     if res.status != OperationStatus.SUCCESS:
         return jsonify({"error": res.message}), 404
 
-    # Возвращаем файл как поток с правильным mime-типом
+    file_data = res.data
     return send_file(
-        BytesIO(res.data),
-        attachment_filename=res.filename,
-        mimetype=res.mimetype,
+        BytesIO(file_data['content']),
+        attachment_filename=file_data['filename'],
+        mimetype=file_data['mimetype'],
         as_attachment=True
     )
+
+
+@api.route('/api/file_info', methods=['GET'])
+def get_file_info():
+    print("===== get_file_info CALLED =====")
+    token = request.headers.get('tokenJWTAuthorization')
+    auth_res = auth_validate(token)
+    if auth_res.status != OperationStatus.SUCCESS:
+        return jsonify({"error": "Пользователь неавторизован", "message": auth_res.data}), 401
+
+    entity_type = request.args.get('entity_type')
+    entity_id = request.args.get('entity_id')
+    file_type = request.args.get('file_type')
+
+    if not entity_type or not entity_id or not file_type:
+        return jsonify({"error": "Не переданы обязательные параметры: entity_type, entity_id, file_type"}), 400
+    print("Params:", {
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "file_type": file_type
+    })
+    try:
+        entity_id = int(entity_id)
+    except ValueError:
+        return jsonify({"error": "entity_id должен быть числом"}), 400
+
+    files_res = get_files(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        file_type=file_type
+    )
+
+    if files_res.status != OperationStatus.SUCCESS:
+        print_operation_result(files_res, "@api.route(/api/file_info")
+        return jsonify({"error": "Ошибка при получении файлов", "message": files_res.data}), 500
+
+    files = files_res.data
+
+    if not files:
+        return jsonify({"error": "Файлы не найдены"}), 404
+
+    warning = None
+    if len(files) == 1:
+        file_info = files[0]
+    else:
+        # Несколько файлов — берем самый новый по created_at
+        files_sorted = sorted(files, key=lambda f: f['created_at'], reverse=True)
+        file_info = files_sorted[0]
+        warning = "Найдено несколько файлов, возвращён самый новый. Возможна ошибка."
+
+    response = {
+        "file_id": file_info["id"],
+        "file_url": f"http://127.0.0.1:5000/api/download_file?file_id={file_info['id']}"
+    }
+
+    if warning:
+        response["warning"] = warning
+
+    return jsonify(response), 200

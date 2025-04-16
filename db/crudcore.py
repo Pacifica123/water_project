@@ -162,6 +162,13 @@ def create_records_entities(records: List[Any]) -> OperationResult:
 # - - - - - - - - - - - - - - - - - - - -
 # СЕКЦИЯ READ
 # - - - - - - - - - - - - - - - - - - - -
+def get_last_record_id(entity_class):
+    """Получает id последней созданной записи в таблице."""
+    session = g.session
+    last_record = session.query(entity_class).order_by(entity_class.id.desc()).first()
+    return last_record.id if last_record else None
+
+
 def get_record_by_id(entity: Type[Any], id) -> OperationResult:
     """
     Получение записи из указанной таблицы по идентификатору.
