@@ -1,6 +1,5 @@
 from utils.backend_utils import *
 from utils.db_utils import *
-
 from sqlalchemy import inspect, types
 from datetime import date, datetime
 from db.crudcore import *
@@ -15,50 +14,34 @@ def process_water_consumption_single(form_data: dict) -> OperationResult:
         # Получение данных из формы
         measurement_date = form_data.get("measurement_date")
         water_point_id = form_data.get("water_point_id")  # Предполагаем, что water_point_id есть в форме
-
         if not measurement_date or not water_point_id:
             return OperationResult(
                 OperationStatus.VALIDATION_ERROR,
                 msg="Недостаточно данных для определения журнала учета водопотребления"
             )
-
-        # Определение месяца
-        month = datetime.datetime.strptime(measurement_date, "%Y-%m-%d").month  # Пример формата даты
-
+        month = datetime.datetime.strptime(measurement_date, "%Y-%m-%d").month
         # Поиск журнала по water_point_id и месяцу
         log_result = find_water_consumption_log(water_point_id, month)
         if log_result.status != OperationStatus.SUCCESS:
             return log_result
-
         log = log_result.data
-
-        # Сопоставление полей формы с полями модели RecordWCL
-        mapping = {
-            "measurement_date": "measurement_date",
-            "operating_time_days": "operating_time_days",
-            "water_consumption_m3_per_day": "water_consumption_m3_per_day",
-            "meter_readings": "meter_readings",
-            "person_signature": "person_signature"
+        # Поля, которые нужно взять из формы для записи
+        valid_fields = {
+            "measurement_date",
+            "operating_time_days",
+            "water_consumption_m3_per_day",
+            "meter_readings",
+            "person_signature"
         }
-
-        # Создание словаря для записи в БД
-        record_data = {}
-        for field_name, value in form_data.items():
-            if field_name in mapping.values():
-                record_data[mapping[field_name]] = value
-
-        # Добавление log_id
+        # Формируем данные для записи, берём только нужные поля
+        record_data = {field: form_data[field] for field in valid_fields if field in form_data}
         record_data["log_id"] = log.id
 
-        # Добавление записи в БД
-        # result = add_to(RecordWCL.__tablename__, record_data)
-        print(" --- Метка перед if create_record_entity ---")
         if create_record_entity(RecordWCL, record_data):
             return OperationResult(
                 status=OperationStatus.SUCCESS,
                 msg=f"Запись успешно добавилась в БД {RecordWCL.__tablename__}"
             )
-
         return OperationResult(
             status=OperationStatus.DATABASE_ERROR,
             msg=f"Ошибка при создании записи в {RecordWCL.__tablename__} или запись уже существует или такой сущности нет в БД"
@@ -71,9 +54,7 @@ def process_water_consumption_single(form_data: dict) -> OperationResult:
 def send_quarter(form_data: any):
     print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
     water_point_id = form_data["waterPointId"]
-    # water_point_name = form_data["waterObject"][""]
     pprint.pprint(form_data)
-    # water_object_code = form_data["waterObjectCode"]
     quarter = form_data["quarter"]
     report_data = form_data["data"]
 
@@ -83,11 +64,10 @@ def send_quarter(form_data: any):
         3: [Month.JULY, Month.AUGUST, Month.SEPTEMBER],
         4: [Month.OCTOBER, Month.NOVEMBER, Month.DECEMBER],
     }
-
-    months = month_mapping.get(quarter, [])
+    months = month_mapping.get(quarter)
     if not months:
         raise ValueError(f"Invalid quarter: {quarter}")
-    # Создаем словарь для сопоставления категорий с их значениями
+
     category_mapping = {
         "fact": ConsumersCategories.ACTUAL,
         "population": ConsumersCategories.POPULATION,
@@ -96,22 +76,19 @@ def send_quarter(form_data: any):
 
     for month, data in zip(months, report_data):
         for category_key, value in data.items():
-            if category_key in category_mapping:
-                entry = {
-                    "category": category_mapping[category_key],
-                    "month": month,
-                    "value": value,
-                    "water_point_id": water_point_id
-                }
-                # result = add_to(WaterConsumptionLogByCategories.__tablename__, entry)
-                # if result.status != OperationStatus.SUCCESS:
-                #     return result
-                if not create_record_entity(WaterConsumptionLogByCategories, entry):
-                    return OperationResult(
-                        status=OperationStatus.DATABASE_ERROR,
-                        msg=f"Ошибка в create_record_entity для {tablename}"
-                    )
-
+            if category_key not in category_mapping:
+                continue
+            entry = {
+                "category": category_mapping[category_key],
+                "month": month,
+                "value": value,
+                "water_point_id": water_point_id
+            }
+            if not create_record_entity(WaterConsumptionLogByCategories, entry):
+                return OperationResult(
+                    status=OperationStatus.DATABASE_ERROR,
+                    msg=f"Ошибка в create_record_entity для {WaterConsumptionLogByCategories.__tablename__}"
+                )
     return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
 
 

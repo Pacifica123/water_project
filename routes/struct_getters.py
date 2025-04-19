@@ -1,12 +1,10 @@
 from utils.backend_utils import *
 from utils.db_utils import *
-
 from sqlalchemy import inspect, types
 from datetime import date, datetime
 from db.crudcore import *
 from db.models import *
 from db import models
-
 from sqlalchemy import Enum
 import sys
 import pprint
@@ -18,92 +16,89 @@ def organisations_familiar_by_mf(filters: dict) -> OperationResult:
     :param filters: ожидается org_id
     :return: OperationResult с отфильтрованными данными.
     """
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
-    from utils.db_utils import  replace_fks
-    res_data = {
-        "orgs": [],
-        "points": []
-    }
-    #  Получаем все точки
-    org_id = int(filters.get("org_id"))
-    all_point = get_all_by_foreign_key(WaterPoint, "organisation_id", org_id)
-    if all_point.status != OperationStatus.SUCCESS:
-        return all_point
-    all_point_fks = replace_fks(all_point, WaterPoint.__tablename__)
-    if all_point_fks.status != OperationStatus.SUCCESS:
-        return all_point_fks
-    all_point_enum_processed = process_enums([convert_to_dict(point) for point in all_point_fks.data], True)
-    res_data["points"] = all_point_enum_processed
-    # res_data["points"] = all_point.data
-    #  Получаем все журналы
-    logs = [get_all_by_foreign_key(WaterConsumptionLog, "point_id", p.id) for p in all_point.data]
-    all_logs = []
-    for res in logs:
-        if res.status == OperationStatus.SUCCESS:
-            all_logs.extend(res.data)
-        else:
-            print_operation_result(res)
-            pass
-    #  Достаем из них организации
-    exploitation_org_ids = set()
-    for log in all_logs:
-        if hasattr(log, "exploitation_org_id") and log.exploitation_org_id is not None:
-            exploitation_org_ids.add(log.exploitation_org_id)
+    from utils.db_utils import replace_fks
 
-    # Получаем организации по id
+    org_id = filters.get("org_id")
+    if org_id is None:
+        return OperationResult(status=OperationStatus.FAILURE, data="org_id is required")
+    try:
+        org_id = int(org_id)
+    except ValueError:
+        return OperationResult(status=OperationStatus.FAILURE, data="org_id must be an integer")
+    # Получаем все точки организации
+    points_res = get_all_by_foreign_key(WaterPoint, "organisation_id", org_id)
+    if points_res.status != OperationStatus.SUCCESS:
+        return points_res
+    points_fks_res = replace_fks(points_res, WaterPoint.__tablename__)
+    if points_fks_res.status != OperationStatus.SUCCESS:
+        return points_fks_res
+    points_data = process_enums([convert_to_dict(p) for p in points_fks_res.data], True)
+    # Собираем все point_id для логов
+    point_ids = [p.id for p in points_res.data]
+    # Получаем все логи по всем точкам
+    logs = []
+    for pid in point_ids:
+        log_res = get_all_by_foreign_key(WaterConsumptionLog, "point_id", pid)
+        if log_res.status == OperationStatus.SUCCESS:
+            logs.extend(log_res.data)
+        else:
+            print_operation_result(log_res)
+    exploitation_org_ids = {log.exploitation_org_id for log in logs if getattr(log, "exploitation_org_id", None) is not None}
     orgs = []
-    for org_id in exploitation_org_ids:
-        org_res = get_all_by_foreign_key(Organisations, "id", org_id)
+    for eid in exploitation_org_ids:
+        org_res = get_all_by_foreign_key(Organisations, "id", eid)
         if org_res.status == OperationStatus.SUCCESS:
             orgs.extend(org_res.data)
         else:
             print_operation_result(org_res)
-            pass
-    orgsd = [convert_to_dict(o) for o in orgs]
-    res_data["orgs"] = orgsd
-    # res_data["orgs"] = orgs
-
-    return OperationResult(status=OperationStatus.SUCCESS, data=res_data)
+    return OperationResult(
+        status=OperationStatus.SUCCESS,
+        data={
+            "orgs": [convert_to_dict(o) for o in orgs],
+            "points": points_data,
+        },
+    )
 
 
 def log_datails_by_mf(filters: dict) -> OperationResult:
     """
-    Функция для получения подробное информации о записях журнала
+    Функция для получения подробной информации о записях журнала
     :param filters: ожидается log_id.
     :return: OperationResult с отфильтрованными данными.
     """
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    def check_status(result: OperationResult) -> OperationResult | None:
+        if result.status != OperationStatus.SUCCESS:
+            return result
+        return None
+
+    print(f"===== Зашло в функцию {sys._getframe().f_code.co_name} =====")
+    log_id = filters.get("log_id")
+    if not log_id:
+        return OperationResult(OperationStatus.FAILURE, message="log_id не передан в фильтрах")
+    # Получаем запись журнала
+    headlog = get_record_by_id(WaterConsumptionLog, log_id)
+    error = check_status(headlog)
+    if error:
+        return error
+    # Получаем организацию
+    org = get_record_by_id(Organisations, headlog.data.exploitation_org_id)
+    error = check_status(org)
+    if error:
+        return error
+    # Получаем записи WCL
+    logres = get_all_by_foreign_key(RecordWCL, "log_id", log_id)
+    if logres.status != OperationStatus.SUCCESS and "Не найдено ни одной записи" not in logres.message:
+        return logres
     res_data = {
         "exploitation_org": {
-            "id": 0,
-            "organisation_name": "_notfound_"
+            "id": org.data.id,
+            "organisation_name": org.data.organisation_name,
         },
-        "wcl_list": []
+        "wcl_list": [convert_to_dict(r) for r in logres.data] if logres.data else [],
     }
-    log_id = filters.get("log_id")
-    headlog = get_record_by_id(WaterConsumptionLog, log_id)
-    if headlog.status != OperationStatus.SUCCESS:
-        return headlog
-    org = get_record_by_id(Organisations, headlog.data.exploitation_org_id)
-    if org.status != OperationStatus.SUCCESS:
-        return org
-    res_data["exploitation_org"]["id"] = org.data.id
-    res_data["exploitation_org"]["organisation_name"] = org.data.organisation_name
-
-    logres = get_all_by_foreign_key(RecordWCL, "log_id", log_id)
-    #  отсутствие записей допустимо:
-    if logres.status != OperationStatus.SUCCESS and not ("Не найдено ни одной записи" in logres.message):
-        return logres
-    print_operation_result(logres)
-    if len(logres.data) == 0 or len(logres.data) is None:
-        res_data["wcl_list"] = []
-    else:
-        wcl_list = [convert_to_dict(record_wcl) for record_wcl in logres.data]
-        res_data["wcl_list"] = wcl_list
-    print_data_in_func(res_data, "log_datails_by_mf")
-    print(f" ===== Вышло из функции {sys._getframe().f_code.co_name} ===== ")
+    print_data_in_func(res_data, "log_details_by_mf")
+    print(f"===== Вышло из функции {sys._getframe().f_code.co_name} =====")
     return OperationResult(OperationStatus.SUCCESS, data=res_data)
-
 
 
 def waterlogs_by_mf(filters: dict) -> OperationResult:
@@ -113,7 +108,8 @@ def waterlogs_by_mf(filters: dict) -> OperationResult:
     :param filters: ожидается role.
     :return: OperationResult с отфильтрованными данными.
     """
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
+
     wpoints = get_all_from_table(WaterPoint).data
     water_object_refs = get_all_from_table(WaterObjectRef).data
     codes = get_all_from_table(Codes).data
@@ -127,6 +123,10 @@ def waterlogs_by_mf(filters: dict) -> OperationResult:
     from utils.db_utils import process_water_consumption_logs_fks, replace_fks
     role = filters.get('role')
     org_id = filters.get('org_id')
+    if role is None:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Отсутствует role в фильтрах")
+    if role == "UserRoles.EMPLOYEE" and org_id is None:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Отсутствует org_id в фильтрах для EMPLOYEE")
     logs = get_all_from_table(WaterConsumptionLog)
     result = replace_fks(logs, 'water_consumption_log')
     final_result = process_water_consumption_logs_fks(logs)
@@ -165,28 +165,71 @@ def waterlogs_by_mf(filters: dict) -> OperationResult:
                 if organisation:
                     log['point_id']['organisation_id'] = organisation
 
-    match role:
-        case "UserRoles.ADMIN":
-            return final_result
-        case "UserRoles.ORG_ADMIN":
-            return final_result
-        case "UserRoles.REPORT_ADMIN":
-            return final_result
-        case "UserRoles.EMPLOYEE":
-            if org_id is None:
-                return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Отсутствует org_id в фильтрах для EMPLOYEE")
-
-            # Фильтруем по org_id для EMPLOYEE
-
-            # pprint.pprint(final_result.data[0].get('point_id'))
-            filtered_logs = [log for log in final_result.data if log.get('point_id', {}).get('organisation_id', {}).get('id') == int(org_id)]
-            return OperationResult(status=OperationStatus.SUCCESS, data=filtered_logs)
-        case _:
-            return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Отсутствует role в фильтрах")
+    if role in ["UserRoles.ADMIN", "UserRoles.ORG_ADMIN", "UserRoles.REPORT_ADMIN"]:
+        return final_result
+    elif role == "UserRoles.EMPLOYEE":
+        if org_id is None:
+            return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Отсутствует org_id в фильтрах для EMPLOYEE")
+        # Фильтруем по org_id для EMPLOYEE
+        filtered_logs = [log for log in final_result.data if log.get('point_id', {}).get('organisation_id', {}).get('id') == int(org_id)]
+        return OperationResult(status=OperationStatus.SUCCESS, data=filtered_logs)
+    else:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Неизвестная role в фильтрах")
 
 
-
-
+# def permisionpointlink_by_mf(filters: dict) -> OperationResult:
+#     """
+#     Функция для получения связок разрешений точек забора/сброса по фильтрам.
+#
+#     :param filters: ожидается organisation_id.
+#     :return: OperationResult с отфильтрованными данными.
+#     """
+#
+#     # Шаг 1: Извлечь organisation_id из словаря filters
+#     organisation_id = filters.get('organisation_id')
+#     if organisation_id is None:
+#         return OperationResult(
+#             OperationStatus.UNDEFINE_ERROR,
+#             msg="Отсутствует organisation_id в фильтрах")
+#
+#     # Шаг 2: Получить все записи WaterPoint
+#     water_points_result = get_all_from_table(WaterPoint)
+#     if water_points_result.status != OperationStatus.SUCCESS:
+#         return OperationResult(
+#             water_points_result.status,
+#             msg=water_points_result.message)
+#
+#     # Шаг 3: Отфильтровать записи WaterPoint по organisation_id
+#     filtered_water_points = [point for point in water_points_result.data if point.organisation_id == int(organisation_id)]
+#
+#     # Шаг 4: Получить все записи PointPermissionLink
+#     point_permission_links_result = get_all_from_table(PointPermissionLink)
+#     if point_permission_links_result.status != OperationStatus.SUCCESS:
+#         return OperationResult(
+#             point_permission_links_result.status,
+#             msg=point_permission_links_result.message)
+#
+#     # Шаг 5: Отфильтровать записи PointPermissionLink
+#     # по совпадению с отфильтрованными WaterPoint
+#     filtered_point_permission_links = [
+#         link for link in point_permission_links_result.data
+#         if link.point_id in [point.id for point in filtered_water_points]
+#     ]
+#     pprint.pprint(filtered_point_permission_links)
+#     from utils.db_utils import replace_fks
+#     result_with_replaced_fks = replace_fks(
+#         OperationResult(
+#             OperationStatus.SUCCESS,
+#             data=filtered_point_permission_links),
+#         'point_permission_link')
+#
+#     if result_with_replaced_fks.status != OperationStatus.SUCCESS:
+#         return result_with_replaced_fks
+#     converted_links = [convert_to_dict(link) for link in result_with_replaced_fks.data]
+#
+#     return OperationResult(
+#         OperationStatus.SUCCESS,
+#         data=converted_links)
 def permisionpointlink_by_mf(filters: dict) -> OperationResult:
     """
     Функция для получения связок разрешений точек забора/сброса по фильтрам.
@@ -194,126 +237,107 @@ def permisionpointlink_by_mf(filters: dict) -> OperationResult:
     :param filters: ожидается organisation_id.
     :return: OperationResult с отфильтрованными данными.
     """
-
-    # Шаг 1: Извлечь organisation_id из словаря filters
     organisation_id = filters.get('organisation_id')
     if organisation_id is None:
-        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg="Отсутствует organisation_id в фильтрах")
+        return OperationResult(
+            OperationStatus.UNDEFINE_ERROR,
+            msg="Отсутствует organisation_id в фильтрах"
+        )
 
-    # Шаг 2: Получить все записи WaterPoint
+    try:
+        organisation_id = int(organisation_id)
+    except (ValueError, TypeError):
+        return OperationResult(
+            OperationStatus.UNDEFINE_ERROR,
+            msg="organisation_id должен быть целым числом"
+        )
+
+    # Получаем все точки забора/сброса
     water_points_result = get_all_from_table(WaterPoint)
-
     if water_points_result.status != OperationStatus.SUCCESS:
-        return OperationResult(water_points_result.status, msg=water_points_result.message)
+        return water_points_result
 
-    # Шаг 3: Отфильтровать записи WaterPoint по organisation_id
-    filtered_water_points = [point for point in water_points_result.data if point.organisation_id == int(organisation_id)]
+    # Фильтруем точки по organisation_id и собираем их id в множество для быстрого поиска
+    water_point_ids = {wp.id for wp in water_points_result.data if wp.organisation_id == organisation_id}
+    if not water_point_ids:
+        # Если нет точек для данной организации, возвращаем пустой результат
+        return OperationResult(OperationStatus.SUCCESS, data=[])
 
-    pprint.pprint(filtered_water_points)
-
-    # Шаг 4: Получить все записи PointPermissionLink
+    # Получаем все связи разрешений
     point_permission_links_result = get_all_from_table(PointPermissionLink)
-
     if point_permission_links_result.status != OperationStatus.SUCCESS:
-        return OperationResult(point_permission_links_result.status, msg=point_permission_links_result.message)
+        return point_permission_links_result
 
-    # Шаг 5: Отфильтровать записи PointPermissionLink по совпадению с отфильтрованными WaterPoint
-    filtered_point_permission_links = [
-        link for link in point_permission_links_result.data
-        if link.point_id in [point.id for point in filtered_water_points]
-    ]
-    pprint.pprint(filtered_point_permission_links)
+    # Фильтруем связи, оставляя только те, которые относятся к выбранным точкам
+    filtered_links = [link for link in point_permission_links_result.data if link.point_id in water_point_ids]
 
-    # Применить функцию replace_fks
+    # Заменяем внешние ключи (FK)
     from utils.db_utils import replace_fks
-    result_with_replaced_fks = replace_fks(OperationResult(OperationStatus.SUCCESS, data=filtered_point_permission_links), 'point_permission_link')
+    replaced_result = replace_fks(
+        OperationResult(OperationStatus.SUCCESS, data=filtered_links),
+        'point_permission_link'
+    )
+    if replaced_result.status != OperationStatus.SUCCESS:
+        return replaced_result
 
-    if result_with_replaced_fks.status != OperationStatus.SUCCESS:
-        return result_with_replaced_fks
-
-    # Преобразовать каждую запись в словарь
-    converted_links = [convert_to_dict(link) for link in result_with_replaced_fks.data]
+    # Конвертируем объекты в словари
+    converted_links = [convert_to_dict(link) for link in replaced_result.data]
 
     return OperationResult(OperationStatus.SUCCESS, data=converted_links)
 
 
-
 def get_enum_options(enum_type: str) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
-
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     try:
         enum_class = getattr(models, enum_type)
         if not enum_class:
-            return OperationResult(OperationStatus.VALIDATION_ERROR, msg=f"ENUM '{enum_type}' не найден")
+            return OperationResult(
+                OperationStatus.VALIDATION_ERROR,
+                msg=f"ENUM '{enum_type}' не найден")
 
-        return OperationResult(OperationStatus.SUCCESS, data=[{'value': e.value, 'label': e.name} for e in enum_class])
+        return OperationResult(
+            OperationStatus.SUCCESS,
+            data=[{'value': e.value, 'label': e.name} for e in enum_class])
 
     except Exception as e:
         return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
 
 def handle_schema(modelName: str) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    import sys
     from utils.db_utils import format_options
     try:
-        # Ищем класс модели по __tablename__
-        model_class = None
-        for name, obj in globals().items():
-            if hasattr(obj, "__tablename__") and obj.__tablename__ == modelName:
-                model_class = obj
-                break
-
+        print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
+        # Кэш моделей по __tablename__ для быстрого поиска
+        models_by_tablename = {
+            obj.__tablename__: obj
+            for obj in globals().values()
+            if hasattr(obj, "__tablename__")
+        }
+        model_class = models_by_tablename.get(modelName)
         if model_class is None:
-            raise ValueError(f"Не найден класс модели для таблицы {modelName}")
-
-        # Используем model.__table__.columns для доступа к столбцам
-        columns = model_class.__table__.columns
-
+            raise ValueError(f"Не найдена модель для таблицы {modelName}")
         schema = []
-        for column in columns:
+        for column in model_class.__table__.columns:
             field = {
                 "field": column.name,
-                "type": str(column.type),
-                "foreignKey": False,
-                "isEnum": False,
-                "enumType": None,
+                "type": "ENUM" if isinstance(column.type, Enum) else str(column.type),
+                "foreignKey": bool(column.foreign_keys),
+                "isEnum": isinstance(column.type, Enum),
+                "enumType": getattr(column.type, "enum_class", None).__name__ if isinstance(column.type, Enum) else None,
                 "options": []
             }
-
-            # Проверяем, является ли столбец внешним ключом
-            if column.foreign_keys:
-                field["foreignKey"] = True
-
-                # Получаем записи из связанной таблицы
-                related_table_name = list(column.foreign_keys)[0].column.table.name
-                related_model_class = None
-                for name, obj in globals().items():
-                    if hasattr(obj, "__tablename__") and obj.__tablename__ == related_table_name:
-                        related_model_class = obj
-                        break
-
+            if field["foreignKey"]:
+                related_table_name = next(iter(column.foreign_keys)).column.table.name
+                related_model_class = models_by_tablename.get(related_table_name)
                 if related_model_class is None:
                     raise ValueError(f"Не найден класс модели для таблицы {related_table_name}")
 
                 related_records_result = get_all_from_table(related_model_class)
-
                 if related_records_result.status == OperationStatus.SUCCESS:
-                    related_records = related_records_result.data
-                    # Формируем опции, используя комбинацию полей
-                    field["options"] = format_options(related_records, related_model_class)
-
-            # Обнаружение ENUM типа
-            if isinstance(column.type, Enum):
-
-                field.update({
-                    "type": "ENUM",
-                    "isEnum": True,
-                    "enumType": column.type.enum_class.__name__
-                })
-
+                    field["options"] = format_options(related_records_result.data, related_model_class)
             schema.append(field)
 
-        # Возвращаем результат только после обработки всех столбцов
         return OperationResult(OperationStatus.SUCCESS, data=schema)
 
     except Exception as e:
@@ -322,48 +346,48 @@ def handle_schema(modelName: str) -> OperationResult:
 
 
 def get_water_logs(filter_k: str, filter_v: any) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     try:
-        # 0) Сначала получить пункт учета и его id нужно:
-        print(f"Ключ фильтра в get_water_logs такой: {filter_k}")
-        print(f"Значение фильтра в get_water_logs такой: {filter_v}")
-        if "°" in str(filter_v) and str(filter_k) == "point_id":
-            point_try = get_all_by_foreign_key(WaterPoint, "latitude_longitude", filter_v)
-            if point_try.status != OperationStatus.SUCCESS:
-                pprint.pprint(point_try)
-                return point_try
-            point_id = point_try.data[0].id
-            print(f"айдишка пункта учета - {point_id}")
+        print(f"Ключ фильтра: {filter_k}, Значение фильтра: {filter_v}")
 
-            # 1) Получить журналы учета водопотребления (скорее всего по пункту учета)
-            logs = get_all_by_foreign_key(WaterConsumptionLog, "point_id", point_id)
-            if logs.status != OperationStatus.SUCCESS:
-                pprint.pprint(logs)
-                return logs
-
-            # 2) Для каждого журнала получить записи
-            log_data = []
-            for log in logs.data:
-                records = get_all_by_foreign_key(RecordWCL, "log_id", log.id)
-                if records.status != OperationStatus.SUCCESS:
-                    pprint.pprint(records)
-                    return records
-
-                # 3) Дополнительные данные (точка водозабора, организация)
-                point = get_record_by_id(WaterPoint, point_id)
-                org = get_all_by_foreign_key(Organisations, "id", log.exploitation_org_id).data[0]
-
-                # 4) Компонуем данные
-                log_data.append({
-                    'log': log,
-                    'records': records.data,
-                    'water_point': point,
-                    'organisation': org
-                })
-
-            return OperationResult(OperationStatus.SUCCESS, data=log_data)
-        else:
+        if filter_k != "point_id" or "°" not in str(filter_v):
             return OperationResult(OperationStatus.NOT_REALIZED)
+
+        # Получаем пункт учета по latitude_longitude
+        point_result = get_all_by_foreign_key(WaterPoint, "latitude_longitude", filter_v)
+        if point_result.status != OperationStatus.SUCCESS:
+            pprint.pprint(point_result)
+            return point_result
+        point_id = point_result.data[0].id
+        # Получаем точку водозабора один раз
+        point = get_record_by_id(WaterPoint, point_id)
+        # Получаем журналы по пункту учета
+        logs_result = get_all_by_foreign_key(WaterConsumptionLog, "point_id", point_id)
+        if logs_result.status != OperationStatus.SUCCESS:
+            pprint.pprint(logs_result)
+            return logs_result
+        log_data = []
+        for log in logs_result.data:
+            records_result = get_all_by_foreign_key(RecordWCL, "log_id", log.id)
+            if records_result.status != OperationStatus.SUCCESS:
+                pprint.pprint(records_result)
+                return records_result
+
+            org_result = get_all_by_foreign_key(Organisations, "id", log.exploitation_org_id)
+            if org_result.status != OperationStatus.SUCCESS or not org_result.data:
+                pprint.pprint(org_result)
+                return org_result
+
+            organisation = org_result.data[0]
+
+            log_data.append({
+                'log': log,
+                'records': records_result.data,
+                'water_point': point,
+                'organisation': organisation
+            })
+
+        return OperationResult(OperationStatus.SUCCESS, data=log_data)
 
     except Exception as e:
         print(f"Error in get_water_logs: {e}")
@@ -371,39 +395,47 @@ def get_water_logs(filter_k: str, filter_v: any) -> OperationResult:
 
 
 def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
+    def check_status(result):
+        if result.status != OperationStatus.SUCCESS:
+            pprint.pprint(result)
+            return False
+        return True
     try:
-        # 1) Добыча точек водозабора
+        # 1) Получаем точки водозабора
         points = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
-        if points.status != OperationStatus.SUCCESS:
-            pprint.pprint(points)
+        if not check_status(points):
             return points
-#         2) Для каждой точки ищем по внешключу связку точка-разрешенеи
-        consumption_data = []
-        for p in points.data:
-            links = get_all_by_foreign_key(PointPermissionLink, "point_id", p.id)
-            if links.status != OperationStatus.SUCCESS:
-                pprint.pprint(links)
-                return links
 
-#         3) Через каждую связку достать разрешение
+        consumption_data = []
+
+        for p in points.data:
+            # 2) Получаем связки точка-разрешение
+            links = get_all_by_foreign_key(PointPermissionLink, "point_id", p.id)
+            if not check_status(links):
+                return links
+            # 3) Для каждой связки получаем разрешение и организацию
             for l in links.data:
                 permissions = get_all_by_foreign_key(Permissions, "id", l.permission_id)
-                if permissions.status != OperationStatus.SUCCESS:
-                    pprint.pprint(permissions)
+                if not check_status(permissions):
                     return permissions
                 permission = permissions.data[0]
-                org = get_all_by_foreign_key(Organisations, "id", permission.organisation_id).data
-#         4) Через организацию еще достать приборы
-            meter = get_all_by_foreign_key(Meters, "id", p.organisation_id).data
-
-#         5) компонуем
-            consumption_data.append({
-                'water_point': p,
-                'permission': permission,
-                'organisation': org,
-                'meter': meter
-            })
+                org_result = get_all_by_foreign_key(Organisations, "id", permission.organisation_id)
+                if not check_status(org_result):
+                    return org_result
+                org = org_result.data[0]
+                # 4) Получаем приборы через организацию (возможно, тут ошибка в исходном коде, там p.organisation_id, а не org.id)
+                meters_result = get_all_by_foreign_key(Meters, "organisation_id", org.id)
+                if not check_status(meters_result):
+                    return meters_result
+                meters = meters_result.data
+                # 5) Формируем результат
+                consumption_data.append({
+                    'water_point': p,
+                    'permission': permission,
+                    'organisation': org,
+                    'meter': meters
+                })
         return OperationResult(OperationStatus.SUCCESS, data=consumption_data)
 
     except Exception as e:
@@ -412,9 +444,9 @@ def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
 
 
 def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     try:
-        # ищем по point_id скорее всего
+        # ищем по point_id (скорее всего)
         logs = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
         if logs.status != OperationStatus.SUCCESS:
             pprint.pprint(logs)
@@ -423,26 +455,16 @@ def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
         if replace_logs.status != OperationStatus.SUCCESS:
             pprint.pprint(replace_logs)
         return replace_logs
-
     except Exception as e:
-        print("в get_header_for_e31_32 что-то сломалось")
-        print(e)
+        print(f"в get_header_for_e31_32 что-то сломалось {e}")
 
 
 def get_orgstatistics(org_id) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     print("Организаци №", org_id)
-    # Получаем все записи WaterPoint из БД
     result = get_all_from_table(WaterPoint)
-
     if result.status != OperationStatus.SUCCESS:
-        return result  # Возвращаем ошибку, если она произошла
-
-    # Фильтруем записи по org_id
+        return result
     filtered_points = [point for point in result.data if point.organisation_id == int(org_id)]
-
-    # Создаём словарь с количеством точек
     result_dict = {"point_count": len(filtered_points)}
-
-    # Возвращаем результат
     return OperationResult(OperationStatus.SUCCESS, data=result_dict)

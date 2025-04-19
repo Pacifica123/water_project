@@ -1,13 +1,9 @@
 from flask import Blueprint
-
-# from data.examples import unwanted_columns
 from db.crudcore import *
 from db.models import *
 from utils.backend_chain_validation import validate_data
 from utils.backend_utils import *
 from utils.db_utils import (replace_fks, try_create_code, get_all_models)
-# import pprint
-
 from routes.struct_getters import *
 from routes.struct_senders import *
 
@@ -19,7 +15,7 @@ import sys
 
 
 def get_users() -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     employees = read_all_employees()
     if not employees:
         return OperationResult(
@@ -35,22 +31,18 @@ def get_users() -> OperationResult:
 
 
 def backend_login(username: str, password: str) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     employee = find_employee_by_username(username)
-
     if employee is None:
         return OperationResult(
             status=OperationStatus.AUTHENTICATION_ERROR,
             msg="Пользователь не найден"
         )
-
-    # Проверка пароля
     if employee.password != password:
         return OperationResult(
             status=OperationStatus.AUTHENTICATION_ERROR,
             msg="Неверный пароль"
         )
-
     return OperationResult(
         status=OperationStatus.SUCCESS,
         msg="авторизация завершилась успешно",
@@ -59,7 +51,8 @@ def backend_login(username: str, password: str) -> OperationResult:
 
 
 def check_login(username: str, need_role: UserRoles) -> bool:
-    """возвращает True если роль соответствует требуемой или это главный админ
+    """
+    Возвращает True если роль соответствует требуемой или это главный админ
     """
     employee = find_employee_by_username(username)
     if employee.role == need_role or employee.role == UserRoles.ADMIN:
@@ -68,7 +61,7 @@ def check_login(username: str, need_role: UserRoles) -> bool:
 
 
 def edit_or_add_employee(user_data) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     username = user_data.get('username')
     if username:
         emply = find_employee_by_username(username)
@@ -88,7 +81,7 @@ def edit_or_add_employee(user_data) -> OperationResult:
 
 
 def get_all_record_from(tablename: str) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
     res = get_all_from_table(cls)
     print_operation_result(res)
@@ -96,89 +89,76 @@ def get_all_record_from(tablename: str) -> OperationResult:
 
 
 def get_single_with_mf(tablename: str, filters: dict) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
-
-    # Вызов функции для получения всех записей
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     result = get_all_record_from(tablename)
-
     if result.status != OperationStatus.SUCCESS:
         return result
-
-    # Преобразование данных в список словарей
     data = [convert_to_dict(record) for record in result.data]
-
-    # Фильтрация данных
-    filtered_data = []
-    for record in data:
-        is_match = True
-        for key, value in filters.items():
-            if key not in record or record[key] != value:
-                is_match = False
-                break
-        if is_match:
-            filtered_data.append(record)
-
-    # Обработка результатов
+    filtered_data = [
+        record for record in data
+        if all(record.get(k) == v for k, v in filters.items())
+    ]
     if not filtered_data:
-        return OperationResult(OperationStatus.SUCCESS, msg="Нет записей, удовлетворяющих фильтрам", data=filtered_data)
+        return OperationResult(
+            OperationStatus.SUCCESS,
+            msg="Нет записей, удовлетворяющих фильтрам",
+            data=filtered_data
+        )
+    return OperationResult(
+        OperationStatus.SUCCESS,
+        msg="Данные успешно получены и отфильтрованы",
+        data=filtered_data
+    )
 
-    return OperationResult(OperationStatus.SUCCESS, msg="Данные успешно получены и отфильтрованы", data=filtered_data)
 
-
-def add_to(tablename: str, data) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+def add_to(tablename: str, data: Dict[str, Any]) -> OperationResult:
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     cls = validate_data('model_exist', get_model_class_by_tablename(tablename))
     resdata = []
 
-    if tablename == "organisations":
-        # 1. Получить organization_code из data
-        organization_code = data.get('organization_code')
-
-        if not organization_code:
-            return OperationResult(
-                status=OperationStatus.VALIDATION_ERROR,
-                msg="Отсутствует organization_code в данных"
-            )
-
-        # 2. Проверить, существует ли уже такой код
-        existing_code_result = try_create_code(organization_code, CodeType.ORGANISATION_CODE_GUIV, data.get('organisation_name'))
-
-        if existing_code_result.status != OperationStatus.SUCCESS:
-            return existing_code_result
-
-        # 3. Получить id созданного кода
-        code_id = existing_code_result.data.get('id')
-
-        if not code_id:
-            return OperationResult(
-                status=OperationStatus.UNDEFINE_ERROR,
-                msg="Не удалось получить id созданного кода"
-            )
-
-        # 4. Пересобрать data с новым organization_code
-        data['organization_code'] = code_id
-
-        if create_record_entity(cls, data):
-            # 5. Создать пользователя EMPLOYEE для организации
-            org_id = get_last_record_id(Organisations)
-            data['organisation_id'] = org_id
-            resdata = create_org_user(data)
-            if resdata.status != OperationStatus.SUCCESS:
-                return resdata
-            else:
-                resdata = resdata.data
-            return OperationResult(
-                status=OperationStatus.SUCCESS,
-                msg=f"Запись успешно добавилась в БД {tablename}",
-                data=resdata
-            )
-
+    def db_error_result():
         return OperationResult(
             status=OperationStatus.DATABASE_ERROR,
             msg=f"Ошибка при создании записи в {tablename} или запись уже существует или такой сущности нет в БД",
             data=resdata
         )
 
+    if tablename == "organisations":
+        organization_code = data.get('organization_code')
+        if not organization_code:
+            return OperationResult(
+                status=OperationStatus.VALIDATION_ERROR,
+                msg="Отсутствует organization_code в данных"
+            )
+        existing_code_result = try_create_code(
+            organization_code,
+            CodeType.ORGANISATION_CODE_GUIV,
+            data.get('organisation_name')
+        )
+        if existing_code_result.status != OperationStatus.SUCCESS:
+            return existing_code_result
+        code_id = existing_code_result.data.get('id')
+        if not code_id:
+            return OperationResult(
+                status=OperationStatus.UNDEFINE_ERROR,
+                msg="Не удалось получить id созданного кода"
+            )
+        data['organization_code'] = code_id
+
+        if not create_record_entity(cls, data):
+            return db_error_result()
+        # Создать пользователя EMPLOYEE для организации
+        org_id = get_last_record_id(Organisations)
+        data['organisation_id'] = org_id
+        resdata = create_org_user(data)
+        if resdata.status != OperationStatus.SUCCESS:
+            return resdata
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            msg=f"Запись успешно добавилась в БД {tablename}",
+            data=resdata.data
+        )
+    # Общий случай для всех остальных таблиц
     if create_record_entity(cls, data):
         return OperationResult(
             status=OperationStatus.SUCCESS,
@@ -186,19 +166,14 @@ def add_to(tablename: str, data) -> OperationResult:
             data=resdata
         )
 
-    return OperationResult(
-        status=OperationStatus.DATABASE_ERROR,
-        msg=f"Ошибка при создании записи в {tablename} или запись уже существует или такой сущности нет в БД",
-        data=resdata
-    )
+    return db_error_result()
 
 
 def update_record_in(tablename: str, record_id: int, data: dict) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     cls = get_model_class_by_tablename(tablename)
     if cls is None:
         return OperationResult(status=OperationStatus.UNDEFINE_ERROR)
-
     required_fields = get_required_fields(cls)
     res = update_record(cls, record_id, data, required_fields)
     print_data_in_func(res.status, "update_record_in")
@@ -219,7 +194,7 @@ def delete_users(tablename: str, users_id: int) -> OperationResult:
 
 
 def get_structs_mf(selected_template: str, filters: dict) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     pprint.pprint(filters)
     match selected_template:
         case "permisionpointlink":
@@ -235,14 +210,14 @@ def get_structs_mf(selected_template: str, filters: dict) -> OperationResult:
 
 
 def get_structs(selected_template: str, filter_k: str, filter_v: any) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     match selected_template:
         case "point_consumption":
-            return get_points_consumption(filter_k, filter_v)
+            return get_points_consumption(filter_k, filter_v) # это не используется?
         case "exel31_32":
             return get_header_for_e31_32(filter_k, filter_v)
         case "water_logs":
-            return get_water_logs(filter_k, filter_v)
+            return get_water_logs(filter_k, filter_v) # это не используется?
         case "allModels":
             return get_all_models()
         case modelname if selected_template.startswith("schema_"):
@@ -258,35 +233,11 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
 
 
-# def get_fdata_by_selected(selected_template: str) -> OperationResult:
-#     """Возвращает необходимые данные для формы заполнения."""
-#     tables = {
-#         'accounting_for_water_consumption': ['organisation', 'water_point', 'devices', 'water_body'],
-#         'excel_template_3.1': ['organisation', 'water_pool', 'organisation_hydrounit_codes', 'water_area', 'permissions', 'device_brand', 'devices', 'water_body', 'water_treatment', 'sampling_location', 'surface_water_withdrawal'],
-#         'excel_template_3.2': ['organisation', 'water_pool', 'organisation_hydrounit_codes', 'water_area', 'permissions', 'device_brand', 'devices', 'water_body'],
-#         'Payment_calculation': []
-#     }.get(selected_template)
-#
-#     if tables is None:
-#         return OperationResult(OperationStatus.UNDEFINE_ERROR, "Неизвестный шаблон", None)
-#
-#     all_data = {}
-#     for table in tables:
-#         result = get_all_record_from(table)
-#         if result.status == OperationStatus.SUCCESS:
-#             all_data[table] = serialize_to_json(result.data)
-#         else:
-#             print_operation_result(result)
-#             return OperationResult(result.status, f"Ошибка при получении данных из таблицы {table}", None)
-#
-#     return OperationResult(OperationStatus.SUCCESS, "Данные успешно получены", all_data)
-
-
 # --------- send form processing funstions --------- #
 
 
 def form_processing_to_entity(selected_template: str, form_data: any) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     match selected_template:
         case "send_quarter":
             return send_quarter(form_data)
@@ -304,8 +255,9 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
             raise ValueError(f"Неизвестная форма или ее отсутсвие : {selected_template}")
 
 
-
 # ====================== File Processing Functions ======================
+
+
 def save_file_to_db_or_fs(
     filename: str,
     file_bytes: bytes,
@@ -316,10 +268,7 @@ def save_file_to_db_or_fs(
     description: str = None,
     created_by: str = "auto"
 ) -> OperationResult:
-    """
-    Функция сохранения файла
-    """
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     print(f"Параметры: {filename}, {file_type.name}, {mimetype}, {entity_type} = {entity_id}, {created_by}")
     if not is_valid_entity_type(entity_type):
         return OperationResult(OperationStatus.VALIDATION_ERROR, f"Неверный entity_type: {entity_type}")
@@ -343,8 +292,7 @@ def save_file_to_db_or_fs(
     success = create_record_entity(FileRecord, data)
     if success:
         return OperationResult(OperationStatus.SUCCESS, "Файл успешно сохранён")
-    else:
-        return OperationResult(OperationStatus.DATABASE_ERROR, "Ошибка при сохранении файла")
+    return OperationResult(OperationStatus.DATABASE_ERROR, "Ошибка при сохранении файла")
 
 
 def get_files(
@@ -355,9 +303,9 @@ def get_files(
     limit: Optional[int] = 100
 ) -> OperationResult:
     """
-    Функция получения файлов с параметрами фильтрации
+    Возвращает список с инфой о файлах и сами файлы
     """
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
     session = g.session
     try:
         query = session.query(FileRecord).filter(FileRecord.is_deleted == False)

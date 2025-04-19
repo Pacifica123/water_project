@@ -163,7 +163,7 @@ def format_options(records, model_class):
         for col in text_columns:
             value = getattr(record, col)
             print(f"Поле {col}: {value}")
-            if value and str(value) != "[object Object]":
+            if value and str(value) != "[object Object]" and col != "created_by":
                 label_parts.append(str(value))
 
         label = ", ".join(label_parts)  # Используем запятую с пробелом в качестве разделителя

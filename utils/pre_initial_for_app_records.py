@@ -1,5 +1,3 @@
-# from flask import g
-
 from db.models import (
     Codes, User, UserRoles, WaterPoolRef,
     WaterAreaRef, WaterPoint, WaterObjectRef,
@@ -21,7 +19,6 @@ def init_records(session):
     init_sampling_locations(session)
     init_meters_and_brand(session)
     init_permissions(session)     # TODO потом убрать
-#     TODO что?
 
 
 def init_hydrograph_unit_recods(session):
