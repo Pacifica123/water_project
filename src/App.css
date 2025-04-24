@@ -614,6 +614,36 @@ input {
 
 }
 
+.submit-button-org {
+  margin-top: 20px; /* Отступ сверху */
+  margin-left: 10%;
+  padding: 20px;
+  border: 100px;
+  border-radius: 10px;
+  background-color: #28a745;
+  color: white;
+  cursor: pointer;
+
+}
+
+.submit-button-water {
+  margin-top: 20px; /* Отступ сверху */
+  margin-left: 0;
+  padding: 25px;
+  padding-left: 100px;
+  padding-right: 100px;
+  padding-top: 20x;
+  padding-bottom: 25px;
+  text-align: center;
+  font-size: 16px;
+  border: 100px;
+  border-radius: 10px;
+  background-color: #28a745;
+  color: white;
+  cursor: pointer;
+}
+
+
 .edit-button {
   padding: 5px 10px;
   border: none;
@@ -735,6 +765,35 @@ input {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
   z-index: 10000;
   animation: slideFade 3s ease-in-out;
+}
+
+.custom-alert-error {
+  position: fixed;
+  top: 30px;
+  left: 55%;
+  transform: translateX(-50%);
+  background-color: #ffe5e5;
+  color: #b30000;
+  border: 2px solid #ff4d4d;
+  padding: 20px 40px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  animation: slideFade 3s ease-in-out;
+}
+
+.custom-alert-edit {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 15px;
+  border-radius: 5px;
+  z-index: 9999;
+  font-weight: bold;
 }
 
 @keyframes slideFade {
@@ -1017,14 +1076,60 @@ input {
   }
 }
 
-.submit-button-org {
-  margin-top: 20px; /* Отступ сверху */
-  margin-left: 10%;
-  padding: 20px;
-  border: 100px;
-  border-radius: 10px;
-  background-color: #28a745;
-  color: white;
-  cursor: pointer;
+.toast-overlay {
+  position: fixed;
+  top: -100px;
+  left: 100px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 9999;
+}
 
+.toast-box {
+  background-color: white;
+  color: #333;
+  border-radius: 10px;
+  padding: 24px 32px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  text-align: center;
+  animation: fadeInOut 8s ease-in-out forwards;
+  pointer-events: all;
+}
+
+.toast-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.toast-subtitle {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: #555;
+}
+
+.toast-details p {
+  margin: 6px 0;
+  font-size: 15px;
+}
+
+.toast-box.success {
+  border-left: 6px solid #4caf50;
+}
+
+.toast-box.error {
+  border-left: 6px solid #f44336;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); }
 }

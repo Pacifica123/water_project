@@ -5,7 +5,11 @@ import {
   fetchSingleTableDataWithFilters,
   fetchStructDataWithFilters,
 } from "../api/fetch_records";
-import {translate} from "../utils/translations.js"
+import {
+  uploadFileToBackend
+} from "../api/add_files"
+import {translate} from "../utils/translations.js";
+import FileUpload from "./FileUpload";
 
 const AccountingPost = () => {
   const [filteredLogs, setFilteredLogs] = useState([]);
@@ -278,16 +282,51 @@ const AccountingPost = () => {
           </tr>
           </thead>
           <tbody>
-          {logDetails[logId].wcl_list.map((m) => (
-            <tr key={m.measurement_date}>
-            <td>{m.measurement_date}</td>
-            <td>{m.operating_time_days}</td>
-            <td>{m.water_consumption_m3_per_day}</td>
-            <td>{m.person_signature}</td>
-            </tr>
-          ))}
+          {logDetails[logId].wcl_list.map((m) => {
+            // Преобразуем строку даты в объект Date
+            const date = new Date(m.measurement_date);
+            // Форматируем дату в нужный вид, например "дд.мм.гггг"
+            const formattedDate = date.toLocaleDateString('ru-RU', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            });
+
+            return (
+              <tr key={m.measurement_date}>
+              <td>{formattedDate}</td>
+              <td>{m.operating_time_days}</td>
+              <td>{m.water_consumption_m3_per_day}</td>
+              <td>{m.person_signature}</td>
+              </tr>
+            );
+          })}
           </tbody>
+
           </table>
+
+          <FileUpload
+          label="Загрузить PDF-скан"
+          accept="application/pdf"
+          icon="📄"
+          entityType="water_consumption_log"
+          entityId={logId}
+          fileType="MONTH_CLOSURE_SCAN"
+          preview={true}
+          onUpload={uploadFileToBackend}
+          />
+
+          <FileUpload
+          label="Загрузить sig-файл подписи"
+          accept=".sig"
+          icon="🔏"
+          entityType="water_consumption_log"
+          entityId={logId}
+          fileType="SIGNATURE"
+          preview={false}
+          onUpload={uploadFileToBackend}
+          />
+
           </div>
         ) : null
       )}

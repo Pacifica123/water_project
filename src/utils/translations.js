@@ -111,10 +111,42 @@ const translations = {
     "meter_readings": "Показания приборов",
     "operating_time_days": "Время работы прибора",
     "exploitation_org_id": "Эксплуатирующая организация",
+    "HYDROGRAPHIC_UNIT_CODE": "Код гидрографической единицы",
+    "WATER_TYPE_CODE": "Вид водного объекта",
+    "WATER_OBJ_CODE": "Код водного объекта",
+    "WATER_AREA_CODE": "Код Водохозяйственного участка",
+    "WATER_POOL_CODE": "Код водного бассейна",
+    "ORGANISATION_CODE_GUIV": "Государственный учет использования ресурсов",
+    "organization_code": "Код организации",
+    "water_consumption_m3_per_day": "Расход воды м3/сут (тыс.м3)",
+    "person_signature": "Подпись лица осуществляющего учет",
+    // "шаблон": "шаблон",
 };
 
-const translate = (key) => {
-    return translations[key] || key; // Если перевода нет, возвращаем исходную строку
-};
+function translate(key) {
+    if (typeof key !== 'string') return key;
+
+    // Убираем префикс, если есть
+    key = key.replace(/^PermissionType\./, '');
+
+    // Если ключ целиком есть в словаре — возвращаем перевод сразу
+    if (translations.hasOwnProperty(key)) {
+        return translations[key];
+    }
+
+    // Иначе — ищем и заменяем все слова из словаря внутри строки
+    for (const originalWord in translations) {
+        if (translations.hasOwnProperty(originalWord)) {
+            // Создаем регулярное выражение с границами слова
+            const regex = new RegExp(`\\b${originalWord}\\b`, 'g');
+            if (regex.test(key)) {
+                key = key.replace(regex, translations[originalWord]);
+            }
+        }
+    }
+
+    return key;
+}
+
 
 export { translate };

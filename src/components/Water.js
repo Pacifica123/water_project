@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from "react";
 import "../css/Water.css";
+import { useNotification } from "./NotificationContext";
 
 import {fetchStructDataWithFilters} from "../api/fetch_records"
 import {sendFormData} from "../api/add_records"
-
+import {translate} from "../utils/translations"
 
 const Water = () => {
+
+  const {showSuccess, showError} = useNotification();
+
   const orgData = localStorage.getItem("org");
   let orgInfo = {};
 
@@ -17,6 +21,9 @@ const Water = () => {
       orgInfo = {};
     }
   }
+
+
+
 
   const waterPoints = {
     "Пункт 1": "54°20′0″N 37°30′0″E",
@@ -136,7 +143,7 @@ const Water = () => {
 
     try {
       const response = await sendFormData("water_consumption_single", data);
-      alert("Данные успешно отправлены!");
+      showSuccess();
       console.log("ttt", response)
       setFormData({
         organisationName: orgInfo.organisation_name || "",
@@ -153,7 +160,7 @@ const Water = () => {
       });
     } catch (error) {
       console.error("Ошибка отправки данных:", error);
-      alert("Ошибка при отправке данных. Проверьте соединение.");
+      showError();
     }
   };
 
@@ -170,7 +177,6 @@ const Water = () => {
       </div>
     ))}
     </div>
-
     <div className="form-container">
     {activeSection === 1 && (
       <div className="form-step">
@@ -200,7 +206,7 @@ const Water = () => {
       <option value="">Выбрать пункт учета</option>
       {Points.map((obj) => (
         <option key={obj.id} value={obj.latitude_longitude}>
-        {obj.water_body_id.code_obj.code_symbol} - {obj.latitude_longitude} ({obj.point_type})
+        {obj.water_body_id.code_obj.code_symbol} - {obj.latitude_longitude} ({translate(obj.point_type)})
         </option>
       ))}
       </select>
@@ -253,18 +259,7 @@ const Water = () => {
       </label>
       </div>
       <div  style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
-      <button
-      style={{
-        backgroundColor: "#007BFF",
-        color: "white",
-        padding: "20px 300px",
-        fontSize: "18px",
-        border: "none",
-        borderRadius: "8px",
-        cursor: "pointer",
-        transition: "background 0.3s"
-      }}
-
+      <button className="submit-button-water"
       onClick={handleSubmit}
       >
       Отправить

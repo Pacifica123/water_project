@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { sendSingleData } from "../api/add_records";
 import { fetchSingleTableData } from "../api/fetch_records";
 import "../App.css";
+import { translate } from "../utils/translations";
 
 function UsersPage() {
     const [users, setUsers] = useState([]);
@@ -61,8 +62,8 @@ function UsersPage() {
 
     return (
         <div className="users-page-container">
-        <h2>Пользователи и организации</h2>
-        <button onClick={() => setShowForm(!showForm)} className="add-button">
+        <h2>Пользователи системы</h2>
+        {/* <button onClick={() => setShowForm(!showForm)} className="add-button">
         {showForm ? "Скрыть форму" : "Добавить пользователя"}
         </button>
         {showForm && (
@@ -111,34 +112,34 @@ function UsersPage() {
 
             </form>
             </div>
-        )}
-        <table className="info-table">
-        <thead>
-        <tr>
-        <th>Фамилия</th>
-        <th>Имя</th>
-        <th>Отчество</th>
-        <th>Дата рождения</th>
-        <th>Логин</th>
-        <th>Электронная почта</th>
-        <th>Роль</th>
+    )} */}
+    <table className="info-table">
+    <thead>
+    <tr>
+    <th>Фамилия</th>
+    <th>Имя</th>
+    <th>Отчество</th>
+    <th>Дата рождения</th>
+    <th>Логин</th>
+    <th>Электронная почта</th>
+    <th>Роль</th>
+    </tr>
+    </thead>
+    <tbody>
+    {users.map((user, index) => (
+        <tr key={index}>
+        <td>{user.last_name}</td>
+        <td>{user.first_name}</td>
+        <td>{user.middle_name}</td>
+        <td>{user.birth_date}</td>
+        <td>{user.username}</td>
+        <td>{user.email}</td>
+        <td>{translate(user.role)}</td>
         </tr>
-        </thead>
-        <tbody>
-        {users.map((user, index) => (
-            <tr key={index}>
-            <td>{user.last_name}</td>
-            <td>{user.first_name}</td>
-            <td>{user.middle_name}</td>
-            <td>{user.birth_date}</td>
-            <td>{user.username}</td>
-            <td>{user.email}</td>
-            <td>{user.role}</td>
-            </tr>
-        ))}
-        </tbody>
-        </table>
-        </div>
+    ))}
+    </tbody>
+    </table>
+    </div>
     );
 }
 

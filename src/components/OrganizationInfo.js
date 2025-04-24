@@ -6,6 +6,9 @@ import "../App.css";
 function OrganizationInfo() {
     const userData = localStorage.getItem("user");
     const orgData = localStorage.getItem("org");
+    const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const [createdUserData, setCreatedUserData] = useState(null);
+    const [errorMessage, setErrorMessage] = useState(null);
 
     let userInfo = {};
     let orgInfo = {};
@@ -55,8 +58,12 @@ function OrganizationInfo() {
             const response = await sendSingleData("organisations", newOrgInfo);
             console.log("Ответ сервера:", response);
             data = response?.data;
-            alert("Данные успешно отправлены! \nЛогин: " + data?.username + "\nВременный пароль: " + data?.password);
 
+            setCreatedUserData({
+                username: data?.username,
+                password: data?.password,
+            });
+            setShowSuccessMessage(true);
 
             setNewOrgInfo({
                 organisation_name: "",
@@ -65,9 +72,17 @@ function OrganizationInfo() {
                 legal_form: "",
                 postal_address: "",
             });
+            setTimeout(() => {
+                setShowSuccessMessage(false);
+                setCreatedUserData(null);
+            }, 15000);
+
         } catch (error) {
             console.error("Ошибка отправки данных:", error);
-            alert("Ошибка при отправке данных. Проверьте соединение.");
+            setErrorMessage("Ошибка при отправке данных. Проверьте соединение.");
+            setTimeout(() => {
+                setErrorMessage(null);
+            }, 10000);
         }
     };
 
@@ -77,7 +92,31 @@ function OrganizationInfo() {
 
     const role = userInfo.role.replace("UserRoles.", "");
 
+
     return (
+
+        <>
+
+        {showSuccessMessage && (
+            <div className="toast-overlay">
+            <div className="toast-box success">
+            <p className="toast-title">✅ Данные успешно добавлены!</p>
+
+            {createdUserData && (
+                <div className="toast-details">
+                <p className="toast-subtitle">Данные нового пользователя:</p>
+                <p><strong>Логин:</strong> {createdUserData.username}</p>
+                <p><strong>Временный пароль:</strong> {createdUserData.password}</p>
+                </div>
+            )}
+            </div>
+            </div>
+        )}
+        {errorMessage && (
+            <div className="custom-toast error-toast">
+            ❌ {errorMessage}
+            </div>
+        )}
         <div className="organization-info-container">
         <div className="organization-info">
         <h2 align="center">Информация об организации</h2>
@@ -121,7 +160,7 @@ function OrganizationInfo() {
             <input type="text" name="postal_address" value={newOrgInfo.postal_address} onChange={handleInputChange} required />
             </div>
             <div className="button-container">
-            <button type="submit" className="submit-button">Сохранить</button>
+            <button type="submit" className="submit-button-org">Сохранить</button>
             </div>
             </form>
             </div>
@@ -144,6 +183,7 @@ function OrganizationInfo() {
         )}
         </div>
         </div>
+        </>
     );
 }
 

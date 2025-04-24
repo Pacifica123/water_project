@@ -43,4 +43,33 @@ const downloadFile = async (fileUrl, token, filename) => {
     }
 };
 
-export { getFiles, downloadFile };
+const fetchFile = async (entityType, entityId, fileType) => {
+    const token = localStorage.getItem("jwtToken");
+
+    try {
+        const response = await fetch(
+            API_URL+`/files?entity_type=${entityType}&entity_id=${entityId}&file_type=${fileType}`,
+            {
+                method: "GET",
+                headers: {
+                    tokenJWTAuthorization: token,
+                },
+            }
+        );
+
+        if (response.ok) {
+            const data = await response.json();
+            return data.fileUrl || null; // Возвращаем URL файла или null, если файла нет
+        } else if (response.status === 404) {
+            return null; // Файл не найден
+        } else {
+            throw new Error("Ошибка при проверке наличия файла");
+        }
+    } catch (error) {
+        console.error(error);
+        return null; // В случае ошибки возвращаем null
+    }
+};
+
+
+export { getFiles, downloadFile, fetchFile };

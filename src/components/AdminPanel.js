@@ -2,15 +2,16 @@ import React, { useEffect, useState } from "react";
 import {
   fetchStructureData,
   fetchSingleTableData,
-} from "../api/fetch_records.js"; // Функции получения данных
+} from "../api/fetch_records.js";
 import {
   sendSingleData,
   sendUpdateData,
   sendDeleteData,
-} from "../api/add_records.js"; // Функция для отправки данных
+} from "../api/add_records.js";
 import Modal from "./Modal"; // Компонент модального окна
 import axios from "axios";
 import {translate} from "../utils/translations.js"
+import { useNotification } from "./NotificationContext.js";
 
 const AdminPanel = () => {
   // Основные состояния
@@ -20,6 +21,7 @@ const AdminPanel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState({});
+  const { showSuccess, showEdit, showError } = useNotification(); // глобальные уведомления
   // Дополнительное состояние для хранения схемы выбранной модели
   const [modelSchema, setModelSchema] = useState(null);
   // Состояние для режима редактирования (false - добавление, true - редактирование)
@@ -143,22 +145,22 @@ const AdminPanel = () => {
 
     try {
       if (isEditMode) {
-        // Отправляем данные для обновления
-        await sendUpdateData(selectedTable, formData.id, dataToSend); // Передаем ID записи для обновления
+        await sendUpdateData(selectedTable, formData.id, dataToSend);
+        showEdit("✏️ Запись успешно отредактирована!");
       } else {
-        // Отправляем данные для создания
         await sendSingleData(selectedTable, dataToSend);
+        showSuccess("✅ Запись успешно добавлена!");
       }
 
       handleSelectTable(selectedTable);
       setModalVisible(false);
-      showAlert();
     } catch (error) {
       console.error(
-        `Ошибка при ${isEditMode ? "редактировании" : "добавлении"} записи:`,
-        error,
+        'Ошибка при ${isEditMode ? "редактировании" : "добавлении"} записи:',
+        error
       );
       setError(error.message);
+      showError("❌ Ошибка при сохранении данных.");
     }
   };
 
@@ -201,6 +203,19 @@ const AdminPanel = () => {
   );
 
   const renderCellValue = (value, fieldSchema) => {
+    if (value && (fieldSchema?.type === "DATE" || fieldSchema?.type === "DATETIME" || fieldSchema?.type === "TIMESTAMP")) {
+      const date = new Date(value);
+      // Округляем до минуты
+      date.setSeconds(0, 0);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Месяцы начинаются с 0
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+
+      const formattedDate = `${day}.${month}.${year} ${hours}:${minutes}`;
+      return formattedDate;
+    }
     if (
       typeof value === "object" &&
       value !== null &&
@@ -212,6 +227,7 @@ const AdminPanel = () => {
     }
     return value !== null && value !== undefined ? value.toString() : "";
   };
+
 
   const findDisplayKey = (obj) => {
     const priorityKeys = ["name", "title", "organisation_name", "code_value"];
@@ -441,7 +457,7 @@ const AdminPanel = () => {
         <option value="">Выберите значение</option>
         {options?.map((opt, idx) => (
           <option key={idx} value={opt.value}>
-          {opt.label}
+          {translate(opt.label)}
           </option>
         ))}
         </>

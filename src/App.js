@@ -3,6 +3,7 @@ import "./App.css";
 import LoginPage from "./components/LoginPage";
 import ProtectedContent from "./components/ProtectedContent";
 import axios from "axios";
+import { NotificationProvider } from "./components/NotificationContext";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -61,11 +62,13 @@ function App() {
 
   return (
     <div className="app">
+    <NotificationProvider>
     {isAuthenticated ? (
       <ProtectedContent onLogout={handleLogout} axios={axiosInstance} />
     ) : (
       <LoginPage onLogin={handleLogin} axios={axiosInstance} />
     )}
+    </NotificationProvider>
     </div>
   );
 }

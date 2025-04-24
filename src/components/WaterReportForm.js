@@ -3,9 +3,11 @@
 import {fetchWaterObjects }from "../api/records.js";
 import {sendFormData} from "../api/add_records.js";
 import { fetchSingleTableData } from "../api/fetch_records.js";
+import { useNotification } from "./NotificationContext.js";
 
 
 import React, { useState, useEffect } from "react";
+import { translate } from "../utils/translations.js";
 
 function WaterReportForm() {
   const [quarter, setQuarter] = useState(1);
@@ -138,6 +140,9 @@ function WaterReportForm() {
     setData(updatedData);
   };
 
+
+  const {showSuccess, showError} = useNotification();
+
   const calculateTotals = () => {
     return data.reduce(
       (totals, row) => ({
@@ -153,9 +158,9 @@ function WaterReportForm() {
     try {
       const response = await sendFormData("send_quarter", {'waterPointId': selectedWaterObject, 'quarter': quarter, 'data': data});
       console.log("Данные успешно отправлены", response);
-      showAlert();
+      showSuccess();
     } catch (error) {
-      alert("Ошибка при отправке данных");
+      showError();
       console.error("Ошибка при отправке данных", error.message);
     }
   };
@@ -222,7 +227,7 @@ function WaterReportForm() {
         <tbody>
         {data.map((row, index) => (
           <tr key={index}>
-          <td>{row.month}</td>
+          <td>{translate(row.month)}</td>
           <td>
           <input
           type="number"
@@ -355,7 +360,7 @@ function WaterReportForm() {
         <tbody>
         {data.map((row, index) => (
           <tr key={index}>
-          <td>{row.month}</td>
+          <td>{translate(row.month)}</td>
           <td>{row.fact}</td>
           <td>{row.population}</td>
           <td>{row.other}</td>
