@@ -310,11 +310,13 @@ def get_all_models() -> OperationResult:
             ["Квартальные справки", WaterConsumptionLogByCategories.__tablename__],
             ["WCLfor3132", WCLfor3132.__tablename__],
             ["RecordWCL", RecordWCL.__tablename__],
+            ["Файлы", FileRecord.__tablename__],
         ]
 
         return OperationResult(OperationStatus.SUCCESS, data=models_list)
 
     except Exception as e:
+        print(e)
         return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=f"Неизвестная ошибка: {e}")
 
 

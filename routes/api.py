@@ -279,18 +279,18 @@ def upload_file():
         return jsonify({"error": "entity_id должен быть числом"}), 400
 
     # Преобразуем file_type из строки в enum
-    try:
-        file_type = FileType(file_type_str)
-    except ValueError:
-        return jsonify({"error": f"Неверный file_type: {file_type_str}"}), 400
+    # try:
+    #     file_type = FileType(file_type_str)
+    # except ValueError:
+    #     return jsonify({"error": f"Неверный file_type: {file_type_str}"}), 400
 
     # TODO: получить user из токена или контекста
-    created_by = auth_res.data.get('user_id', 'auto') if isinstance(auth_res.data, dict) else 'auto'
+    created_by = 'auto'
 
     res = save_file_to_db_or_fs(
         filename=filename,
         file_bytes=file_bytes,
-        file_type=file_type,
+        file_type=file_type_str,
         mimetype=mimetype,
         entity_type=entity_type,
         entity_id=entity_id,
@@ -386,3 +386,72 @@ def get_file_info():
         response["warning"] = warning
 
     return jsonify(response), 200
+
+
+@api.route('/api/files', methods=['GET'])
+@token_required
+def fetch_files():
+    entity_type = request.args.get('entity_type')
+    entity_id = request.args.get('entity_id')
+    file_type = request.args.get('file_type')
+
+    if not all([entity_type, entity_id, file_type]):
+        return jsonify({"error": "Отсутствуют обязательные параметры: entity_type, entity_id, file_type"}), 400
+
+    try:
+        entity_id = int(entity_id)
+    except ValueError:
+        return jsonify({"error": "entity_id должен быть числом"}), 400
+
+    files_res = get_files(entity_type=entity_type, entity_id=entity_id, file_type=file_type)
+    print(" => ДО СЮДА ДОШЛО")
+    print_operation_result(files_res)
+    if files_res.status != OperationStatus.SUCCESS:
+        return jsonify({"error": "Ошибка при получении файлов", "message": files_res.data}), 500
+
+    files = files_res.data
+
+    if not files:
+        # Возвращаем 404 и fileUrl=null, чтобы JS корректно обработал отсутствие файла
+        return jsonify({"fileUrl": None}), 404
+
+    # Берём самый новый файл по created_at
+    file_info = max(files, key=lambda f: f['created_at'])
+
+    file_url = f"http://127.0.0.1:5000/api/download_file?file_id={file_info['id']}"
+
+    return jsonify({"fileUrl": file_url, "fileName": file_info["filename"]}), 200
+
+
+@api.route('/api/files', methods=['DELETE'])
+@token_required
+def delete_file_route():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Отсутствует тело запроса"}), 400
+
+    entity_type = data.get('entity_type')
+    entity_id = data.get('entity_id')
+    file_type = data.get('file_type')
+    file_name = data.get('file_name')
+
+    if not all([entity_type, entity_id, file_type, file_name]):
+        return jsonify({"error": "Отсутствуют обязательные параметры: entity_type, entity_id, file_type, file_name"}), 400
+
+    try:
+        entity_id = int(entity_id)
+    except ValueError:
+        return jsonify({"error": "entity_id должен быть числом"}), 400
+
+    # Вызов вашей логики удаления файла
+    result = delete_file(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        file_type=file_type,
+        filename=file_name
+    )
+
+    if result.status != OperationStatus.SUCCESS:
+        return jsonify({"error": "Ошибка при удалении файла", "message": result.message}), 500
+
+    return jsonify({"message": "Файл успешно удалён"}), 200

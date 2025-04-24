@@ -269,7 +269,7 @@ def save_file_to_db_or_fs(
     created_by: str = "auto"
 ) -> OperationResult:
     print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
-    print(f"Параметры: {filename}, {file_type.name}, {mimetype}, {entity_type} = {entity_id}, {created_by}")
+    print(f"Параметры: {filename}, {file_type}, {mimetype}, {entity_type} = {entity_id}, {created_by}")
     if not is_valid_entity_type(entity_type):
         return OperationResult(OperationStatus.VALIDATION_ERROR, f"Неверный entity_type: {entity_type}")
     print(f"Сущность {entity_type} является валидной")
@@ -280,7 +280,7 @@ def save_file_to_db_or_fs(
 
     data = {
         "filename": filename,
-        "file_type": file_type.value,
+        "file_type": file_type,
         "content": file_bytes,
         "mimetype": mimetype,
         "description": description,
@@ -367,6 +367,46 @@ def get_file_by_id(file_id: int) -> OperationResult:
     except Exception as e:
         return OperationResult(OperationStatus.UNDEFINE_ERROR, f"Ошибка при получении файла: {e}")
 
+
+def delete_file(
+    entity_type: str,
+    entity_id: int,
+    file_type: FileType,
+    filename: str
+) -> OperationResult:
+    """
+    Логическое удаление файла по параметрам.
+    """
+    session = g.session
+    print(entity_type)
+    print(entity_id)
+    print(file_type)
+    print(filename)
+    if not is_valid_entity_type(entity_type):
+        return OperationResult(OperationStatus.VALIDATION_ERROR, f"Неверный entity_type: {entity_type}")
+    print("is_valid_entity_type")
+    try:
+        file_record = session.query(FileRecord).filter(
+            FileRecord.entity_type == entity_type,
+            FileRecord.entity_id == entity_id,
+            FileRecord.file_type == file_type,
+            FileRecord.filename == filename,
+            FileRecord.is_deleted == False
+        ).one_or_none()
+
+        if not file_record:
+            print("not file_record")
+            return OperationResult(OperationStatus.DATABASE_ERROR, "Файл не найден")
+
+        file_record.is_deleted = True
+        session.commit()
+
+        return OperationResult(OperationStatus.SUCCESS, "Файл успешно удалён")
+
+    except Exception as e:
+        print(e)
+        session.rollback()
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, f"Ошибка при удалении файла: {e}")
 
 # ====================== File Parsing Functions ======================
 
