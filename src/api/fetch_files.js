@@ -22,26 +22,26 @@ const getFiles = async (entity_type, entity_id, file_type) => {
     }
 };
 
-const downloadFile = async (fileUrl, token, filename) => {
-    try {
-        const response = await axios.get(fileUrl, {
-            responseType: 'blob', // Важно для скачивания файлов
-            headers: {
-                tokenJWTAuthorization: token, // Передаем токен в заголовке
-            },
-        });
-
-        // Создаем ссылку для скачивания
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', filename); // Указываем имя файла
-        document.body.appendChild(link);
-        link.click();
-    } catch (error) {
-        console.error("Ошибка при скачивании файла:", error);
-    }
-};
+// const downloadFile = async (fileUrl, token, filename) => {
+//     try {
+//         const response = await axios.get(fileUrl, {
+//             responseType: 'blob', // Важно для скачивания файлов
+//             headers: {
+//                 tokenJWTAuthorization: token, // Передаем токен в заголовке
+//             },
+//         });
+//
+//         // Создаем ссылку для скачивания
+//         const url = window.URL.createObjectURL(new Blob([response.data]));
+//         const link = document.createElement('a');
+//         link.href = url;
+//         link.setAttribute('download', filename); // Указываем имя файла
+//         document.body.appendChild(link);
+//         link.click();
+//     } catch (error) {
+//         console.error("Ошибка при скачивании файла:", error);
+//     }
+// };
 
 const fetchFile = async (entityType, entityId, fileType) => {
     const token = localStorage.getItem("jwtToken");
@@ -56,10 +56,10 @@ const fetchFile = async (entityType, entityId, fileType) => {
                 },
             }
         );
-
         if (response.ok) {
             const data = await response.json();
-            return data.fileUrl || null; // Возвращаем URL файла или null, если файла нет
+            console.log(data);
+            return data|| null; // Возвращаем URL файла или null, если файла нет
         } else if (response.status === 404) {
             return null; // Файл не найден
         } else {
@@ -71,5 +71,32 @@ const fetchFile = async (entityType, entityId, fileType) => {
     }
 };
 
+
+const downloadFile = async (fileUrl, fileName, token) => {
+    try {
+        const response = await fetch(fileUrl, {
+            headers: {
+                'tokenJWTAuthorization': token,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a); // append the element to the dom
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a); //remove the element after download
+    } catch (error) {
+        console.error('Download error:', error);
+        // Здесь можно добавить логику обработки ошибок, например, отображение уведомления пользователю.
+    }
+};
 
 export { getFiles, downloadFile, fetchFile };

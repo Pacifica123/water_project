@@ -29,6 +29,7 @@ const AccountingPost = () => {
   const [expandedLogs, setExpandedLogs] = useState({});
   const [logDetails, setLogDetails] = useState({});
 
+
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
   let orgInfo = {};

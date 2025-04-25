@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchFile } from "../api/fetch_files";
+import { fetchFile, downloadFile } from "../api/fetch_files";
 import { deleteFile } from "../api/add_files";
 
 const FileUpload = ({
@@ -16,7 +16,9 @@ const FileUpload = ({
     const [fileName, setFileName] = useState(null); // Добавляем состояние для имени файла
     const [fileUrl, setFileUrl] = useState(null);
     const [showPreview, setShowPreview] = useState(false);
-
+    const handleDownload = () => {
+        downloadFile(fileUrl, fileName, localStorage.getItem('token'));
+    };
     useEffect(() => {
         // При монтировании компонента проверяем, есть ли файл на сервере
         const checkExistingFile = async () => {
@@ -29,14 +31,21 @@ const FileUpload = ({
         checkExistingFile();
     }, [entityType, entityId, fileType]);
 
-    const handleChange = (e) => {
+    const handleChange = async (e) => {
         const selectedFile = e.target.files[0];
         setFile(selectedFile);
-        setFileName(selectedFile.name); // Сохраняем имя файла
+        setFileName(selectedFile.name);
         if (onUpload && selectedFile) {
-            onUpload(selectedFile, { entityType, entityId, fileType });
+            await onUpload(selectedFile, { entityType, entityId, fileType });
+            // Повторно получаем файл с сервера после загрузки
+            const fileInfo = await fetchFile(entityType, entityId, fileType);
+            if (fileInfo) {
+                setFileUrl(fileInfo.fileUrl);
+                setFileName(fileInfo.fileName);
+            }
         }
     };
+
 
     const handleDelete = async () => {
         if (fileUrl && fileName) { // Используем сохраненное имя файла
@@ -89,6 +98,9 @@ const FileUpload = ({
                                             zIndex: 1000,
             }}
             >
+            {fileUrl && (
+                <button onClick={handleDownload}>Скачать файл</button>
+            )}
             <div
             style={{
                 background: "#fff",
