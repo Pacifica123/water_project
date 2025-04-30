@@ -2,12 +2,12 @@ import React, { useEffect, useState } from "react";
 import {
   fetchStructureData,
   fetchSingleTableData,
-} from "../api/fetch_records.js";
+} from "../api/fetch_records.js"; // Функции получения данных
 import {
   sendSingleData,
   sendUpdateData,
   sendDeleteData,
-} from "../api/add_records.js";
+} from "../api/add_records.js"; // Функция для отправки данных
 import Modal from "./Modal"; // Компонент модального окна
 import axios from "axios";
 import {translate} from "../utils/translations.js"
@@ -27,7 +27,7 @@ const AdminPanel = () => {
   // Состояние для режима редактирования (false - добавление, true - редактирование)
   const [isEditMode, setIsEditMode] = useState(false);
   const [error, setError] = useState(null);
-
+  const [showTechnicalFields, setShowTechnicalFields] = useState(false);
   // Получение списка таблиц при монтировании компонента
   useEffect(() => {
     const getTableList = async () => {
@@ -203,19 +203,6 @@ const AdminPanel = () => {
   );
 
   const renderCellValue = (value, fieldSchema) => {
-    if (value && (fieldSchema?.type === "DATE" || fieldSchema?.type === "DATETIME" || fieldSchema?.type === "TIMESTAMP")) {
-      const date = new Date(value);
-      // Округляем до минуты
-      date.setSeconds(0, 0);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Месяцы начинаются с 0
-      const year = date.getFullYear();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-
-      const formattedDate = `${day}.${month}.${year} ${hours}:${minutes}`;
-      return formattedDate;
-    }
     if (
       typeof value === "object" &&
       value !== null &&
@@ -228,7 +215,6 @@ const AdminPanel = () => {
     return value !== null && value !== undefined ? value.toString() : "";
   };
 
-
   const findDisplayKey = (obj) => {
     const priorityKeys = ["name", "title", "organisation_name", "code_value"];
     return priorityKeys.find((key) => obj.hasOwnProperty(key));
@@ -236,7 +222,7 @@ const AdminPanel = () => {
 
   // Рендер списка записей выбранной таблицы с CRUD-кнопками
   const renderTableRecords = () => (
-    <div>
+    <div style ={{overflowX:"auto", Width:"100%"}}>
     <div className="content-container">
     <button
     className="back-button"
@@ -251,15 +237,25 @@ const AdminPanel = () => {
     <button className="submit-button" onClick={handleAddButton}>
     Добавить запись
     </button>
+    <button
+    className="submit-button"
+    style={{ backgroundColor: showTechnicalFields ? "#6c757d" : "#17a2b8" }}
+    onClick={() => setShowTechnicalFields(!showTechnicalFields)}
+    >
+    {showTechnicalFields ? "Скрыть тех. поля" : "Показать тех. поля"}
+    </button>
     </div>
     {isLoading ? (
       <div>Загрузка...</div>
     ) : tableRecords && tableRecords.length > 0 ? (
-      <table className="data-table">
+      <div className="table-scroll-wrapper">
+      <table className="data-table-admin">
       <thead>
       <tr>
       {Object.keys(tableRecords[0]).map((key, index) => (
-        <th key={index}>{translate(key)}</th>
+        (!["created_by", "updated_by", "deleted_by", "created_at", "updated_at", "deleted_at"].includes(key) || showTechnicalFields) && (
+          <th key={index}>{translate(key)}</th>
+        )
       ))}
       <th>Действия</th>
       </tr>
@@ -269,14 +265,16 @@ const AdminPanel = () => {
         return (
           <tr key={record.id}>
           {Object.keys(record).map((key, idx) => {
-            const fieldSchema = modelSchema?.data?.find(
-              (f) => f.field === key,
-            );
-            return (
-              <td key={idx}>
-              {translate(renderCellValue(record[key], fieldSchema))}
-              </td>
-            );
+            if (!["created_by", "updated_by", "deleted_by", "created_at", "updated_at", "deleted_at"].includes(key) || showTechnicalFields) {
+              const fieldSchema = modelSchema?.data?.find((f) => f.field === key);
+              return (
+                <td key={idx}>
+                {translate(renderCellValue(record[key], fieldSchema))}
+                </td>
+              );
+            } else {
+              return null;
+            }
           })}
           <td>
           <button
@@ -297,6 +295,7 @@ const AdminPanel = () => {
       })}
       </tbody>
       </table>
+      </div>
     ) : (
       <div>Записей не найдено</div>
     )}
@@ -326,57 +325,66 @@ const AdminPanel = () => {
     <form onSubmit={handleFormSubmit}>
     {modelSchema && modelSchema.data ? (
       modelSchema.data
-      .filter((field) => field.field !== "id")
+      .filter((field) => {
+        if (field.field === "id") return false;
+
+        const hiddenFields = [
+          "created_at",
+          "created_by",
+          "updated_at",
+          "is_deleted",
+          "deleted_at",
+          "deleted_by",
+        ];
+
+        if (field.field === "updated_by" && isEditMode) return true;
+
+        return !hiddenFields.includes(field.field);
+      })
       .map((field, index) => (
         <div key={index} style={{ marginBottom: "10px" }}>
         <label style={{ display: "block", marginBottom: "5px" }}>
         {translate(field.field)}:
         </label>
-        {/* Если поле связано с внешним ключом или имеет опции, отрисовываем ForeignKeySelect */}
-        {field.foreignKey ||
-          field.options?.length > 0 ||
-          field.isEnum ? (
-            <ForeignKeySelect
-            field={field}
-            value={formData[field.field] || ""}
-            onChange={(newValue) => {
-              setFormData({ ...formData, [field.field]: newValue });
-              if (formData[field.field]) {
-                // Автоматическое сворачивание поля после заполнения
-                document
-                .getElementById(field.field)
-                ?.classList.add("filled");
-              }
-            }}
-            />
-          ) : (
-            <input
-            type={getInputType(field.type)}
-            value={formData[field.field] || ""}
-            onChange={(e) => {
-              setFormData({
-                ...formData,
-                [field.field]: e.target.value,
-              });
-              if (e.target.value) {
-                // Автоматическое сворачивание поля после заполнения
-                document
-                .getElementById(field.field)
-                ?.classList.add("filled");
-              }
-            }}
-            id={field.field} // Добавление ID для управления классами
-            />
-          )}
-          </div>
+        {/* Рендер поля */}
+        {field.foreignKey || field.options?.length > 0 || field.isEnum ? (
+          <ForeignKeySelect
+          field={field}
+          value={formData[field.field] || ""}
+          onChange={(newValue) => {
+            setFormData({ ...formData, [field.field]: newValue });
+            if (formData[field.field]) {
+              document.getElementById(field.field)?.classList.add("filled");
+            }
+          }}
+          />
+        ) : (
+          <input
+          type={getInputType(field.type)}
+          value={formData[field.field] || ""}
+          onChange={(e) => {
+            setFormData({
+              ...formData,
+              [field.field]: e.target.value,
+            });
+            if (e.target.value) {
+              document.getElementById(field.field)?.classList.add("filled");
+            }
+          }}
+          id={field.field}
+          />
+        )}
+        </div>
       ))
     ) : (
       <div>Схема модели не получена.</div>
     )}
 
-    <button type="submit">
+
+    <center><button className="submit-button" type="submit">
     {isEditMode ? "Сохранить изменения" : "Добавить"}
     </button>
+    </center>
     </form>
     </Modal>
   );
@@ -457,7 +465,7 @@ const AdminPanel = () => {
         <option value="">Выберите значение</option>
         {options?.map((opt, idx) => (
           <option key={idx} value={opt.value}>
-          {translate(opt.label)}
+          {opt.label}
           </option>
         ))}
         </>

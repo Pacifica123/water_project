@@ -1133,3 +1133,16 @@ input {
   90% { opacity: 1; }
   100% { opacity: 0; transform: translateY(-10px); }
 }
+
+.data-table-admin {
+  width: 100px; /* или min-width: 100% */
+  border-collapse: collapse;
+  min-width: 1200px;
+}
+.data-table-admin th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid #ddd;
+  max-width: 150px;
+  padding: 20px 30px;
+}

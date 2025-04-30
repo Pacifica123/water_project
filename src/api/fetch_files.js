@@ -72,11 +72,13 @@ const fetchFile = async (entityType, entityId, fileType) => {
 };
 
 
-const downloadFile = async (fileUrl, fileName, token) => {
+const downloadFile = async (fileUrl, fileName) => {
     try {
+
+        const token = localStorage.getItem('jwtToken');
         const response = await fetch(fileUrl, {
             headers: {
-                'tokenJWTAuthorization': token,
+                tokenJWTAuthorization: token,
             },
         });
 

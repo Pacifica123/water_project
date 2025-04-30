@@ -30,9 +30,10 @@ function Rates() {
 
     const formatRateType = (rateType) => {
         const typeMap = {
-            "POPULATION": "Население",
-            "ORG": "Предприятие",
-            "OTHER": "Другое"
+            "POPULATION": "Население - прибор",
+            "ORG": "Предприятие - прибор",
+            "OTHER_POPULATION": "Население - другой метод",
+            "OTHER_ORG": "Предприятие - другой метод"
         };
         return typeMap[rateType.toUpperCase()] || rateType;
     };
@@ -135,7 +136,8 @@ function Rates() {
             <select name="rate_type" value={newRate.rate_type} onChange={handleChange}>
             <option value="population">Население</option>
             <option value="org">Предприятие</option>
-            <option value="other">Другое</option>
+            <option value="other_population">Население - другой метод</option>
+            <option value="other_org">Предприятие - другой метод</option>
             </select>
             </label>
             <div className="modal-buttons">

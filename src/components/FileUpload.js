@@ -17,15 +17,19 @@ const FileUpload = ({
     const [fileUrl, setFileUrl] = useState(null);
     const [showPreview, setShowPreview] = useState(false);
     const handleDownload = () => {
-        downloadFile(fileUrl, fileName, localStorage.getItem('token'));
+        downloadFile(fileUrl, fileName);
     };
+    const [isPdf, setIsPdf] = useState(false);
+    const token = localStorage.getItem('jwtToken');
+    // const authorizedFileUrl = ;
     useEffect(() => {
         // При монтировании компонента проверяем, есть ли файл на сервере
         const checkExistingFile = async () => {
             const fileInfo = await fetchFile(entityType, entityId, fileType);
             if (fileInfo) {
                 setFileUrl(fileInfo.fileUrl);
-                setFileName(fileInfo.fileName); // Сохраняем имя файла из ответа сервера
+                setFileName(fileInfo.fileName);
+                setIsPdf(fileInfo.fileName?.toLowerCase().endsWith('.pdf'));
             }
         };
         checkExistingFile();
@@ -35,6 +39,7 @@ const FileUpload = ({
         const selectedFile = e.target.files[0];
         setFile(selectedFile);
         setFileName(selectedFile.name);
+        setIsPdf(selectedFile.name.toLowerCase().endsWith('.pdf'));
         if (onUpload && selectedFile) {
             await onUpload(selectedFile, { entityType, entityId, fileType });
             // Повторно получаем файл с сервера после загрузки
@@ -42,6 +47,7 @@ const FileUpload = ({
             if (fileInfo) {
                 setFileUrl(fileInfo.fileUrl);
                 setFileName(fileInfo.fileName);
+                setIsPdf(fileInfo.fileName.toLowerCase().endsWith('.pdf'));
             }
         }
     };
@@ -60,9 +66,10 @@ const FileUpload = ({
 
     return (
         <div className="file-upload">
-        <label>{label}</label>
-        <input type="file" accept={accept} onChange={handleChange} />
-
+        <label>{fileUrl ? 'Просмотр ' + label : 'Загрузить ' + label }</label>
+        {!fileUrl && (
+            <input type="file" accept={accept} onChange={handleChange} />
+        )}
         {fileUrl ? (
             <div className="file-info">
             <span
@@ -73,52 +80,57 @@ const FileUpload = ({
             {icon}
             </span>
             <span>{fileName}</span> {/* Используем сохраненное имя файла */}
-            <button onClick={handleDelete}>Удалить</button>
+            <button className="delete-button" onClick={handleDelete}>Удалить</button>
             </div>
         ) : file ? (
             <div className="file-info">
             <span>{file.name}</span>
             </div>
         ) : null}
-
-        {showPreview && preview && file && (
+        {fileUrl && preview && (
+            <button className="custom-button" onClick={() => setShowPreview(!showPreview)}>
+            {showPreview ? "Закрыть" : 'Открыть файл'}
+            </button>
+        )}
+        {showPreview && preview && (file || fileUrl) && (
             <div
             className="modal"
             onClick={() => setShowPreview(false)}
-            style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(0,0,0,0.7)",
-                                            display: "flex",
-                                            justifyContent: "center",
-                                            alignItems: "center",
-                                            zIndex: 1000,
-            }}
             >
-            {fileUrl && (
-                <button onClick={handleDownload}>Скачать файл</button>
-            )}
             <div
-            style={{
-                background: "#fff",
-                padding: 20,
-                maxWidth: "90vw",
-                maxHeight: "90vh",
-            }}
             onClick={(e) => e.stopPropagation()}
             >
-            <button onClick={() => setShowPreview(false)}>Закрыть</button>
-            <iframe
-            src={URL.createObjectURL(file)}
-            width="600px"
-            height="800px"
-            title="Preview"
-            style={{ border: "none" }}
-            />
+
             </div>
+            {isPdf ? (
+                <iframe
+                src={file ? URL.createObjectURL(file) : `${fileUrl}${fileUrl.includes('?') ? '&' : '?'}token=${token}`}
+                width="1200px"
+                height="790vh"
+                title="PDF Preview"
+                style={{ position:"relative"}}
+                />
+            ) : (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                <p>Предпросмотр недоступен для этого типа файла</p>
+                {!isPdf && (
+                    <button
+                    onClick={handleDownload}
+                    style={{
+                        padding: '10px 20px',
+                        backgroundColor: '#333',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        marginTop: '20px'
+                    }}
+                    >
+                    Скачать файл
+                    </button>
+                )}
+                </div>
+            )}
             </div>
         )}
         </div>

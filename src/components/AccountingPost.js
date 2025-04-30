@@ -4,6 +4,7 @@ import {
   fetchSingleTableData,
   fetchSingleTableDataWithFilters,
   fetchStructDataWithFilters,
+  fetchStructureData,
 } from "../api/fetch_records";
 import {
   uploadFileToBackend
@@ -18,6 +19,8 @@ const AccountingPost = () => {
   const [allLogs, setAllLogs] = useState([]);
   const [monthFilter, setMonthFilter] = useState(new Date().getMonth());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear());
+
+
   const [statusFilters, setStatusFilters] = useState({
     in_progress: true,
     is_done: true,
@@ -29,6 +32,27 @@ const AccountingPost = () => {
   const [expandedLogs, setExpandedLogs] = useState({});
   const [logDetails, setLogDetails] = useState({});
 
+
+  // Для добавления нового пункта учета
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({
+    organisation_id: "",
+    water_body_id: "",
+    latitude_longitude: "",
+    point_type: "",
+    existing_meter_id: ""
+  });
+  const [waterBodyOptions, setWaterBodyOptions] = useState([]);
+  const [pointTypeOptions, setPointTypeOptions] = useState([]);
+  const [meterOptions, setMeterOptions] = useState([]);
+  const [brandOptions, setBrandOptions] = useState([]);
+  const [newMeterData, setNewMeterData] = useState({
+    brand_id: "",
+    serial_number: "",
+    verification_date: "",
+    verification_interval: "",
+    next_verification_date: ""
+  });
 
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
@@ -119,6 +143,33 @@ const AccountingPost = () => {
     setYearFilter(parseInt(event.target.value));
   };
 
+  // Загрузка параметров для формы при открытии модального окна
+  useEffect(() => {
+    if (!showAddModal) return;
+    const loadStructure = async () => {
+      try {
+        const schema = await fetchStructureData("schema_water_point");
+        if (schema && schema.data) {
+          const waterField = schema.data.find(f => f.field === "water_body_id");
+          const typeField = schema.data.find(f => f.field === "point_type");
+          setWaterBodyOptions(waterField?.options || []);
+          setPointTypeOptions(typeField?.options || []);
+          setFormData(prev => ({ ...prev, organisation_id: orgInfo.id }));
+        }
+        // загружаем существующие приборы
+        const meters = await fetchSingleTableDataWithFilters("meters", {"organisation_id": orgInfo.id});
+        console.log("METERS : "+meters);
+        setMeterOptions(meters?.data?.options || []);
+        // загружаем марки приборов
+        const brandSchema = await fetchStructureData("schema_meters_brand_ref");
+        setBrandOptions(brandSchema?.data?.options || []);
+      } catch (err) {
+        console.error("Ошибка загрузки структуры формы", err);
+      }
+    };
+    loadStructure();
+  }, [showAddModal]);
+
   const handleStatusChange = (event) => {
     const { name, checked } = event.target;
     setStatusFilters((prev) => ({ ...prev, [name]: checked }));
@@ -163,10 +214,142 @@ const AccountingPost = () => {
     };
     return labels[key] || key;
   };
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleNewMeterChange = (e) => {
+    const { name, value } = e.target;
+    setNewMeterData(prev => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'verification_date' || name === 'verification_interval') {
+        const date = new Date(updated.verification_date);
+        const interval = parseInt(updated.verification_interval, 10);
+        if (!isNaN(date.getTime()) && !isNaN(interval)) {
+          date.setFullYear(date.getFullYear() + interval);
+          updated.next_verification_date = date.toISOString().split('T')[0];
+        }
+      }
+      return updated;
+    });
+  };
+
+  const handleSaveNewPoint = async () => {
+    console.log("Сохраняем новый пункт учета:", formData, newMeterData);
+    setShowAddModal(false);
+  };
+
 
   return (
     <div className="accounting-container">
     <h2 align="center">Журнал учета водопотребления</h2>
+    {/* Кнопка добавления нового пункта */}
+    {userInfo.role === "UserRoles.EMPLOYEE" && (
+      <div style={{ textAlign: 'right', margin: '10px 0' }}>
+      <button className="custom-button" onClick={() => setShowAddModal(true)}>Добавить пункт учета</button>
+      </div>
+    )}
+
+    {/* Модальное окно для добавления */}
+    {showAddModal && (
+      <div className="modal-overlay">
+      <div className="modal-content">
+      <div className="modal-left">
+      <label>Организация:</label>
+      <select name="organisation_id" value={formData.organisation_id} disabled>
+      <option value={orgInfo.id}>{orgInfo.organisation_name}</option>
+      </select>
+
+      <label>Водный объект:</label>
+      <select name="water_body_id" value={formData.water_body_id} onChange={handleFormChange}>
+      <option value="">Выберите...</option>
+      {waterBodyOptions.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+      </select>
+
+      <label>Координаты (широта, долгота):</label>
+      <input
+      type="text"
+      name="latitude_longitude"
+      value={formData.latitude_longitude}
+      onChange={handleFormChange}
+      />
+
+      <label>Тип пункта:</label>
+      <select name="point_type" value={formData.point_type} onChange={handleFormChange}>
+      <option value="">Выберите...</option>
+      {pointTypeOptions.map(opt => (
+        <option key={opt.value} value={opt.value}>{translate(opt.label)}</option>
+      ))}
+      </select>
+      </div>
+      <div className="modal-right">
+      <div className="modal-upper-right">
+      <label>Выбрать существующий прибор:</label>
+      <select name="existing_meter_id" value={formData.existing_meter_id} onChange={handleFormChange}>
+      <option value="">Выберите...</option>
+      {meterOptions.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+      </select>
+
+      <hr />
+
+      <label>Ввести новый прибор:</label>
+      <div className="new-meter-form">
+      <label>Марка прибора:</label>
+      <select name="brand_id" value={newMeterData.brand_id} onChange={handleNewMeterChange}>
+      <option value="">Выберите...</option>
+      {brandOptions.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+      </select>
+
+      <label>Серийный номер:</label>
+      <input
+      type="text"
+      name="serial_number"
+      value={newMeterData.serial_number}
+      onChange={handleNewMeterChange}
+      />
+
+      <label>Дата поверки:</label>
+      <input
+      type="date"
+      name="verification_date"
+      value={newMeterData.verification_date}
+      onChange={handleNewMeterChange}
+      />
+
+      <label>Интервал поверки (лет):</label>
+      <input
+      type="number"
+      name="verification_interval"
+      value={newMeterData.verification_interval}
+      onChange={handleNewMeterChange}
+      />
+
+      <label>Следующая поверка:</label>
+      <input
+      type="date"
+      name="next_verification_date"
+      value={newMeterData.next_verification_date}
+      readOnly
+      />
+      </div>
+      </div>
+      <div className="modal-lower-right">здесь будет разрешение</div>
+      </div>
+      </div>
+      <div className="modal-actions">
+      <button onClick={handleSaveNewPoint}>Сохранить</button>
+      <button onClick={() => setShowAddModal(false)}>Отмена</button>
+      </div>
+      </div>
+    )}
+
 
     {isLoading ? (
       <p>Загрузка данных...</p>
@@ -253,7 +436,7 @@ const AccountingPost = () => {
           <td>{translate(log.status)}</td>
           {userInfo.role === "UserRoles.EMPLOYEE" && (
             <td>
-            <button onClick={() => handleExpandLog(log.id)}>
+            <button className="custom-button" onClick={() => handleExpandLog(log.id)}>
             {expandedLogs[log.id] ? "Скрыть журнал" : "Открыть журнал"}
             </button>
             </td>
@@ -306,8 +489,13 @@ const AccountingPost = () => {
 
           </table>
 
+
+
+          <div className="log-files-upload">
+          <h4 style={{textAlign:"center"}}>Загрузка файлов:</h4>
+          <div className="upload-row">
           <FileUpload
-          label="Загрузить PDF-скан"
+          label="PDF-скан"
           accept="application/pdf"
           icon="📄"
           entityType="water_consumption_log"
@@ -316,9 +504,10 @@ const AccountingPost = () => {
           preview={true}
           onUpload={uploadFileToBackend}
           />
-
+          </div>
+          <div className="upload-row">
           <FileUpload
-          label="Загрузить sig-файл подписи"
+          label="Sig-файл подписи"
           accept=".sig"
           icon="🔏"
           entityType="water_consumption_log"
@@ -327,7 +516,8 @@ const AccountingPost = () => {
           preview={false}
           onUpload={uploadFileToBackend}
           />
-
+          </div>
+          </div>
           </div>
         ) : null
       )}

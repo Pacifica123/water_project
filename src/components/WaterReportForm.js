@@ -135,10 +135,39 @@ function WaterReportForm() {
   };
 
   const handleInputChange = (index, field, value) => {
+    let sanitized = value.replace(/[^0-9.]/g, "");
+    sanitized = sanitized.replace(/^0+(?=\d)/, "");
+    const newValue = sanitized === "" ? "0" : sanitized;
+
     const updatedData = [...data];
-    updatedData[index][field] = parseFloat(value) || 0;
+    const currentRow = updatedData[index];
+
+    const fact = field === "fact" ? parseFloat(newValue) : parseFloat(currentRow.fact);
+    const population = field === "population" ? parseFloat(newValue) : parseFloat(currentRow.population);
+    const other = field === "other" ? parseFloat(newValue) : parseFloat(currentRow.other);
+
+    // Проверка: сумма population + other не должна превышать fact
+    if ((field === "population" || field === "other") && (population + other > fact)) {
+      showError("❗️ Сумма 'Население' и 'Прочее' не может превышать значение 'Факт'.");
+      return;
+    }
+
+    if (field === "fact" && (population + other > parseFloat(newValue))) {
+      showError("❗️ 'Факт' не может быть меньше суммы 'Население' и 'Прочее'.");
+      return;
+    }
+
+    updatedData[index][field] = newValue;
     setData(updatedData);
   };
+
+
+  const sanitizeNumberInput = (value) => {
+    const cleaned = value.replace(/^0+(?=\d)/, ""); // убираем начальные нули
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) || parsed < 0 ? 0 : Math.round(parsed * 100) / 100; // округление до 2 знаков
+  };
+
 
 
   const {showSuccess, showError} = useNotification();
@@ -146,14 +175,15 @@ function WaterReportForm() {
   const calculateTotals = () => {
     return data.reduce(
       (totals, row) => ({
-        fact: totals.fact + row.fact,
-        population: totals.population + row.population,
-        other: totals.other + row.other,
-
+        fact: totals.fact + parseFloat(row.fact || 0),
+                        population: totals.population + parseFloat(row.population || 0),
+                        other: totals.other + parseFloat(row.other || 0),
       }),
       { fact: 0, population: 0, other: 0 }
     );
   };
+
+
   const handleSubmit = async () => {
     try {
       const response = await sendFormData("send_quarter", {'waterPointId': selectedWaterObject, 'quarter': quarter, 'data': data});
@@ -231,6 +261,7 @@ function WaterReportForm() {
           <td>
           <input
           type="number"
+          pattern="[0-9]*"
           className="narrow-input"
           value={row.fact}
           onChange={(e) =>
@@ -241,6 +272,7 @@ function WaterReportForm() {
           <td>
           <input
           type="number"
+          pattern="[0-9]*"
           className="narrow-input"
           value={row.population}
           onChange={(e) =>
@@ -251,6 +283,7 @@ function WaterReportForm() {
           <td>
           <input
           type="number"
+          pattern="[0-9]*"
           className="narrow-input"
           value={row.other}
           onChange={(e) =>
