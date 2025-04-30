@@ -18,7 +18,7 @@ def init_records(session):
     init_water_object_records(session)  #(по  пулам и ариям)
     init_sampling_locations(session)
     init_meters_and_brand(session)
-    init_permissions(session)     # TODO потом убрать
+    # init_permissions(session)     # TODO потом убрать
 
 
 def init_hydrograph_unit_recods(session):
@@ -507,14 +507,14 @@ def init_meters_and_brand(session):
 def init_permissions(session):
     # Данные для инициализации разрешений
     permissions_data = {
-        "Разрешение 1": {
-            "organisation_name": "Организация 1",  # Название организации
-            "organisation_address": "Адрес организации 1",  # Адрес организации
-            "organisation_legal_form": "ООО",  # Юридическая форма организации
-            "organisation_inn": "123456789012",  # ИНН организации
-            "permission_number": "1234567890",
+        "Северо-Кузбасская Энергетическая компания (СКЭК)": {
+            "organisation_name": "Северо-Кузбасская Энергетическая компания (СКЭК)",
+            "organisation_address": "Адрес организации 1",
+            "organisation_legal_form": "ООО",
+            "organisation_inn": "4205153492",  # ИНН организации
+            "permission_number": "420501001",
             "registration_date": date(2022, 1, 1),  # Дата регистрации
-            "expiration_date": date(2025, 1, 1),  # Дата истечения срока действия
+            "expiration_date": date(2026, 1, 1),  # Дата истечения срока действия
             "permission_type": PermissionType.WATER_WITHDRAWAL,  # Тип разрешения
             "allowed_volume_org": 3000.0,  # Допустимый объем для организации
             "allowed_volume_pop": 1000.0,  # Допустимый объем для населения (если применимо)

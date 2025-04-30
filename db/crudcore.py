@@ -324,6 +324,7 @@ def get_all_by_foreign_key(entity: Type[Any], foreign_key_column: str, foreign_k
             msg="Произошла неожиданная ошибка, не связанная с БД."
         )
 
+
 def get_all_by_conditions(
     entity: Type[Any],
     conditions: List[Dict[str, Any]],

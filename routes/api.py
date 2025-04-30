@@ -306,9 +306,12 @@ def upload_file():
 
 @api.route('/api/download_file', methods=['GET'])
 def download_file():
-    token = request.headers.get('tokenJWTAuthorization')
+    print(f"[DEBUG] Все параметры: {request.args}")
+    token = token = request.args.get('token')
+    print(token)
     auth_res = auth_validate(token)
     if auth_res.status != OperationStatus.SUCCESS:
+        print_operation_result(auth_res)
         return jsonify({"error": "Пользователь неавторизован", "message": auth_res.data}), 401
 
     file_id = request.args.get('file_id')
@@ -325,12 +328,16 @@ def download_file():
         return jsonify({"error": res.message}), 404
 
     file_data = res.data
-    return send_file(
+    filename = file_data['filename'].encode('latin-1', errors='replace').decode('latin-1')
+    response = send_file(
         BytesIO(file_data['content']),
-        attachment_filename=file_data['filename'],
+        download_name=filename,
         mimetype=file_data['mimetype'],
-        as_attachment=True
+        as_attachment=False
     )
+
+    response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
 
 
 @api.route('/api/file_info', methods=['GET'])
@@ -397,6 +404,7 @@ def fetch_files():
 
     if not all([entity_type, entity_id, file_type]):
         return jsonify({"error": "Отсутствуют обязательные параметры: entity_type, entity_id, file_type"}), 400
+    print(f"fetch_files called with: entity_type={entity_type}, entity_id={entity_id}, file_type={file_type}")
 
     try:
         entity_id = int(entity_id)
@@ -410,6 +418,9 @@ def fetch_files():
         return jsonify({"error": "Ошибка при получении файлов", "message": files_res.data}), 500
 
     files = files_res.data
+    print("files =", files)
+    print("type(files) =", type(files))
+    print("len(files) =", len(files) if hasattr(files, '__len__') else 'N/A')
 
     if not files:
         # Возвращаем 404 и fileUrl=null, чтобы JS корректно обработал отсутствие файла

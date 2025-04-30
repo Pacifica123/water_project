@@ -15,7 +15,8 @@ from datetime import date
 class RatesType(PyEnum):
     ORG = "org"
     POPULATION = "population"
-    OTHER = "other"
+    OTHER_ORG = "other_org"
+    OTHER_POPULATION = "other_population"
 
 
 class PermissionType(PyEnum):
@@ -380,6 +381,7 @@ class Permissions(Base):
     permission_type: Mapped[PermissionType] = mapped_column(SQLAEnum(PermissionType), nullable=False)
     allowed_volume_org: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     allowed_volume_pop: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    method_type: Mapped[RatesType] = mapped_column(SQLAEnum(RatesType), nullable=False)
 
     def to_dict(self):
         return {

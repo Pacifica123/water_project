@@ -88,22 +88,55 @@ def get_all_record_from(tablename: str) -> OperationResult:
     return replace_fks(res, tablename)
 
 
+# def get_single_with_mf(tablename: str, filters: dict) -> OperationResult:
+#     print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
+#     result = get_all_record_from(tablename)
+#     if result.status != OperationStatus.SUCCESS:
+#         return result
+#     data = [convert_to_dict(record) for record in result.data]
+#     filtered_data = [
+#         record for record in data
+#         if all(record.get(k) == v for k, v in filters.items())
+#     ]
+#     if not filtered_data:
+#         return OperationResult(
+#             OperationStatus.SUCCESS,
+#             msg="Нет записей, удовлетворяющих фильтрам",
+#             data=filtered_data
+#         )
+#     return OperationResult(
+#         OperationStatus.SUCCESS,
+#         msg="Данные успешно получены и отфильтрованы",
+#         data=filtered_data
+#     )
 def get_single_with_mf(tablename: str, filters: dict) -> OperationResult:
     print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
+
+    # 1. Сначала фильтруем "сырые" записи
     result = get_all_record_from(tablename)
     if result.status != OperationStatus.SUCCESS:
         return result
-    data = [convert_to_dict(record) for record in result.data]
-    filtered_data = [
-        record for record in data
-        if all(record.get(k) == v for k, v in filters.items())
+
+    # 2. Фильтрация на уровне ORM-моделей (до конвертации!)
+    filtered_records = [
+        record for record in result.data
+        if all(
+            # Доступ к полю через getattr() модели
+            getattr(record, k, None) == v
+            for k, v in filters.items()
+        )
     ]
+
+    # 3. Конвертация в словарь только отфильтрованных данных
+    filtered_data = [convert_to_dict(record) for record in filtered_records]
+
     if not filtered_data:
         return OperationResult(
             OperationStatus.SUCCESS,
             msg="Нет записей, удовлетворяющих фильтрам",
             data=filtered_data
         )
+
     return OperationResult(
         OperationStatus.SUCCESS,
         msg="Данные успешно получены и отфильтрованы",
@@ -251,6 +284,23 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
             return send_extempl31or32(form_data)
         case "payment_calculation":
             pass
+        case "create_water_point":
+            if all(key in form_data for key in ['data_point', 'data_meter', 'data_permission']):
+                # Все ключи присутствуют
+                data_point = form_data['data_point']
+                data_meter = form_data['data_meter']
+                data_permission = form_data['data_permission']
+
+                return create_full_waterpoint(
+                    data_meter=data_meter,
+                    data_point=data_point,
+                    data_permission=data_permission
+                )
+            else:
+                return OperationResult(
+                    status=OperationStatus.VALIDATION_ERROR,
+                    msg="нет требуемых данных"
+                )
         case _:
             raise ValueError(f"Неизвестная форма или ее отсутсвие : {selected_template}")
 
@@ -319,7 +369,11 @@ def get_files(
             query = query.filter(FileRecord.entity_id == entity_id)
 
         if file_type:
-            query = query.filter(FileRecord.file_type == file_type)
+            # Если file_type - строка, конвертируем в Enum
+            if isinstance(file_type, str) and hasattr(FileType, file_type):
+                query = query.filter(FileRecord.file_type == FileType[file_type])
+            else:
+                query = query.filter(FileRecord.file_type == file_type)
 
         if filename:
             query = query.filter(FileRecord.filename.ilike(f"%{filename}%"))
