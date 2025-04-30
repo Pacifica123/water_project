@@ -1,0 +1,69 @@
+.steps {
+  margin-top: 120px;
+  margin-left: 100px;
+justify-content: center;
+  display: flex;
+  flex-direction: center; /* Вертикальное расположение шагов */
+  align-items: center; /* Центрирование по горизонтали */
+  gap: 15px;
+  margin-bottom: 20px;
+  position: absolute; /* Фиксированное позиционирование относительно родительского блока */
+  top: 0; /* Размещаем шаги в верхней части контейнера */
+  left: 50%; /* Центрируем шаги по горизонтали */
+  transform: translateX(-50%); /* Центрируем по горизонтали относительно родительского элемента */
+  z-index: 10; /* Устанавливаем слой, чтобы шаги не перекрывались */
+}
+
+.step {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: lightgray;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  font-size: 18px;
+  border: 2px solid transparent;
+}
+
+.step:hover {
+  transform: scale(1.1);
+}
+
+.completed {
+  background: green;
+  color: white;
+  border: 2px solid darkgreen;
+}
+
+.active {
+  background: blue;
+  color: white;
+  border: 2px solid darkblue;
+}
+
+.step-container {
+  display: flex;
+  
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.step-container::after {
+  content: "";
+  position: absolute;
+  left: 50%; /* Центрируем линию по горизонтали */
+  top: 50px; /* Располагаем линию после первого шага */
+  width: 4px; /* Вертикальная линия */
+  height: 50px; /* Высота линии между шагами */
+  background-color: lightgray;
+  z-index: -1;
+}
+
+.step-container:last-child::after {
+  display: none;
+}
