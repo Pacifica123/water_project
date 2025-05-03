@@ -158,7 +158,7 @@ def rest_get_mf():
     print_operation_result(res, f'get_structs_mf на выходе в /api/get_struct_')
     if res.status != OperationStatus.SUCCESS:
         return jsonify({"error": res.message, "message": res.data})
-    data = res.data if struct_name in ["log_details", "organisations_familiar"] else process_enums(res.data, True)
+    data = res.data if struct_name in ["log_details", "organisations_familiar", "get_actual_from_log"] else process_enums(res.data, True)
 
     return jsonify({"status": res.status, "message": res.message, "data": data}), 200
 

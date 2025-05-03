@@ -2,7 +2,7 @@
 // import axios from "axios";
 import {fetchWaterObjects }from "../api/records.js";
 import {sendFormData} from "../api/add_records.js";
-import { fetchSingleTableData } from "../api/fetch_records.js";
+import { fetchSingleTableData, fetchStructDataWithFilters } from "../api/fetch_records.js";
 import { useNotification } from "./NotificationContext.js";
 
 
@@ -22,6 +22,47 @@ function WaterReportForm() {
   const [selectedWaterObject, setSelectedWaterObject] = useState(null);
   const [year, setYear] = useState(new Date().getFullYear());
   const [role, setRole] = useState(null);
+
+  // useEffect для  фактического из Журнала
+  useEffect(() =>{
+    const loadActualData = async () => {
+      const quarterMonthsEnum = {
+        1: ["JANUARY", "FEBRUARY", "MARCH"],
+        2: ["APRIL", "MAY", "JUNE"],
+        3: ["JULY", "AUGUST", "SEPTEMBER"],
+        4: ["OCTOBER", "NOVEMBER", "DECEMBER"],
+      };
+      if (role !== "EMPLOYEE" || !selectedWaterObject || !year || !quarter) return;
+
+      try {
+        const filters = {
+          year,
+          water_point_id: parseInt(selectedWaterObject),
+            months: quarterMonthsEnum[quarter],
+        };
+
+        const result = await fetchStructDataWithFilters("get_actual_from_log", filters);
+        console.log(result);
+
+        const newData = quarters[quarter].map((monthRu, idx) => {
+          const monthEn = quarterMonthsEnum[quarter][idx];
+          return {
+            month: monthRu,
+            fact: result.data[monthEn] || 0,
+            population: 0,
+            other: 0,
+          };
+        });
+        console.log(newData);
+        setData(newData);
+      } catch (error) {
+        console.error("Ошибка загрузки фактических данных:", error);
+      }
+    };
+
+    loadActualData();
+  }, [selectedWaterObject, year, quarter, role]);
+
 
   // Новый useEffect для загрузки данных REPORT_ADMIN
   useEffect(() => {
@@ -199,7 +240,7 @@ function WaterReportForm() {
 
   return (
     <div className="water-report-form">
-    <div className="content-container">
+    <div className="content-container-waterReropt">
     <h2  align="center" >
     {role === "EMPLOYEE"
       ? 'Ввод показаний "Забор поверхностной воды за квартал"'

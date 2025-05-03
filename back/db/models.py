@@ -391,6 +391,7 @@ class Permissions(Base):
             'permission_type': self.permission_type,
             'allowed_volume_org': self.allowed_volume_org,
             'allowed_volume_pop': self.allowed_volume_pop,
+            'method_type': self.method_type,
         }
 
 

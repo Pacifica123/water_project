@@ -1,6 +1,7 @@
 from utils.backend_utils import *
 from utils.db_utils import *
-from sqlalchemy import inspect, types
+from sqlalchemy import inspect, types, extract, func
+from typing import List, Dict, Any
 from datetime import date, datetime
 from db.crudcore import *
 from db.models import *
@@ -8,6 +9,67 @@ from db import models
 from sqlalchemy import Enum
 import sys
 import pprint
+
+
+def get_actual_from_log_by_mf(filters: dict) -> OperationResult:
+    try:
+        months = filters.get("months") or filters.get("months[]")
+        if isinstance(months, str):
+            months = [months]
+        elif months is None:
+            months = []
+
+        year = filters.get("year")
+        water_point_id = filters.get("water_point_id")
+
+        if not (year and water_point_id and months):
+            return OperationResult(
+                status=OperationStatus.VALIDATION_ERROR,
+                msg="Не заданы обязательные фильтры: year, water_point_id, months"
+            )
+        from collections import defaultdict
+
+        all_logs = []
+        for month_name in months:
+            try:
+                month_enum = Month[month_name]
+                log_conditions = [
+                    {"point_id": int(water_point_id)},
+                    {"month": month_enum}  # передаем один enum, а не список
+                ]
+                logs_result = get_all_by_conditions(WaterConsumptionLog, log_conditions)
+                if logs_result.status == OperationStatus.SUCCESS:
+                    all_logs.extend(logs_result.data)
+            except KeyError:
+                continue  # Пропускаем неверные месяцы
+
+        # Фильтруем по году
+        logs = [log for log in all_logs if log.start_date.year == int(year)]
+
+        log_ids = [log.id for log in logs]
+
+        all_records = []
+        for log_id in log_ids:
+            rec_conditions = [{"log_id": log_id}]
+            recs_result = get_all_by_conditions(RecordWCL, rec_conditions)
+            if recs_result.status == OperationStatus.SUCCESS:
+                all_records.extend(recs_result.data)
+
+        month_to_sum = defaultdict(float)
+        logid_to_month = {log.id: log.month.name for log in logs}
+
+        for rec in all_records:
+            log_month = logid_to_month.get(rec.log_id)
+            if log_month:
+                month_to_sum[log_month] += float(rec.water_consumption_m3_per_day) * float(rec.operating_time_days)
+
+        result = {m: round(month_to_sum.get(m, 0.0), 2) for m in months}
+
+        return OperationResult(OperationStatus.SUCCESS, data=result)
+
+    except Exception as e:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
+
 
 
 def organisations_familiar_by_mf(filters: dict) -> OperationResult:

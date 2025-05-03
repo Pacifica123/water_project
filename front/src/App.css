@@ -111,8 +111,12 @@ div {
 
 .main-content {
   flex-grow: 1;
-  padding: 20px;
   background-color: #ffffff;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: cals(100vh-60px);
 }
 
 .footer {
@@ -378,7 +382,7 @@ input {
 
 .content-container_for_renderTableList {
   background-color: #f9f9f9; /* Светлый фон */
-  padding: 20px;
+  padding: 10px;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Тень */
   display: flex; /* Добавляем flexbox */
@@ -567,6 +571,8 @@ input {
   cursor: pointer;
 }
 
+
+
 .back-button {
   padding: 10px;
   border: none;
@@ -658,6 +664,14 @@ input {
   border: none;
   border-radius: 5px;
   background-color: #dc3545;
+  color: white;
+  cursor: pointer;
+}
+.add-button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #28a745;
   color: white;
   cursor: pointer;
 }
@@ -1134,6 +1148,8 @@ input {
   100% { opacity: 0; transform: translateY(-10px); }
 }
 
+
+
 .data-table-admin {
   width: 100px; /* или min-width: 100% */
   border-collapse: collapse;
@@ -1145,4 +1161,109 @@ input {
   border-bottom: 1px solid #ddd;
   max-width: 150px;
   padding: 20px 30px;
+}
+
+
+.log-files-upload {
+  margin-top: 20px; /* Отступ от таблицы журнала */
+  padding: 10px;
+}
+
+.upload-row {
+
+  display: flex;
+  gap: 16px; /* Расстояние между элементами в линии */
+  flex-wrap: wrap; /* Если не влезает по ширине, переносим */
+  align-items: center;
+}
+
+/* Добавьте стиль для кнопок в модальном окне */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 15px;
+  border-top: 1px solid #ddd;
+  position: sticky;
+  bottom: 0;
+  background: white;
+}
+
+
+.label-modal {
+  margin-top: 5px;
+}
+
+.tables-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.table-title{
+  text-align: center;
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #000
+}
+
+.table-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 20px;
+  list-style: none;
+  max-width: 1000px;
+  margin: 0 auto;
+  justify-content: center;
+}
+
+.table-item {
+  display: flex;
+  justify-content: center;
+}
+
+.table-card-button {
+  background-color: #ffffff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 20px 30px;
+  width: 100%;
+  max-width: 250px;
+  min-height: 100px;
+  font-size: 22px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-card-button:hover {
+  background-color: #007bff;
+  color: #fff;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 20px rgba(0, 123, 255, 0.3);
+}
+
+
+.content-container-waterReropt {
+  padding:
+  inherit;
+  padding-right: inherit;
+  padding-left: inherit;
+  background-color: #f9f9f9;
+  border:
+  1px solid #ddd;
+  border-radius:
+  10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  padding-left: 70px;
+  padding-right: 100px;
 }

@@ -238,6 +238,8 @@ def get_structs_mf(selected_template: str, filters: dict) -> OperationResult:
             return log_datails_by_mf(filters)
         case "organisations_familiar":
             return organisations_familiar_by_mf(filters)
+        case "get_actual_from_log":
+            return get_actual_from_log_by_mf(filters)
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
 

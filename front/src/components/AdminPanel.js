@@ -182,15 +182,17 @@ const AdminPanel = () => {
   // Рендер списка таблиц
   const renderTableList = () => (
     <div className="content-container_for_renderTableList">
-    <h2>Список таблиц</h2>
+    <div className="table-section">
+    <h2 className="table-title">Список таблиц</h2>
     {tableList.length === 0 && <div>Нет данных</div>}
-    <ul className="selectors_for_renderTableList">
+    <ul className="table-grid">
     {tableList.map((table, idx) => {
       const [displayName, modelName] = Object.entries(table)[0];
+      if (modelName === "history") return null;
       return (
-        <li key={idx}>
+        <li key={idx} className="table-item">
         <button
-        className="custom-button"
+        className="table-card-button"
         onClick={() => handleSelectTable(modelName)}
         >
         {displayName}
@@ -199,6 +201,7 @@ const AdminPanel = () => {
       );
     })}
     </ul>
+    </div>
     </div>
   );
 
@@ -325,61 +328,65 @@ const AdminPanel = () => {
     <form onSubmit={handleFormSubmit}>
     {modelSchema && modelSchema.data ? (
       modelSchema.data
-      .filter((field) => {
-        if (field.field === "id") return false;
-
-        const hiddenFields = [
+      .filter(
+        (field) =>
+        field.field !== "id" &&
+        ![
           "created_at",
           "created_by",
           "updated_at",
+          "updated_by",
           "is_deleted",
           "deleted_at",
           "deleted_by",
-        ];
-
-        if (field.field === "updated_by" && isEditMode) return true;
-
-        return !hiddenFields.includes(field.field);
-      })
+        ].includes(field.field)
+      )
       .map((field, index) => (
         <div key={index} style={{ marginBottom: "10px" }}>
         <label style={{ display: "block", marginBottom: "5px" }}>
         {translate(field.field)}:
         </label>
-        {/* Рендер поля */}
-        {field.foreignKey || field.options?.length > 0 || field.isEnum ? (
-          <ForeignKeySelect
-          field={field}
-          value={formData[field.field] || ""}
-          onChange={(newValue) => {
-            setFormData({ ...formData, [field.field]: newValue });
-            if (formData[field.field]) {
-              document.getElementById(field.field)?.classList.add("filled");
-            }
-          }}
-          />
-        ) : (
-          <input
-          type={getInputType(field.type)}
-          value={formData[field.field] || ""}
-          onChange={(e) => {
-            setFormData({
-              ...formData,
-              [field.field]: e.target.value,
-            });
-            if (e.target.value) {
-              document.getElementById(field.field)?.classList.add("filled");
-            }
-          }}
-          id={field.field}
-          />
-        )}
-        </div>
+        {/* Если поле связано с внешним ключом или имеет опции, отрисовываем ForeignKeySelect */}
+        {field.foreignKey ||
+          field.options?.length > 0 ||
+          field.isEnum ? (
+            <ForeignKeySelect
+            field={field}
+            value={formData[field.field] || ""}
+            onChange={(newValue) => {
+              setFormData({ ...formData, [field.field]: newValue });
+              if (formData[field.field]) {
+                // Автоматическое сворачивание поля после заполнения
+                document
+                .getElementById(field.field)
+                ?.classList.add("filled");
+              }
+            }}
+            />
+          ) : (
+            <input
+            type={getInputType(field.type)}
+            value={formData[field.field] || ""}
+            onChange={(e) => {
+              setFormData({
+                ...formData,
+                [field.field]: e.target.value,
+              });
+              if (e.target.value) {
+                // Автоматическое сворачивание поля после заполнения
+                document
+                .getElementById(field.field)
+                ?.classList.add("filled");
+              }
+            }}
+            id={field.field} // Добавление ID для управления классами
+            />
+          )}
+          </div>
       ))
     ) : (
       <div>Схема модели не получена.</div>
     )}
-
 
     <center><button className="submit-button" type="submit">
     {isEditMode ? "Сохранить изменения" : "Добавить"}
@@ -481,7 +488,7 @@ const AdminPanel = () => {
       ✅ Данные успешно добавлены!
       </div>
     )}
-    <h1>Админ-панель</h1>
+    <center><h1>Админ-панель</h1></center>
     {isLoading && <div>Загрузка...</div>}
     {!selectedTable ? (
       renderTableList()

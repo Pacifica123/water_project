@@ -53,6 +53,15 @@ const AccountingPost = () => {
     verification_interval: "",
     next_verification_date: ""
   });
+  const [permissionData, setPermissionData] = useState({
+    permission_number: "",
+    registration_date: "",
+    expiration_date: "",
+    permission_type: "",
+    allowed_volume_org: "",
+    allowed_volume_pop: "",
+    method_type: "",
+  });
 
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
@@ -240,6 +249,22 @@ const AccountingPost = () => {
     setShowAddModal(false);
   };
 
+  const handlePermissionChange = (e) => {
+    const { name, value } = e.target;
+    setPermissionData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const methodTypeOptions = [
+    { value: "org", label: "Организации" },
+    { value: "population", label: "Населению" },
+    { value: "other_org", label: "Другая организация" },
+    { value: "other_population", label: "Другое население" },
+  ];
+
+
 
   return (
     <div className="accounting-container">
@@ -256,11 +281,14 @@ const AccountingPost = () => {
       <div className="modal-overlay">
       <div className="modal-content">
       <div className="modal-left">
-      <label>Организация:</label>
+
+      <center><label>Организация:</label>
       <select name="organisation_id" value={formData.organisation_id} disabled>
       <option value={orgInfo.id}>{orgInfo.organisation_name}</option>
       </select>
-
+      </center>
+      <hr />
+      <div className="label-modal">
       <label>Водный объект:</label>
       <select name="water_body_id" value={formData.water_body_id} onChange={handleFormChange}>
       <option value="">Выберите...</option>
@@ -268,16 +296,18 @@ const AccountingPost = () => {
         <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
       </select>
-
-      <label>Координаты (широта, долгота):</label>
+      </div>
+      <div className="label-modal">
+      <label >Координаты (широта, долгота):</label>
       <input
       type="text"
       name="latitude_longitude"
       value={formData.latitude_longitude}
       onChange={handleFormChange}
       />
-
-      <label>Тип пункта:</label>
+      </div>
+      <div className="label-modal">
+      <label> Тип пункта:</label>
       <select name="point_type" value={formData.point_type} onChange={handleFormChange}>
       <option value="">Выберите...</option>
       {pointTypeOptions.map(opt => (
@@ -285,8 +315,10 @@ const AccountingPost = () => {
       ))}
       </select>
       </div>
+      </div>
       <div className="modal-right">
       <div className="modal-upper-right">
+      <div className="label-modal">
       <label>Выбрать существующий прибор:</label>
       <select name="existing_meter_id" value={formData.existing_meter_id} onChange={handleFormChange}>
       <option value="">Выберите...</option>
@@ -294,7 +326,7 @@ const AccountingPost = () => {
         <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
       </select>
-
+      </div>
       <hr />
 
       <label>Ввести новый прибор:</label>
@@ -340,13 +372,89 @@ const AccountingPost = () => {
       />
       </div>
       </div>
-      <div className="modal-lower-right">здесь будет разрешение</div>
+      <div className="permission-section">
+      <h4>Разрешение на водопользование</h4>
+      <div className="label-modal">
+      <label>Номер разрешения:</label>
+      <input
+      type="text"
+      name="permission_number"
+      value={permissionData.permission_number}
+      onChange={handlePermissionChange}
+      />
+      </div>
+      <div className="label-modal">
+      <label>Дата регистрации:</label>
+      <input
+      type="date"
+      name="registration_date"
+      value={permissionData.registration_date}
+      onChange={handlePermissionChange}
+      />
+      </div>
+      <div className="label-modal">
+      <label>Дата окончания:</label>
+      <input
+      type="date"
+      name="expiration_date"
+      value={permissionData.expiration_date}
+      onChange={handlePermissionChange}
+      />
+      </div>
+      <div className="label-modal">
+      <label>Тип разрешения:</label>
+      <input
+      type="text"
+      name="permission_type"
+      value={permissionData.permission_type}
+      onChange={handlePermissionChange}
+      />
+      </div>
+      <div className="label-modal">
+      <label>Разрешённый объём (организации):</label>
+      <input
+      type="number"
+      name="allowed_volume_org"
+      value={permissionData.allowed_volume_org}
+      onChange={handlePermissionChange}
+      step="0.01"
+      />
+      </div>
+      <div className="label-modal">
+      <label>Разрешённый объём (население):</label>
+      <input
+      type="number"
+      name="allowed_volume_pop"
+      value={permissionData.allowed_volume_pop}
+      onChange={handlePermissionChange}
+      step="0.01"
+      />
+      </div>
+      <div className="label-modal">
+      <label>Тип метода:</label>
+      <select
+      name="method_type"
+      value={permissionData.method_type}
+      onChange={handlePermissionChange}
+      >
+      <option value="">Выберите...</option>
+      {methodTypeOptions.map(opt => (
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      ))}
+      </select>
+      </div>
+      <div className="label-modal" style={{marginTop: 10, color: "#888", fontStyle: "italic"}}>
+      место для загрузки pdf-скана разрешения
       </div>
       </div>
+
       <div className="modal-actions">
-      <button onClick={handleSaveNewPoint}>Сохранить</button>
-      <button onClick={() => setShowAddModal(false)}>Отмена</button>
+      <button className="add-button" onClick={handleSaveNewPoint}>Сохранить</button>
+      <button className="delete-button" onClick={() => setShowAddModal(false)}>Отмена</button>
       </div>
+      </div>
+      </div>
+
       </div>
     )}
 
