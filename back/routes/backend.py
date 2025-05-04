@@ -126,6 +126,7 @@ def get_single_with_mf(tablename: str, filters: dict) -> OperationResult:
             for k, v in filters.items()
         )
     ]
+    print(f"Отфильтрованное : {filtered_records}")
 
     # 3. Конвертация в словарь только отфильтрованных данных
     filtered_data = [convert_to_dict(record) for record in filtered_records]

@@ -80,16 +80,30 @@ div {
 }
 
 .main-layout {
+  background-image: url(image/background.jpg);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   display: flex;
   flex: 1;
   background-color: #f9f9f9;
 }
 
 .sidebar {
+  position: fixed;
+  left: 0;
+  top: 50px;
+  bottom: 51px;
   width: 250px;
-  background-color: #f5f5f5;
-  padding: 20px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  transform: translateX(-220px); /* скрыта почти полностью */
+  transition: transform 0.3s ease;
+  background-color: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  padding: 15px 10px;
+  overflow-y: auto;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .sidebar button {
@@ -106,13 +120,17 @@ div {
 }
 
 .sidebar button:hover {
-  background-color: #e6e6e6;
+  background-color: #007bff;
+  color:white;
+  font-weight: bold;
+}
+
+.sidebar:hover {
+  transform: translateX(0);
 }
 
 .main-content {
   flex-grow: 1;
-  background-color: #ffffff;
-
   display: flex;
   justify-content: center;
   align-items: center;
@@ -178,7 +196,7 @@ input {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #f0f0f0;
+  background-image:url(image/background.jpg);
 }
 
 .login-page h2 {
@@ -257,8 +275,7 @@ input {
   padding: 30px;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 700px;
+
 }
 
 .form-step {
@@ -376,7 +393,7 @@ input {
   padding: 20px;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Тень */
-  width: 80%; /* Опциональная ширина */
+  width: 100%; /* Опциональная ширина */
   max-width: 1200px; /* Максимальная ширина */
 }
 
@@ -544,8 +561,14 @@ input {
   display: flex;
   justify-content: center;
   align-items: center;
-
+  background-color: #f9f9f9;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 700px;
 }
+
 
 .button-container {
   display: flex;
@@ -553,14 +576,7 @@ input {
   margin-top: 20px;
 }
 
-/* ДЛЯ АДМИН-ПАНЕЛИ */
-.content-container {
-  padding: 20px;
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
-}
+
 
 .custom-button {
   padding: 10px;
@@ -867,7 +883,7 @@ input {
 
 
 .data-Rates-table {
-  width: 50%;
+  width: 100%;
   border-collapse: collapse;
   margin-inline: auto;
   margin-bottom: auto;
@@ -1252,7 +1268,6 @@ input {
   box-shadow: 0 12px 20px rgba(0, 123, 255, 0.3);
 }
 
-
 .content-container-waterReropt {
   padding:
   inherit;
@@ -1266,4 +1281,28 @@ input {
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
   padding-left: 70px;
   padding-right: 100px;
+}
+
+
+
+.accounting-container {
+  background-color: #f9f9f9;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 700px;
+}
+
+.payment-container{
+  background-color: #f9f9f9;
+  padding: 10px 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 1300px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  margin-right: -20px;
+
 }

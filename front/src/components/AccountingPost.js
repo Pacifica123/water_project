@@ -12,6 +12,53 @@ import {
 import {translate} from "../utils/translations.js";
 import FileUpload from "./FileUpload";
 
+
+
+// Универсальный селект для перечислений и внешних ключей
+const ForeignKeySelect = ({ field, value, onChange }) => {
+  const [options, setOptions] = useState(field.options || []);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      setLoading(true);
+      try {
+        if (field.isEnum) {
+          const response = await fetchStructureData("enum_" + field.enumType);
+          console.log("RES for " + field.enumType + "IS : " + response);
+          setOptions(response.data || []);
+        } else if (field.foreignKey) {
+          setOptions(field.options || []);
+        } else {
+          setOptions([]);
+        }
+      } catch (error) {
+        console.error("Ошибка получения опций для", field.field, error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOptions();
+  }, [field.field, field.enumType]);
+
+  return (
+    <select
+    name={field.field}
+    value={value}
+    onChange={(e) => onChange({ target: { name: field.field, value: e.target.value } })}
+    disabled={loading}
+    >
+    <option value="">Выберите...</option>
+    {options.map((opt) => (
+      <option key={opt.value} value={opt.value}>
+      {opt.label}
+      </option>
+    ))}
+    </select>
+  );
+};
+
+
 const AccountingPost = () => {
   const [filteredLogs, setFilteredLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,6 +117,7 @@ const AccountingPost = () => {
   if (orgData) {
     try {
       orgInfo = JSON.parse(orgData);
+      console.log(orgInfo);
     } catch (error) {
       console.error("Ошибка парсинга org:", error);
       orgInfo = {};
@@ -158,20 +206,28 @@ const AccountingPost = () => {
     const loadStructure = async () => {
       try {
         const schema = await fetchStructureData("schema_water_point");
-        if (schema && schema.data) {
-          const waterField = schema.data.find(f => f.field === "water_body_id");
-          const typeField = schema.data.find(f => f.field === "point_type");
-          setWaterBodyOptions(waterField?.options || []);
-          setPointTypeOptions(typeField?.options || []);
-          setFormData(prev => ({ ...prev, organisation_id: orgInfo.id }));
-        }
-        // загружаем существующие приборы
-        const meters = await fetchSingleTableDataWithFilters("meters", {"organisation_id": orgInfo.id});
-        console.log("METERS : "+meters);
-        setMeterOptions(meters?.data?.options || []);
-        // загружаем марки приборов
-        const brandSchema = await fetchStructureData("schema_meters_brand_ref");
-        setBrandOptions(brandSchema?.data?.options || []);
+        const waterField = schema.data.find((f) => f.field === "water_body_id");
+        const typeField = schema.data.find((f) => f.field === "point_type");
+        // Преобразуем опции к формату {value, label}
+        setWaterBodyOptions(
+          (waterField?.options || []).map(opt => ({ value: opt.id, label: opt.code_value || opt.name }))
+        );
+        setPointTypeOptions(
+          (typeField?.options || []).map(opt => ({ value: opt.value, label: opt.label }))
+        );
+        setFormData((p) => ({ ...p, organisation_id: orgInfo.id }));
+
+        const meters = await fetchSingleTableDataWithFilters("meters", { organisation_id: orgInfo.id });
+        console.log(meters);
+        setMeterOptions(
+          (meters.data || []).map(opt => ({ value: opt.id, label: opt.serial_number }))
+        );
+
+        const brandSchema = await fetchSingleTableData("meters_brand_ref");
+        console.log("BRANDS : " + brandSchema);
+        setBrandOptions(
+          (brandSchema.data || []).map(opt => ({ value: opt.id, label: opt.brand_name }))
+        );
       } catch (err) {
         console.error("Ошибка загрузки структуры формы", err);
       }
@@ -290,12 +346,11 @@ const AccountingPost = () => {
       <hr />
       <div className="label-modal">
       <label>Водный объект:</label>
-      <select name="water_body_id" value={formData.water_body_id} onChange={handleFormChange}>
-      <option value="">Выберите...</option>
-      {waterBodyOptions.map(opt => (
-        <option key={opt.value} value={opt.value}>{opt.label}</option>
-      ))}
-      </select>
+      <ForeignKeySelect
+      field={{ field: 'water_body_id', foreignKey: true, options: waterBodyOptions }}
+      value={formData.water_body_id}
+      onChange={handleFormChange}
+      />
       </div>
       <div className="label-modal">
       <label >Координаты (широта, долгота):</label>
@@ -308,36 +363,33 @@ const AccountingPost = () => {
       </div>
       <div className="label-modal">
       <label> Тип пункта:</label>
-      <select name="point_type" value={formData.point_type} onChange={handleFormChange}>
-      <option value="">Выберите...</option>
-      {pointTypeOptions.map(opt => (
-        <option key={opt.value} value={opt.value}>{translate(opt.label)}</option>
-      ))}
-      </select>
+      <ForeignKeySelect
+      field={{ field: 'point_type', isEnum: true, enumType: 'PermissionType' }}
+      value={formData.point_type}
+      onChange={handleFormChange}
+      />
       </div>
       </div>
       <div className="modal-right">
       <div className="modal-upper-right">
       <div className="label-modal">
       <label>Выбрать существующий прибор:</label>
-      <select name="existing_meter_id" value={formData.existing_meter_id} onChange={handleFormChange}>
-      <option value="">Выберите...</option>
-      {meterOptions.map(opt => (
-        <option key={opt.value} value={opt.value}>{opt.label}</option>
-      ))}
-      </select>
+      <ForeignKeySelect
+      field={{ field: 'existing_meter_id', foreignKey: true, options: meterOptions }}
+      value={formData.existing_meter_id}
+      onChange={handleFormChange}
+      />
       </div>
       <hr />
 
       <label>Ввести новый прибор:</label>
       <div className="new-meter-form">
       <label>Марка прибора:</label>
-      <select name="brand_id" value={newMeterData.brand_id} onChange={handleNewMeterChange}>
-      <option value="">Выберите...</option>
-      {brandOptions.map(opt => (
-        <option key={opt.value} value={opt.value}>{opt.label}</option>
-      ))}
-      </select>
+      <ForeignKeySelect
+      field={{ field: 'brand_id', foreignKey: true, options: brandOptions }}
+      value={newMeterData.brand_id}
+      onChange={handleNewMeterChange}
+      />
 
       <label>Серийный номер:</label>
       <input
