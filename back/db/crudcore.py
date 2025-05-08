@@ -339,6 +339,8 @@ def get_all_by_conditions(
     :return: OperationResult с записями из таблицы или сообщением об ошибке.
     """
     print_data_in_func(entity, "get_all_by_conditions")
+    print(f"conditions: {conditions}")
+    print(f"types in conditions: {[type(c) for c in conditions]}")
 
     try:
         # Формируем фильтр для запроса по условиям
@@ -472,6 +474,58 @@ def update_record(entity_class, record_id, data: dict, required_fields: list = N
             status=OperationStatus.UNDEFINE_ERROR,
             msg="Произошла неожиданная ошибка при обновлении записи."
         )
+
+
+def bulk_update_records(entity_class, records_data: list, required_fields: list = None) -> OperationResult:
+    """
+    Массовое обновление записей с проверкой обязательных полей и оптимизацией по времени.
+
+    :param entity_class: Класс сущности для обновления.
+    :param records_data: Список словарей с данными для обновления. Каждый словарь должен содержать 'id'.
+    :param required_fields: Список обязательных полей для обновления.
+    :return: OperationResult с количеством обновлённых записей или сообщением об ошибке.
+    """
+    # Проверка входных данных
+    for idx, data in enumerate(records_data):
+        record_id = data.get('id')
+        if not record_id:
+            return OperationResult(
+                status=OperationStatus.DATABASE_ERROR,
+                msg=f"В записи под индексом {idx} отсутствует обязательное поле 'id'."
+            )
+        if required_fields:
+            missing = [f for f in required_fields if f not in data]
+            if missing:
+                return OperationResult(
+                    status=OperationStatus.DATABASE_ERROR,
+                    msg=f"В записи с id={record_id} отсутствуют обязательные поля: {', '.join(missing)}."
+                )
+
+    try:
+        # Выполняем массовое обновление
+        g.session.bulk_update_mappings(entity_class, records_data)
+        g.session.commit()
+
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            msg=f"Успешно обновлено {len(records_data)} записей.",
+            data={'updated_count': len(records_data)}
+        )
+    except SQLAlchemyError as e:
+        g.session.rollback()
+        print(f' ---> ОШИБКА БД: {e}')
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg="Ошибка при массовом обновлении записей в базе данных."
+        )
+    except Exception as e:
+        g.session.rollback()
+        print(f' ---> НЕОЖИДАННАЯ ОШИБКА: {e}')
+        return OperationResult(
+            status=OperationStatus.UNDEFINE_ERROR,
+            msg="Неожиданная ошибка при массовом обновлении записей."
+        )
+
 
 
 def update_employee(username: str, data: dict) -> OperationResult:

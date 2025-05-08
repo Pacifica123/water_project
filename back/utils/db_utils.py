@@ -308,8 +308,8 @@ def get_all_models() -> OperationResult:
             ["Точки", WaterPoint.__tablename__],
             ["История", History.__tablename__],
             ["Квартальные справки", WaterConsumptionLogByCategories.__tablename__],
-            ["WCLfor3132", WCLfor3132.__tablename__],
-            ["RecordWCL", RecordWCL.__tablename__],
+            # ["WCLfor3132", WCLfor3132.__tablename__],
+            ["Записи журналов", RecordWCL.__tablename__],
             ["Файлы", FileRecord.__tablename__],
         ]
 

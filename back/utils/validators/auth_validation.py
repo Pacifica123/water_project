@@ -3,6 +3,7 @@ import datetime
 from db.config import LONG_KEY
 from utils.backend_utils import OperationStatus, OperationResult
 
+
 def auth_validate(token) -> OperationResult:
     errors = []
 
@@ -24,9 +25,10 @@ def auth_validate(token) -> OperationResult:
 
     return OperationResult(status=OperationStatus.SUCCESS)
 
+
 def generateJWT(username):
     # Устанавливаем время жизни токена (например, 1 час)
-    expiration_time = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+    expiration_time = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
 
     # Создаем payload
     payload = {

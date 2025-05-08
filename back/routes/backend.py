@@ -6,6 +6,9 @@ from utils.backend_utils import *
 from utils.db_utils import (replace_fks, try_create_code, get_all_models)
 from routes.struct_getters import *
 from routes.struct_senders import *
+import pandas as pd
+import io
+
 
 backend = Blueprint('backend', __name__)
 
@@ -465,6 +468,7 @@ def delete_file(
         session.rollback()
         return OperationResult(OperationStatus.UNDEFINE_ERROR, f"Ошибка при удалении файла: {e}")
 
+
 # ====================== File Parsing Functions ======================
 
 
@@ -481,3 +485,34 @@ def confirm_pase(typeform, data) -> OperationResult:
     # todo: целый список match case функций для добавления конкретных typeform
     ...
 
+
+# =================== Serializing To File Function ===================
+
+
+def json_to_excel_bytes(json_data, save_path=None):
+    """
+    Преобразует JSON данные (словарь или список словарей) в Excel файл в памяти (BytesIO).
+    Если указан save_path, сохраняет файл на диск.
+    Возвращает BytesIO объект.
+    """
+    try:
+        if isinstance(json_data, list):
+            df = pd.json_normalize(json_data)
+        else:
+            df = pd.json_normalize([json_data])
+
+        excel_io = io.BytesIO()
+        with pd.ExcelWriter(excel_io, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+        excel_io.seek(0)
+
+        if save_path:
+            # Сохраняем файл на диск для дебага
+            with open(save_path, 'wb') as f:
+                f.write(excel_io.getbuffer())
+            excel_io.seek(0)  # Вернуть указатель в начало после записи
+
+        return excel_io
+    except Exception as e:
+        print(f"Ошибка при конвертации JSON в Excel: {e}")
+        return None

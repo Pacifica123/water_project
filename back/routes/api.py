@@ -10,19 +10,19 @@ from utils.backend_utils import (
     convert_to_dict, get_required_fields,
     serialize_to_json_old, clear_fields,
     print_entity_data)
-from db.models import Organisations
+from db.models import Organisations, Notification
 from utils.validators.auth_validation import generateJWT, auth_validate
 import pprint
 from functools import wraps
 
 
 api = Blueprint('api', __name__)
-socketio = None
-
-
-def set_socketio(sio):
-    global socketio
-    socketio = sio
+# socketio = None
+#
+#
+# def set_socketio(sio):
+#     global socketio
+#     socketio = sio
 
 
 def token_required(f):
@@ -474,14 +474,76 @@ def delete_file_route():
     return jsonify({"message": "Файл успешно удалён"}), 200
 
 
+@api.route('/api/json_to_excel', methods=['POST'])
+def json_to_excel_route():
+    try:
+        payload = request.get_json(force=True)
+        if not payload:
+            return jsonify({"error": "Отсутствуют данные"}), 400
+
+        res = OperationResult(
+            status=payload.get('status'),
+            msg=payload.get('message'),
+            data=payload.get('data')
+        )
+
+        if res.status != OperationStatus.SUCCESS:
+            return jsonify({"error": res.message or "Ошибка статуса"}), 400
+
+        if not res.data:
+            return jsonify({"error": "Отсутствуют данные для конвертации"}), 400
+
+        # Сохраняем файл для дебага в корень проекта с фиксированным именем
+        excel_file = json_to_excel_bytes(res.data, save_path='debug_export.xlsx')
+        if excel_file is None:
+            return jsonify({"error": "Не удалось создать Excel файл"}), 500
+
+        return send_file(
+            excel_file,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='export.xlsx'
+        )
+
+    except Exception as e:
+        print(f"Ошибка в /api/json_to_excel: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+#  ---------- Notify Routers ----------
+
+
 @api.route('/notify', methods=['POST'])
 def notify():
     data = request.json
     target_user = data.get('username')
     message = data.get('message', 'Уведомление от сервера')
 
-    if socketio:
-        socketio.emit('notification', message, room=target_user)
-        return jsonify({'status': 'sent'}), 200
-    else:
-        return jsonify({'status': 'socketio not initialized'}), 500
+    # Сохраняем уведомление в базе
+    notif = {
+        'username': target_user,
+        'message': message,
+        'delivered': False
+    }
+    if not create_record_entity(Notification, notif):
+        return jsonify({'error': 'Не удалось сохранить уведомление в БД'}), 500
+
+    # Пытаемся отправить уведомление, если пользователь онлайн
+    from .socket_handlers import send_notification
+    res = send_notification(target_user, message)
+    if res.status != OperationStatus.SUCCESS:
+        return jsonify({"error": "Ошибка при отправке уведомления", "message": res.message}), 500
+
+    return jsonify({'status': 'sent', 'or_msg': res.message}), 200
+
+
+@api.route('/fetchallnotify', methods=['GET'])
+def fetch_all_notify():
+    target_user = request.args.get('username')
+    from .socket_handlers import send_pending_notifications
+    r = send_pending_notifications(target_user)
+    print_operation_result(r)
+    if r.status != OperationStatus.SUCCESS:
+        return jsonify({"error": "Ошибка при отправке уведомлений", "message": r.message}), 500
+
+    return jsonify({'status': 'sent', 'or_msg': r.message}), 200

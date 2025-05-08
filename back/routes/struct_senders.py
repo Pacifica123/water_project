@@ -162,6 +162,22 @@ def process_water_consumption_single(form_data: dict) -> OperationResult:
         if log_result.status != OperationStatus.SUCCESS:
             return log_result
         log = log_result.data
+
+        # Проверка, что запись с таким measurement_date в этом журнале ещё не существует
+        conditions = [
+            {"log_id": log.id},
+            {"measurement_date": measurement_date}
+        ]
+        existing_records_result = get_all_by_conditions(RecordWCL, conditions)
+        if existing_records_result.status != OperationStatus.SUCCESS:
+            # Если произошла ошибка при запросе, возвращаем её
+            return existing_records_result
+        if existing_records_result.data:
+            return OperationResult(
+                OperationStatus.VALIDATION_ERROR,
+                msg=f"Запись с датой {measurement_date} уже существует в журнале."
+            )
+
         # Поля, которые нужно взять из формы для записи
         valid_fields = {
             "measurement_date",
