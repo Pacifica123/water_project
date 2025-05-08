@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { connectSocket } from '../socket';
+import "../css/login.css";
 
 function LoginPage({ onLogin }) {
   const [username, setUsername] = useState("");

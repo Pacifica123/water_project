@@ -8,7 +8,7 @@ import {translate} from "../utils/translations"
 
 const Water = () => {
 
-  const {showSuccess, showError} = useNotification();
+  const {showSuccess, showError,askConfirmation} = useNotification();
 
   const orgData = localStorage.getItem("org");
   let orgInfo = {};
@@ -129,7 +129,8 @@ const Water = () => {
       alert("Выберите прибор учета!");
       return;
     }
-
+    const confirmed = await askConfirmation("Вы уверены, что хотитеть отправить данные?");
+    if(!confirmed) return;
     const data = {
       measurement_date: formData.measurementDate,
       operating_time_days: formData.workingTime,
@@ -166,6 +167,8 @@ const Water = () => {
 
   return (
     <div className="water-container">
+
+    <div className="form-container">
     <div className="steps">
     {[1, 2].map((step) => (
       <div
@@ -177,7 +180,6 @@ const Water = () => {
       </div>
     ))}
     </div>
-    <div className="form-container">
     {activeSection === 1 && (
       <div className="form-step">
       <h2>Журнал учета водопотребления</h2>
@@ -242,13 +244,13 @@ const Water = () => {
       <div className="input-group">
       <label>
       Время работы (сут.):
-      <input type="number" name="workingTime" value={formData.workingTime} onChange={handleChange} />
+      <input type="number" pattern="[0-9]*" name="workingTime" value={formData.workingTime} onChange={handleChange} />
       </label>
       </div>
       <div className="input-group">
       <label>
       Расход воды (м³/сут.):
-      <input type="number" name="waterUsage" value={formData.waterUsage} onChange={handleChange} />
+      <input type="number" pattern="[0-9]*" name="waterUsage" value={formData.waterUsage} onChange={handleChange} />
       </label>
       </div>
       {/* Добавлено поле ФИО */}

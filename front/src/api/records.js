@@ -17,8 +17,8 @@ export const createRecord = async (data) => {
 
 const fetchWaterObjects = async (role) => {
   try {
-    if (role === "REPORT_ADMIN") {
-      // Для REPORT_ADMIN возвращаем все точки забора
+    if (role === "ORG_ADMIN") {
+      // Для ORG_ADMIN возвращаем все точки забора
       return await fetchSingleTableData('water_point');
     } else if (role === "EMPLOYEE") {
       // 1. Get organization ID

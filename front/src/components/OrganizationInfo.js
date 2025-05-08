@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import { sendSingleData } from "../api/add_records";
 import { fetchStructureData } from "../api/fetch_records";
 import "../App.css";
+import { useNotification } from "./NotificationContext";
 
 function OrganizationInfo() {
     const userData = localStorage.getItem("user");
     const orgData = localStorage.getItem("org");
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
     const [createdUserData, setCreatedUserData] = useState(null);
-    const [errorMessage, setErrorMessage] = useState(null);
+    const { showError } = useNotification();
 
     let userInfo = {};
     let orgInfo = {};
@@ -79,10 +80,8 @@ function OrganizationInfo() {
 
         } catch (error) {
             console.error("Ошибка отправки данных:", error);
-            setErrorMessage("Ошибка при отправке данных. Проверьте соединение.");
-            setTimeout(() => {
-                setErrorMessage(null);
-            }, 10000);
+            showError("Пользователь уже создан или ошибка при отправке данных. Проверьте соединение.");
+
         }
     };
 
@@ -112,11 +111,7 @@ function OrganizationInfo() {
             </div>
             </div>
         )}
-        {errorMessage && (
-            <div className="custom-toast error-toast">
-            ❌ {errorMessage}
-            </div>
-        )}
+
         <div className="organization-info-container">
         <div className="organization-info">
         <h2 align="center">Информация об организации</h2>

@@ -76,6 +76,16 @@ const AccountingPost = () => {
     under_correction: true,
     closed: true,
   });
+  const getStatusClass = (status) => {
+    const normalized = status.toLowerCase();
+    if (normalized.includes("in_progress")) return "status-in-progress";
+    if (normalized.includes("is_done")) return "status-done";
+    if (normalized.includes("sent")) return "status-sent";
+    if (normalized.includes("under_watch")) return "status-watch";
+    if (normalized.includes("under_correction")) return "status-correction";
+    if (normalized.includes("closed")) return "status-closed";
+    return "status-unknown";
+  };
   const [expandedLogs, setExpandedLogs] = useState({});
   const [logDetails, setLogDetails] = useState({});
 
@@ -593,7 +603,7 @@ const AccountingPost = () => {
           <td>{log.coordinates}</td>
           <td>{translate(log.point_type)}</td>
           <td>{log.start_date}</td>
-          <td>{translate(log.status)}</td>
+         <td className={getStatusClass(log.status)}>{translate(log.status)}</td>
           {userInfo.role === "UserRoles.EMPLOYEE" && (
             <td>
             <button className="custom-button" onClick={() => handleExpandLog(log.id)}>

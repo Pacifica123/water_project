@@ -93,10 +93,8 @@ div {
 .sidebar {
   position: fixed;
   left: 0;
-  top: 50px;
-  bottom: 51px;
-  width: 250px;
-  transform: translateX(-220px); /* скрыта почти полностью */
+  top: -1px;
+  width: 230px;
   transition: transform 0.3s ease;
   background-color: rgba(255, 255, 255, 0.15);
   backdrop-filter: blur(10px);
@@ -125,19 +123,36 @@ div {
   font-weight: bold;
 }
 
-.sidebar:hover {
+.sidebar.hide{
+  transform: translateX(-270px);
+  position: absolute;
+  z-index: 1;
+}
+.sidebar.show {
   transform: translateX(0);
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar.show .main-content {
+  margin-left: 250px;
+}
+
+.sidebar.hide .main-content{
+  margin-left: 0;
 }
 
 .main-content {
   flex-grow: 1;
   display: flex;
-  justify-content: center;
+  justify-content: space-around;
   align-items: center;
   height: cals(100vh-60px);
+  overflow-x: auto;
 }
 
 .footer {
+  margin-top: auto;
   display: flex;
   justify-content: center;
   gap: 20px;
@@ -386,6 +401,17 @@ input {
   padding: 20px;
   font-family: Arial, sans-serif;
 
+}
+
+.content-container-admin {
+  background-color: #f9f9f9; /* Светлый фон */
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Тень */
+  width: 100%; /* Опциональная ширина */
+  max-width: 500px; /* Максимальная ширина */
+  margin:auto;
+  text-align: center;
 }
 
 .content-container {
@@ -1032,7 +1058,7 @@ input {
 
 
 .data-table-accountingPost {
-  width: 80%;
+  width: 100%;
   border-collapse: collapse;
   margin-inline: auto;
   margin-bottom: auto;
@@ -1164,6 +1190,13 @@ input {
   100% { opacity: 0; transform: translateY(-10px); }
 }
 
+.admin-content-container {
+  background-color: #f9f9f9; /* Светлый фон */
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Тень */
+  max-width: 1200px; /* Максимальная ширина */
+}
 
 
 .data-table-admin {
@@ -1291,7 +1324,7 @@ input {
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 700px;
+  max-width: 1000px;
 }
 
 .payment-container{
@@ -1305,4 +1338,81 @@ input {
   margin-bottom: 10px;
   margin-right: -20px;
 
+}
+
+
+
+.sidebar-toggle {
+  font-size: 1.5rem;
+  margin-right: 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: white ;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+
+.history-container {
+  background-color: #f9f9f9;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 700px;
+}
+
+.confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.confirm-modal {
+  background: white;
+  padding: 20px 30px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  text-align: center;
+  font-size: 30px;
+}
+
+.confirm-buttons {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+
+}
+
+.confirm-buttons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 30px;
+}
+
+
+
+.confirm-buttons button:first-child {
+  background-color: #28a745;
+  color: white;
+  width: 150px;
+}
+
+.confirm-buttons button:last-child {
+  background-color: #dc3545;
+  color: white;
+  width: 150px;
 }

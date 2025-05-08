@@ -1,16 +1,10 @@
 .steps {
-  margin-top: 120px;
-  margin-left: 100px;
-justify-content: center;
+
   display: flex;
-  flex-direction: center; /* Вертикальное расположение шагов */
-  align-items: center; /* Центрирование по горизонтали */
   gap: 15px;
   margin-bottom: 20px;
-  position: absolute; /* Фиксированное позиционирование относительно родительского блока */
+
   top: 0; /* Размещаем шаги в верхней части контейнера */
-  left: 50%; /* Центрируем шаги по горизонтали */
-  transform: translateX(-50%); /* Центрируем по горизонтали относительно родительского элемента */
   z-index: 10; /* Устанавливаем слой, чтобы шаги не перекрывались */
 }
 
@@ -47,7 +41,7 @@ justify-content: center;
 
 .step-container {
   display: flex;
-  
+
   align-items: center;
   gap: 10px;
   position: relative;
@@ -66,4 +60,39 @@ justify-content: center;
 
 .step-container:last-child::after {
   display: none;
+}
+
+.status-in-progress {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-done {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-sent {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.status-watch {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.status-correction {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-closed {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-unknown {
+  background-color: #f5f5f5;
+  color: #6c757d;
 }

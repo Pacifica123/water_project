@@ -21,7 +21,7 @@ const AdminPanel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [formData, setFormData] = useState({});
-  const { showSuccess, showEdit, showError } = useNotification(); // глобальные уведомления
+  const { showSuccess, showEdit, showError, askConfirmation } = useNotification(); // глобальные уведомления
   // Дополнительное состояние для хранения схемы выбранной модели
   const [modelSchema, setModelSchema] = useState(null);
   // Состояние для режима редактирования (false - добавление, true - редактирование)
@@ -79,7 +79,48 @@ const AdminPanel = () => {
 
   // Функция для вызова модального окна в режиме редактирования
   const handleEditButton = (record) => {
-    setFormData(record);
+    const cleanedRecord = { ...record };
+
+    if (modelSchema?.data) {
+      modelSchema.data.forEach((field) => {
+        const fieldName = field.field;
+        const rawValue = cleanedRecord[fieldName];
+
+        if (rawValue === null || rawValue === undefined) {
+          cleanedRecord[fieldName] = "";
+          return;
+        }
+
+        // ENUM: всегда берем .value (строку)
+        if (field.isEnum && typeof rawValue === "object") {
+          cleanedRecord[fieldName] = rawValue.value ?? rawValue.label ?? "";
+          return;
+        }
+
+        // foreignKey: если объект — берем id (если есть) или value (если строка)
+        if (field.foreignKey && typeof rawValue === "object") {
+          if (typeof rawValue.id === "number"  || typeof rawValue.id === "string") {
+            cleanedRecord[fieldName] = rawValue.id;
+          } else if (typeof rawValue.value === "string") {
+            cleanedRecord[fieldName] = rawValue.value;
+          } else {
+            cleanedRecord[fieldName] = "";
+          }
+          return;
+        }
+
+        // BOOLEAN
+        if (field.type === "BOOLEAN") {
+          cleanedRecord[fieldName] = Boolean(rawValue);
+          return;
+        }
+
+        // всё остальное оставляем как есть
+        cleanedRecord[fieldName] = rawValue;
+      });
+    }
+
+    setFormData(cleanedRecord);
     setIsEditMode(true);
     setModalVisible(true);
   };
@@ -98,6 +139,10 @@ const AdminPanel = () => {
   const handleFormSubmit = async (e) => {
 
     e.preventDefault();
+    const confirmed = await askConfirmation(
+      isEditMode ? "Вы уверены, что хотите отредактировать запись?" : "Вы уверены, что хотите добавить новую запись?"
+    );
+    if (!confirmed) return;
     // Инициализация объекта данных.
     const dataToSend = {
       ...formData,
@@ -225,8 +270,8 @@ const AdminPanel = () => {
 
   // Рендер списка записей выбранной таблицы с CRUD-кнопками
   const renderTableRecords = () => (
-    <div style ={{overflowX:"auto", Width:"100%"}}>
-    <div className="content-container">
+    <div>
+    <div className="content-container-admin">
     <button
     className="back-button"
     onClick={() => {
@@ -307,6 +352,10 @@ const AdminPanel = () => {
 
   // Функция для удаления записи
   const handleDeleteRecord = async (recordId) => {
+    const confirmed = await askConfirmation(
+      "Вы уверены, что хотите удалить запись?"
+    );
+    if (!confirmed) return;
     try {
       await sendDeleteData(selectedTable, recordId);
       handleSelectTable(selectedTable); // Обновить таблицу после удаления
@@ -335,7 +384,7 @@ const AdminPanel = () => {
           "created_at",
           "created_by",
           "updated_at",
-          "updated_by",
+          // "updated_by",
           "is_deleted",
           "deleted_at",
           "deleted_by",
@@ -493,7 +542,7 @@ const AdminPanel = () => {
     {!selectedTable ? (
       renderTableList()
     ) : (
-      <div className="table-container">{renderTableRecords()}</div>
+      <div>{renderTableRecords()}</div>
     )}
     {modalVisible && renderModal()}
     </div>

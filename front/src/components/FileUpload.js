@@ -105,8 +105,8 @@ const FileUpload = ({
             {isPdf ? (
                 <iframe
                 src={file ? URL.createObjectURL(file) : `${fileUrl}${fileUrl.includes('?') ? '&' : '?'}token=${token}`}
-                width="1200px"
-                height="790vh"
+                width="900px"
+                height="390vh"
                 title="PDF Preview"
                 style={{ position:"relative"}}
                 />

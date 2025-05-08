@@ -11,9 +11,9 @@ import UserPage from "./UserPage";
 import Rates from "./Rates";
 import MainNotify from "./MainNotify";
 
-import { disconnectSocket } from '../socket';
-
 function ProtectedContent({ onLogout }) {
+  const [isSidebarVisible, setSidebarVisible] = useState(true);
+  const toggleSidebar = () => {setSidebarVisible(!isSidebarVisible)};
   const [activeSection, setActiveSection] = useState(() => {
     const userInfo = JSON.parse(localStorage.getItem("user"));
     return userInfo.role === "UserRoles.ADMIN" ? "AdminPanel" : "notifications";
@@ -37,11 +37,6 @@ function ProtectedContent({ onLogout }) {
   // Получаем доступные разделы в зависимости от роли
   const allowedSections = getAllowedSections(userInfo.role);
 
-  const handleLogout = () => {
-    disconnectSocket();
-    onLogout();
-  };
-
   const renderContent = () => {
     if (!allowedSections.includes(activeSection)) {
       return <div>Доступ запрещен</div>;
@@ -49,7 +44,7 @@ function ProtectedContent({ onLogout }) {
 
     switch (activeSection) {
       case "notifications":
-        return <MainNotify />;
+        return <MainNotify/>;
       case "waterReport":
         return <WaterReportForm />;
       case "AccountingPost":
@@ -79,12 +74,13 @@ function ProtectedContent({ onLogout }) {
 
   return (
     <div className="app">
-    <Header userInfo={userInfo} onLogout={handleLogout} orgInfo={orgInfo} />
+    <Header userInfo={userInfo} onLogout={onLogout} orgInfo={orgInfo}  toggleSidebar={toggleSidebar}/>
     <div className="main-layout">
     <Sidebar
     setActiveSection={setActiveSection}
     allowedSections={allowedSections}
     activeSection={activeSection}
+    isVisible={isSidebarVisible}
     />
     <main className="main-content">{renderContent()}</main>
     </div>
@@ -102,12 +98,12 @@ function getAllowedSections(role) {
       ];
     case "UserRoles.ORG_ADMIN":
       return [
-        "notifications", "UserPage", "AccountingPost", "personalInfo", "organizationInfo", "history", "Rates"
+        "notifications", "UserPage", "waterReport", "AccountingPost", "personalInfo", "organizationInfo", "history", "Rates"
       ];
-    case "UserRoles.REPORT_ADMIN":
-      return [
-        "notifications", "waterReport", "history", "AccountingPost"
-      ];
+    // case "UserRoles.REPORT_ADMIN":
+    //   return [
+    //     "notifications", "waterReport", "history", "AccountingPost"
+    //   ];
     case "UserRoles.EMPLOYEE":
       return [
         "notifications", "organizationInfo", "waterReport", "paymentCalc",
@@ -118,9 +114,10 @@ function getAllowedSections(role) {
   }
 }
 
-function Header({ userInfo, onLogout, orgInfo }) {
+function Header({ userInfo, onLogout, orgInfo, toggleSidebar }) {
   return (
     <header className="header">
+    <button className="sidebar-toggle"  onClick={toggleSidebar}>☰</button>
     <h1>Личный кабинет ({orgInfo.organisation_name || 'Без организации'})</h1>
     <div className="header-right">
     <span>{userInfo.last_name} {userInfo.first_name} {userInfo.middle_name}</span>
@@ -132,12 +129,13 @@ function Header({ userInfo, onLogout, orgInfo }) {
 
 
 
-function Sidebar({ setActiveSection, allowedSections, activeSection }) {
+function Sidebar({ setActiveSection, allowedSections, activeSection,isVisible }) {
   const getButtonClass = (section) =>
   activeSection === section ? "active-button" : "";
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${isVisible ? 'show' : 'hide'}`}>
+
     {allowedSections.includes("notifications") && (
       <button className={getButtonClass("notifications")} onClick={() => setActiveSection("notifications")}>
       Лента уведомлений
@@ -198,7 +196,7 @@ function Sidebar({ setActiveSection, allowedSections, activeSection }) {
       Ставки оплаты
       </button>
     )}
-    </div>
+    </ div>
   );
 }
 

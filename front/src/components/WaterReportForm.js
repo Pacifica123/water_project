@@ -64,7 +64,7 @@ function WaterReportForm() {
   }, [selectedWaterObject, year, quarter, role]);
 
 
-  // Новый useEffect для загрузки данных REPORT_ADMIN
+  // Новый useEffect для загрузки данных ORG_ADMIN
   useEffect(() => {
     const loadReportData = async () => {
       try {
@@ -113,7 +113,7 @@ function WaterReportForm() {
       }
     };
 
-    if (role === "REPORT_ADMIN") {
+    if (role === "ORG_ADMIN") {
       loadReportData();
     }
   }, [selectedWaterObject, year, quarter, role]); // Вызываем, когда изменяется выбранная точка
@@ -139,7 +139,7 @@ function WaterReportForm() {
         console.error("Ошибка загрузки водных объектов", error);
       }
     };
-    if (role === "EMPLOYEE" || role === "REPORT_ADMIN") {
+    if (role === "EMPLOYEE" || role === "ORG_ADMIN") {
       console.log("Роль перед loadWaterObjects: ", role);
       loadWaterObjects();
     }
@@ -367,7 +367,7 @@ function WaterReportForm() {
         </button>
         </>
       ) : (
-        // Интерфейс для REPORT_ADMIN
+        // Интерфейс для ORG_ADMIN
         <>
         <div className="selectors">
         <div className="selector-row">
@@ -421,7 +421,7 @@ function WaterReportForm() {
         </label>
         </div>
         </div>
-        {/* Отображение данных для REPORT_ADMIN */}
+        {/* Отображение данных для ORG_ADMIN */}
         <table className="data-table">
         <thead>
         <tr>

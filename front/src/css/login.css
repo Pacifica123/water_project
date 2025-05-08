@@ -1,0 +1,76 @@
+
+
+/* Стили только для логина */
+.login-page {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    height: 100vh;
+    background-image:url(/src/image/background.jpg);
+}
+
+.login-page h2 {
+    font-size: 50px; /* Увеличенный текст заголовка */
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.login-page form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #ffffff;
+    padding: 30px; /* Увеличенный внутренний отступ */
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 500px; /* Увеличенная ширина формы */
+}
+
+.login-page form div {
+    margin-bottom: 20px; /* Больше пространства между полями */
+    width: 100%;
+}
+
+.login-page form label {
+    display: block;
+    margin-bottom: 8px; /* Увеличенный отступ между меткой и полем */
+    font-size: 22px; /* Увеличенный текст меток */
+    color: #333;
+}
+
+.login-page form input {
+    width: 100%;
+    padding: 12px; /* Увеличенный размер полей */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 22px; /* Увеличенный текст */
+    box-sizing: border-box;
+}
+
+.login-page form .error {
+    color: red;
+    font-size: 14px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.login-page form button {
+    width: 100%; /* Ширина кнопки, как у полей ввода */
+    padding: 12px; /* Увеличенный размер кнопки */
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 24px; /* Увеличенный текст кнопки */
+    box-sizing: border-box;
+}
+
+.login-page form button:hover {
+    background-color: #0056b3;
+}
