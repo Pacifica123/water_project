@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { sendSingleData } from "../api/add_records";
 import { fetchSingleTableData } from "../api/fetch_records";
+import "../css/Rates.css";
+import "../css/alert.css";
 
 function Rates() {
     const [rates, setRates] = useState(null);

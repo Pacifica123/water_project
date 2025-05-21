@@ -4,6 +4,8 @@ import {fetchWaterObjects }from "../api/records.js";
 import {sendFormData} from "../api/add_records.js";
 import { fetchSingleTableData, fetchStructDataWithFilters } from "../api/fetch_records.js";
 import { useNotification } from "./NotificationContext.js";
+import "../css/WaterReport.css";
+import "../css/Rates.css"
 
 
 import React, { useState, useEffect } from "react";

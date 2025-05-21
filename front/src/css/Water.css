@@ -1,16 +1,15 @@
 .steps {
-
   display: flex;
+  justify-content: center;
   gap: 15px;
+flex-wrap: wrap;
   margin-bottom: 20px;
-
-  top: 0; /* Размещаем шаги в верхней части контейнера */
-  z-index: 10; /* Устанавливаем слой, чтобы шаги не перекрывались */
+  position: relative;
 }
 
 .step {
-  width: 50px;
-  height: 50px;
+  width: clamp(50px,10vw,80px);
+  height: clamp(50px,10vw,80px);
   border-radius: 50%;
   background: lightgray;
   display: flex;
@@ -19,7 +18,7 @@
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s, transform 0.2s;
-  font-size: 18px;
+  font-size: clamp(14px,2.5vw,18px);
   border: 2px solid transparent;
 }
 
@@ -41,7 +40,7 @@
 
 .step-container {
   display: flex;
-
+  
   align-items: center;
   gap: 10px;
   position: relative;
@@ -95,4 +94,76 @@
 .status-unknown {
   background-color: #f5f5f5;
   color: #6c757d;
+}
+
+.submit-button-water {
+  margin-top: 20px; /* Отступ сверху */
+  margin-left: 0;
+  padding: 2vh 5vw;
+  text-align: center;
+  font-size: 16px;
+  border: 100px;
+  border-radius: 10px;
+  background-color: #28a745;
+  color: white;
+  cursor: pointer;
+}
+
+
+@media (max-width: 768px) {
+  .step {
+    width: 60px;
+    height: 60px;
+    font-size: 14px;
+  }
+
+  .input-group {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .submit-button-water {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+  }
+}
+
+.toggle-buttons-container {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  
+  padding: 10px;
+  z-index: 100;
+  border-bottom: 1px solid #ccc;
+}
+
+.toggle-button {
+  padding: 1.6vh 5vw;
+  background-color: #3478f6;
+  color: white;
+  border: none;
+  border-radius: 2vh;
+  cursor: pointer;
+  font-weight: 500;
+  white-space: nowrap;
+  font-size: 1rem;
+}
+
+.toggle-button:hover {
+  background-color: #245dc1;
+}
+
+.section-wrapper {
+  margin-top: 10px;
+}
+
+.payment-table{
+  border-collapse: collapse;
+  margin-top: 20px;
 }

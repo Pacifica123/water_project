@@ -3,6 +3,7 @@ import { sendSingleData } from "../api/add_records";
 import { fetchStructureData } from "../api/fetch_records";
 import "../App.css";
 import { useNotification } from "./NotificationContext";
+import "../css/Organization.css";
 
 function OrganizationInfo() {
     const userData = localStorage.getItem("user");

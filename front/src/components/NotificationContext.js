@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext } from "react";
+import "../css/alert.css";
 
 const NotificationContext = createContext();
 
@@ -28,7 +29,7 @@ export const NotificationProvider = ({ children }) => {
 
     const showEdit = (message = "✏️ Данные успешно обновлены!") => {
         setEditMessage(message);
-        setTimeout(() => setEditMessage(null), 5000);
+        setTimeout(() => setEditMessage(null), 60000);
     };
 
     const askConfirmation = (message = "Вы уверены, что хотите продолжить?") => {

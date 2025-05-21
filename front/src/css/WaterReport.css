@@ -1,0 +1,94 @@
+.custom-select {
+    margin-top: 1vh;
+    padding: 0.5em 1em;
+    width: fit-content;
+    font-size: 1.4rem;
+  }
+
+  .narrow-input {
+    width: fit-content;
+    padding: 0.4em;
+    font-size: 1.25rem;
+  }
+
+  .selectors {
+    display: flex;
+    justify-content: center;
+    gap: 2vw;
+    margin-bottom: 2vw;
+    flex-wrap: wrap;
+  }
+  
+  .selectors li {
+    margin-bottom: 1vh;
+  }
+  
+  .data-table-result {
+    width: fit-content;
+    max-width: max-content;
+    border-collapse: collapse;
+    margin-inline: auto;
+    margin: 3vh auto;
+  }
+
+  .selector-row {
+    display: flex;
+    flex-direction: column;
+    background-color: #f9f9f9;
+    padding: 2vh 2vw;
+    border-radius: 1em;
+    box-shadow: 0 0 6px rgba(0,0,0,0.1);
+    min-width: 180px;
+    position: relative;
+  }
+  
+  .selector-row  label{
+    font-weight: bold;
+    margin-bottom: 1vh;
+  }
+
+
+  .selector-row  select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 1em;
+    background-color: white;
+    cursor: pointer;
+  }
+
+.content-container-waterReropt {
+    padding:
+  inherit;
+      padding-right: inherit;
+      padding-left: inherit;
+    background-color: #f9f9f9;
+    border:
+  1px solid #ddd;
+    border-radius:
+  10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    padding-left: 70px;
+    padding-right: 100px;
+  max-width: 100%;
+  overflow: hidden;
+  }
+
+  .water-report-form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 65vh; /* Высота на весь экран */
+    padding: 2vw;
+    font-family: Arial, sans-serif;
+    font-size: 1.4rem;
+  }
+
+  @media (max-width: 600px) {
+    .water-report-form {
+      flex-direction: column;
+      font-size: 1rem;
+    }
+    .selector-row {
+      width: 100%;
+    }
+  }

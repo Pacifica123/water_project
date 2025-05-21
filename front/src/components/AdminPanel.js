@@ -13,6 +13,7 @@ import axios from "axios";
 import {translate} from "../utils/translations.js"
 import { useNotification } from "./NotificationContext.js";
 import InputMask from "react-input-mask";
+import "../css/Admin.css";
 
 const AdminPanel = () => {
   // Основные состояния

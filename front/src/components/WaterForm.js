@@ -1,43 +1,101 @@
 import React, { useState, useEffect } from "react";
 import { fetchStructDataWithFilters } from "../api/fetch_records";
+import "../css/Water.css";
 
-// Парсер DMS для «12°12′12″»
 const parseDMS = (dms) => {
   const re = /(\d+)°(\d+)′(\d+)″/;
   const m = dms.match(re);
   return m ? { deg: m[1], min: m[2], sec: m[3] } : { deg: "", min: "", sec: "" };
 };
 
+const GeneralInfoSection = ({ org, warea }) => (
+  <div className="form-step">
+    <h3>Общая информация</h3>
+    <div className="input-group"><label>Наименование организации</label><input disabled value={org.organisation_name || ""} readOnly /></div>
+    <div className="input-group"><label>Почтовый адрес</label><input disabled value={org.postal_address || ""} readOnly /></div>
+    <div className="input-group"><label>ИНН</label><input disabled value={org.inn || ""} readOnly /></div>
+    <div className="input-group"><label>ОПФ</label><input disabled value={org.legal_form || ""} readOnly /></div>
+    <div className="input-group"><label>Бассейновый округ</label><select disabled value={warea.pool_name || ""}><option>{warea.pool_name || "Не указано"}</option></select></div>
+    <div className="input-group"><label>Регион</label><input disabled value={org.region || "Кемеровская область - Кузбасс"} readOnly /></div>
+  </div>
+);
+
+const HydroInfoSection = ({ wobj }) => (
+  <div className="form-step">
+    <h3>Гидрографическая информация</h3>
+    <div className="input-group"><label>Наименование и код гидрографической единицы</label><select value={wobj.code_object.code_symbol || ""} /><select value={wobj.code_type?.code_symbol || ""} /></div>
+    <div className="input-group"><label>Водохозяйственный участок</label><select value={wobj.code_object?.code_value || ""} readOnly /><select value={wobj.code_object?.code_symbol || ""} readOnly /></div>
+  </div>
+);
+
+const ContractSection = ({ perm }) => (
+  <div className="form-step">
+    <h3>Реквизиты договора</h3>
+    <div className="input-group"><label>Номер разрешения</label><input value={perm.permission_number || ""} readOnly /></div>
+    <div className="input-group"><label>Дата начала</label><input type="date" value={perm.actual_start_date || ""} readOnly /></div>
+    <div className="input-group"><label>Дата окончания</label><input type="date" value={perm.actual_end_date || ""} readOnly /></div>
+  </div>
+);
+
+const MeterSection = ({ meter }) => (
+  <div className="form-step">
+    <h3>Учетный прибор</h3>
+    <div className="input-group"><label>Марка прибора учета</label><input value={meter.serial_number || ""} readOnly /></div>
+    <div className="input-group"><label>Дата последней поверки</label><input type="date" value={meter.verification_date || ""} readOnly /></div>
+    <div className="input-group"><label>Периодичность поверки</label><input value={meter.verification_interval || ""} readOnly /></div>
+  </div>
+);
+
+const WaterPointsSection = ({ records, months, handleMonthChange }) => (
+  <div className="form-step">
+    <h3>Точки водозабора</h3>
+    <table className="data-table">
+      <thead>
+        <tr>
+          <th>№</th><th>Водоисточник</th><th>Координаты</th><th>Категория</th><th>Объем, тыс. м³</th><th>Месяц 1</th><th>Месяц 2</th><th>Месяц 3</th>
+        </tr>
+      </thead>
+      <tbody>
+        {records.map((rec, index) => {
+          const [latS, lonS] = (rec.latitude_longitude || "").split(",");
+          const lat = parseDMS(latS), lon = parseDMS(lonS);
+          const p = Array.isArray(rec.permissions) && rec.permissions[0] || {};
+          return (
+            <tr key={rec.id}>
+              <td>{index + 1}</td>
+              <td>{rec.water_object?.code_object?.code_value}</td>
+              <td>{rec.latitude_longitude}</td>
+              <td>{rec.water_object?.category}</td>
+              <td>{p.allowed_volume ?? ""}</td>
+              <td><input value={months[rec.id]?.month1 || ""} onChange={e => handleMonthChange(rec.id, "month1", e.target.value)} /></td>
+              <td><input value={months[rec.id]?.month2 || ""} onChange={e => handleMonthChange(rec.id, "month2", e.target.value)} /></td>
+              <td><input value={months[rec.id]?.month3 || ""} onChange={e => handleMonthChange(rec.id, "month3", e.target.value)} /></td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+);
+
 const EditableWaterReport = () => {
-  // организация
   const [org, setOrg] = useState({});
-  // массив точек
   const [records, setRecords] = useState([]);
-  // поля «месяцев» для каждой точки
   const [months, setMonths] = useState({});
+  const [activeStep, setActiveStep] = useState(1);
 
   useEffect(() => {
     (async () => {
-      // 1) org из localStorage
       const stored = JSON.parse(localStorage.getItem("org") || "{}");
       setOrg(stored);
-
       if (!stored.id) return console.error("org.id не найден");
-
-      // 2) вызов API
       const resp = await fetchStructDataWithFilters("get_struct31", { org_id: stored.id });
       if (!resp || resp.status !== "success") {
         console.error("Ошибка API:", resp?.message);
         return;
       }
-
-      // 3) инициализируем records + пустые месяцы
-      const arr = resp.data.map(rec => {
-        const key = rec.id;
-        return rec;
-      });
+      const arr = resp.data.map(rec => rec);
       setRecords(arr);
-      // инициализируем months для каждого rec.id
       const m = {};
       arr.forEach(r => m[r.id] = { month1: "", month2: "", month3: "" });
       setMonths(m);
@@ -45,248 +103,46 @@ const EditableWaterReport = () => {
   }, []);
 
   const handleMonthChange = (pointId, field, value) => {
-    setMonths(ms => ({
-      ...ms,
-      [pointId]: { ...ms[pointId], [field]: value }
-    }));
+    setMonths(ms => ({ ...ms, [pointId]: { ...ms[pointId], [field]: value } }));
   };
 
-  // Помощник: первая запись
   const first = records[0] || {};
-
-  // распарсим wobj, perm, meter, DMS из первой
   const wobj = first.water_object || {};
   const warea = first.water_area || {};
   const perm = Array.isArray(first.permissions) && first.permissions[0] || {};
   const meter = first.last_meter || {};
-  const [latPart, lonPart] = (first.latitude_longitude || "").split(",");
-  const latD = parseDMS(latPart || "");
-  const lonD = parseDMS(lonPart || "");
 
   return (
-    <div className="water-report">
+    <div className="water-container">
+      <div className="form-container">
+      <h2>Сведения по водопользованию (Форма 3.1)</h2>
 
-      <h2>
-        Сведения, полученные в результате учета объема забора (изъятия)
-        водных ресурсов из водных объектов
-      </h2>
-      <div className="subtitle">
-        за
-        <select>
-          <option value="">Выбрать</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-        </select>
-        квартал
-        <select>
-          <option value="">Выбрать</option>
-          <option value="2025">2025</option>
-          <option value="2024">2024</option>
-          <option value="2023">2023</option>
-          <option value="2022">2022</option>
-        </select>
-        г. | Форма 3.1
+      <div className="steps">
+        {[1, 2, 3, 4, 5].map(step => (
+          <div
+            key={step}
+            className={`step ${activeStep === step ? "active" : ""}`}
+            onClick={() => setActiveStep(step)}
+          >
+            {step}
+          </div>
+        ))}
       </div>
 
-      {/* === инфо-таблица === */}
-      <table className="info-table">
-        <tbody>
-          <tr>
-            <td>Наименование организации</td>
-            <td colSpan="3">
-              <input value={org.organisation_name || ""} readOnly />
-            </td>
-          </tr>
-          <tr>
-            <td>Почтовый адрес</td>
-            <td colSpan="3">
-              <input value={org.postal_address || ""} readOnly />
-            </td>
-          </tr>
-          <tr>
-            <td>ИНН</td>
-            <td><input value={org.inn || ""} readOnly /></td>
-            <td>ОПФ</td>
-            <td><input value={org.legal_form || ""} readOnly /></td>
-          </tr>
-          <tr>
-            <td>Бассейновый округ</td>
-            <td><input value={warea.pool_name || ""} readOnly /></td>
-            <td>Регион</td>
-            <td><input value={org.region || "Кемеровская область - Кузбасс"} readOnly /></td>
-          </tr>
+      {activeStep === 1 && <GeneralInfoSection org={org} warea={warea} />}
+      {activeStep === 2 && <HydroInfoSection wobj={wobj} />}
+      {activeStep === 3 && <ContractSection perm={perm} />}
+      {activeStep === 4 && <MeterSection meter={meter} />}
+      {activeStep === 5 && <WaterPointsSection records={records} months={months} handleMonthChange={handleMonthChange} />}
 
-          <tr>
-            <td>Наименование и код гидрографической единицы</td>
-            <td>
-              <input
-                value={wobj.code_type?.code_value || ""}
-                readOnly
-              />
-            </td>
-            <td colSpan="2">
-              <input
-                value={wobj.code_type?.code_symbol || ""}
-                readOnly
-              />
-            </td>
-          </tr>
-          <tr>
-            <td>Водохозяйственный участок</td>
-            <td>
-              <input
-                value={wobj.code_object?.code_value || ""}
-                readOnly
-              />
-            </td>
-            <td colSpan="2">
-              <input
-                value={wobj.code_object?.code_symbol || ""}
-                readOnly
-              />
-            </td>
-          </tr>
-
-          <tr>
-            <td>Реквизиты договора</td>
-            <td colSpan="2">
-              <input
-                value={perm.permission_number || ""}
-                readOnly
-              />
-            </td>
-            <tr>
-              <td>
-                Дата начало
-                <input
-                  type="date"
-                  value={perm.actual_start_date || ""}
-                  readOnly
-                />
-              </td>
-              <td colSpan="1">
-                Дата окончания
-                <input
-                  type="date"
-                  value={perm.actual_end_date || ""}
-                  readOnly
-                />
-              </td>
-            </tr>
-          </tr>
-
-          <tr>
-            <td>Марка прибора учета</td>
-            <td colSpan="3">
-              <input value={meter.serial_number || ""} readOnly />
-            </td>
-          </tr>
-          <tr>
-            <td>Дата последней поверки, периодичность проверки</td>
-            <td>
-              <input
-                type="date"
-                value={meter.verification_date || ""}
-                readOnly
-              />
-            </td>
-            <td colSpan="2">
-              <input
-                value={meter.verification_interval || ""}
-                readOnly
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* === таблица точек === */}
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th rowSpan="3">Наименование водного объекта - водоисточника</th>
-            <th colSpan="3">Коды</th>
-            <th rowSpan="3">№ точки водозабора</th>
-            <th colSpan="6">Координаты водозабора</th>
-            <th rowSpan="4">Объем допустимого водо-забора, тыс. м³</th>
-            <th colSpan="5">Фактический объем забора, тыс. м³</th>
-          </tr>
-          <tr>
-            <th rowSpan="2">вида водного объекта-водоисточника</th>
-            <th rowSpan="2">водного объекта-водоисточника</th>
-            <th rowSpan="2">категория качества воды</th>
-            <th colSpan="3">северной широты</th>
-            <th colSpan="3">восточной долготы</th>
-            <th colSpan="4">в том числе по месяцам квартала</th>
-          </tr>
-          <tr>
-            <th>град.</th><th>мин.</th><th>сек.</th>
-            <th>град.</th><th>мин.</th><th>сек.</th>
-            <th>всего</th><th>1 мес.</th><th>2 мес.</th><th>3 мес.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {records.length === 0 && (
-            <tr><td colSpan="16" style={{ textAlign: "center" }}>Данных нет</td></tr>
-          )}
-          {records.map(rec => {
-            const [latS, lonS] = (rec.latitude_longitude || "").split(",");
-            const lat = parseDMS(latS), lon = parseDMS(lonS);
-            const p = Array.isArray(rec.permissions) && rec.permissions[0] || {};
-
-            return (
-              <tr key={rec.id}>
-                <td>
-                  <input readOnly value={rec.water_object?.code_object?.code_value || ""} />
-                </td>
-                <td>
-                  <input readOnly value={rec.water_object?.code_type?.code_value || ""} />
-                </td>
-                <td>
-                  <input readOnly value={rec.water_object?.code_object?.code_value || ""} />
-                </td>
-                <td>
-                  <input readOnly value={rec.water_object?.category || ""} />
-                </td>
-                <td><input readOnly value={rec.id} /></td>
-
-                <td><input readOnly value={lat.deg} /></td>
-                <td><input readOnly value={lat.min} /></td>
-                <td><input readOnly value={lat.sec} /></td>
-                <td><input readOnly value={lon.deg} /></td>
-                <td><input readOnly value={lon.min} /></td>
-                <td><input readOnly value={lon.sec} /></td>
-
-                <td><input readOnly value={p.allowed_volume ?? ""} /></td>
-                <td><input readOnly value={p.actual_volume ?? ""} /></td>
-
-                <td>
-                  <input
-                    value={months[rec.id]?.month1 || ""}
-                    onChange={e => handleMonthChange(rec.id, "month1", e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    value={months[rec.id]?.month2 || ""}
-                    onChange={e => handleMonthChange(rec.id, "month2", e.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    value={months[rec.id]?.month3 || ""}
-                    onChange={e => handleMonthChange(rec.id, "month3", e.target.value)}
-                  />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
+        <button disabled={activeStep === 1} onClick={() => setActiveStep(activeStep - 1)}>Назад</button>
+        <button disabled={activeStep === 5} onClick={() => setActiveStep(activeStep + 1)}>Далее</button>
+      </div>
+      </div>
     </div>
   );
 };
 
 export default EditableWaterReport;
+
