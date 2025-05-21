@@ -1,0 +1,98 @@
+.steps {
+
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+
+  top: 0; /* Размещаем шаги в верхней части контейнера */
+  z-index: 10; /* Устанавливаем слой, чтобы шаги не перекрывались */
+}
+
+.step {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: lightgray;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+  font-size: 18px;
+  border: 2px solid transparent;
+}
+
+.step:hover {
+  transform: scale(1.1);
+}
+
+.completed {
+  background: green;
+  color: white;
+  border: 2px solid darkgreen;
+}
+
+.active {
+  background: blue;
+  color: white;
+  border: 2px solid darkblue;
+}
+
+.step-container {
+  display: flex;
+
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.step-container::after {
+  content: "";
+  position: absolute;
+  left: 50%; /* Центрируем линию по горизонтали */
+  top: 50px; /* Располагаем линию после первого шага */
+  width: 4px; /* Вертикальная линия */
+  height: 50px; /* Высота линии между шагами */
+  background-color: lightgray;
+  z-index: -1;
+}
+
+.step-container:last-child::after {
+  display: none;
+}
+
+.status-in-progress {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-done {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-sent {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.status-watch {
+  background-color: #e2e3e5;
+  color: #383d41;
+}
+
+.status-correction {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-closed {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-unknown {
+  background-color: #f5f5f5;
+  color: #6c757d;
+}
