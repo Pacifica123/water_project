@@ -199,8 +199,8 @@ const fetchStructDataWithFilters = async (structName, filters) => {
   } catch (err) {
     // Надёжно извлекаем код и текст
     const status  = err.response?.status  ?? "NETWORK_ERROR";
-    const message = err.response?.data?.message 
-                  ?? err.response?.statusText 
+    const message = err.response?.data?.message
+                  ?? err.response?.statusText
                   ?? err.message;
     // распечатаем полную информацию об ошибке
 console.error("AXIOS ERROR TOJSON:", err.toJSON());
@@ -211,6 +211,5 @@ console.error("AXIOS ERROR TOJSON:", err.toJSON());
     return null;
   }
 };
-
 
 export {fetchStructureData, fetchSingleTableData, fetchSingleTableDataWithFilters, fetchStructDataWithFilters};

@@ -29,8 +29,11 @@ def generate_password(length=12):
 
 
 def create_org_user(orgdata) -> OperationResult:
+<<<<<<< HEAD
     from .email_utils import send_credentials_email2
 
+=======
+>>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
     users_data = {
             "last_name": orgdata['legal_form'],
             "first_name": orgdata['organisation_name'],
@@ -41,6 +44,7 @@ def create_org_user(orgdata) -> OperationResult:
             "organisation_id": orgdata['organisation_id']
     }
     if create_record_entity(User, users_data):
+<<<<<<< HEAD
         # отправка письма
         email_sent = send_credentials_email2(
             to_email=users_data['email'],
@@ -62,6 +66,17 @@ def create_org_user(orgdata) -> OperationResult:
         status=OperationStatus.DATABASE_ERROR,
         msg="Не удалось создать аккаунт для организации"
     )
+=======
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            msg=f"Пользователь организации создан, временные данные: логин - {users_data['username']} временный пароль - {users_data['password']}",
+            data={'username': users_data['username'], 'password': users_data['password']}
+        )
+    return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg=f"Не удалось создать аккаунт для организации"
+        )
+>>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
 
 
 def process_water_point_fks(record):
@@ -325,8 +340,11 @@ def get_all_models() -> OperationResult:
             # ["WCLfor3132", WCLfor3132.__tablename__],
             ["Записи журналов", RecordWCL.__tablename__],
             ["Файлы", FileRecord.__tablename__],
+<<<<<<< HEAD
             ["31", WCLfor31.__tablename__],
             ["32", WCLfor32.__tablename__]
+=======
+>>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
         ]
 
         return OperationResult(OperationStatus.SUCCESS, data=models_list)

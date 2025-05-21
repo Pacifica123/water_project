@@ -12,10 +12,15 @@ def create_full_waterpoint(
     data_meter: dict,
     data_permission: dict,
 ) -> OperationResult:
+<<<<<<< HEAD
 
 
     # Вспомогательный парсер дат
     parse_date = lambda src, key: datetime.datetime.strptime(src[key], "%d.%m.%Y").date()
+=======
+    # Вспомогательный парсер дат
+    parse_date = lambda src, key: datetime.strptime(src[key], "%d.%m.%Y").date()
+>>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
 
     # 1. Проверка наличия идёт/создаётся ли счётчик
     has_existing_meter = bool(data_point.get("meter_id") and data_meter.get("id"))
@@ -75,6 +80,7 @@ def create_full_waterpoint(
             # 1.4. Неизвестная ошибка поиска
             print_operation_result(find)
             return find
+<<<<<<< HEAD
     else:
         exist_meter = get_record_by_id(Meters, int(data_meter.get("id")))
         if exist_meter.status != OperationStatus.SUCCESS:
@@ -88,6 +94,8 @@ def create_full_waterpoint(
     # debug
     date_str = data_meter.get("expiration_date")
     print(f"date raw value: {date_str!r}")
+=======
+>>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
 
     # 2. Подготовка всех полезадок
     waterpoint_payload = {
@@ -100,10 +108,18 @@ def create_full_waterpoint(
     permission_payload = {
         "organisation_id": int(data_point["organisation_id"]),
         "permission_number": data_permission["permission_number"],
+<<<<<<< HEAD
         "registration_date": parse_date(data_permission, "registration_date"),
         "expiration_date": parse_date(data_permission, "expiration_date"),
         "permission_type": data_permission["permission_type"],
         "allowed_volume": float(data_permission["allowed_volume_org"]),
+=======
+        "registration_date": parse_date(data_meter, "registration_date"),
+        "expiration_date": parse_date(data_meter, "expiration_date"),
+        "permission_type": data_permission["permission_type"],
+        "allowed_volume_org": float(data_permission["allowed_volume_org"]),
+        "allowed_volume_pop": float(data_permission["allowed_volume_pop"]),
+>>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
         "method_type": data_permission["method_type"],
     }
     link_meter_payload = {
@@ -114,8 +130,13 @@ def create_full_waterpoint(
     link_permission_payload = {
         "point_id": None,
         "permission_id": None,
+<<<<<<< HEAD
         "actual_start_date": parse_date(data_permission, "registration_date"),
         "actual_end_date": parse_date(data_permission, "expiration_date"),
+=======
+        "actual_start_date": parse_date(data_meter, "actual_start_date"),
+        "actual_end_date": parse_date(data_meter, "actual_end_date"),
+>>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
         "active": False,
     }
 
@@ -259,6 +280,7 @@ def send_quarter(form_data: any):
     return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
 
 
+<<<<<<< HEAD
 # def send_extempl31or32(form_data: any) -> OperationResult:
 #     print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
 #     # TODO ПЕРЕДЕЛАТЬ В ЦИКЛ ДЛЯ МНОЖЕСТВА ЗАПИСЕЙ
@@ -271,3 +293,17 @@ def send_quarter(form_data: any):
 #         final_rez = add_to(WCLfor3132.__tablename__, oprez.data)
 #         return final_rez
 #     return oprez
+=======
+def send_extempl31or32(form_data: any) -> OperationResult:
+    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
+    # TODO ПЕРЕДЕЛАТЬ В ЦИКЛ ДЛЯ МНОЖЕСТВА ЗАПИСЕЙ
+    table31or32 = form_data["table31or32"]
+    pprint.pprint(table31or32)
+    oprez = recognize_model(table31or32)
+
+    print_operation_result(oprez, "send_extempl31or32")
+    if oprez.status == OperationStatus.SUCCESS:
+        final_rez = add_to(WCLfor3132.__tablename__, oprez.data)
+        return final_rez
+    return oprez
+>>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
