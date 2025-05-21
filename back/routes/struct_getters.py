@@ -11,7 +11,6 @@ import sys
 import pprint
 
 
-<<<<<<< HEAD
 def get_struct32(filters: dict) -> OperationResult:
     """
     Формирует структуру для Form32:
@@ -378,8 +377,6 @@ def getall_coord_points(filters: dict) -> OperationResult:
     )
 
 
-=======
->>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
 def get_actual_from_log_by_mf(filters: dict) -> OperationResult:
     try:
         months = filters.get("months") or filters.get("months[]")
@@ -874,7 +871,6 @@ def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
         return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
 
 
-<<<<<<< HEAD
 # def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
 #     print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
 #     try:
@@ -889,22 +885,7 @@ def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
 #         return replace_logs
 #     except Exception as e:
 #         print(f"в get_header_for_e31_32 что-то сломалось {e}")
-=======
-def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
-    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
-    try:
-        # ищем по point_id (скорее всего)
-        logs = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
-        if logs.status != OperationStatus.SUCCESS:
-            pprint.pprint(logs)
-            return logs
-        replace_logs = replace_fks(logs, WCLfor3132.__tablename__)
-        if replace_logs.status != OperationStatus.SUCCESS:
-            pprint.pprint(replace_logs)
-        return replace_logs
-    except Exception as e:
-        print(f"в get_header_for_e31_32 что-то сломалось {e}")
->>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
+
 
 
 def get_orgstatistics(org_id) -> OperationResult:

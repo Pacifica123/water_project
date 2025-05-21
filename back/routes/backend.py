@@ -244,13 +244,10 @@ def get_structs_mf(selected_template: str, filters: dict) -> OperationResult:
             return organisations_familiar_by_mf(filters)
         case "get_actual_from_log":
             return get_actual_from_log_by_mf(filters)
-<<<<<<< HEAD
         case "getall_coord_points":
             return getall_coord_points(filters)
         case "get_struct31":
             return get_struct31(filters)
-=======
->>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
 
@@ -260,13 +257,8 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
     match selected_template:
         case "point_consumption":
             return get_points_consumption(filter_k, filter_v) # это не используется?
-<<<<<<< HEAD
         # case "exel31_32":
         #     return get_header_for_e31_32(filter_k, filter_v)
-=======
-        case "exel31_32":
-            return get_header_for_e31_32(filter_k, filter_v)
->>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
         case "water_logs":
             return get_water_logs(filter_k, filter_v) # это не используется?
         case "allModels":
@@ -296,17 +288,11 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
             return process_water_consumption_single(form_data)
         case "water_consumption_many":
             pass
-<<<<<<< HEAD
         # case "excel_template_3.1":
         #     return send_extempl31or32(form_data)
         # case "excel_template_3.2":
         #     return send_extempl31or32(form_data)
-=======
-        case "excel_template_3.1":
-            return send_extempl31or32(form_data)
-        case "excel_template_3.2":
-            return send_extempl31or32(form_data)
->>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
+
         case "payment_calculation":
             pass
         case "create_water_point":

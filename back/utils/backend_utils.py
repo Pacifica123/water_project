@@ -1,9 +1,8 @@
 from datetime import datetime, date
 import json
-<<<<<<< HEAD
+
 from decimal import Decimal
-=======
->>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
+
 from typing import Any
 import re
 
@@ -38,7 +37,6 @@ class OperationResult:
         self.data = data
 
 
-<<<<<<< HEAD
 _DEC_PAIR_UNDERSCORE = re.compile(r'^\s*([+-]?\d+(?:\.\d+))[_\s]+([+-]?\d+(?:\.\d+))\s*$')
 _DECIMAL_PAIR_RE   = re.compile(r'([+-]?\d+(?:\.\d+))\s*[, ]\s*([+-]?\d+(?:\.\d+))')
 _DMS_LATIN_RE      = re.compile(
@@ -91,8 +89,6 @@ def _to_dec(deg, minu, sec, hemi):
     return dec
 
 
-=======
->>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
 def print_operation_result(result, func_name=None):
     if func_name is None:
         # Получаем имя вызывающей функции, если оно не передано

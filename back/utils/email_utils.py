@@ -5,10 +5,9 @@ from email.mime.multipart import MIMEMultipart
 from flask import current_app
 from flask_mail import Message
 
-from app import mail
-
 
 def send_credentials_email2(to_email: str, username: str, password: str) -> bool:
+    from app import mail
     # Собираем текст письма
     body = (
         "Здравствуйте!\n\n"

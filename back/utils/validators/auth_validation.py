@@ -27,11 +27,6 @@ def auth_validate(token) -> OperationResult:
 
 
 def generateJWT(username):
-<<<<<<< HEAD
-    print(jwt.__file__)
-    print(dir(jwt))
-=======
->>>>>>> 919b6e2b6c11a22f78c95fcc9c9fc5a4e24227a2
     # Устанавливаем время жизни токена (например, 1 час)
     expiration_time = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
 
