@@ -41,6 +41,8 @@ function WaterReportForm() {
             months: quarterMonthsEnum[quarter],
         };
 
+        console.log("EMPLOYEE filters:", filters);
+
         const result = await fetchStructDataWithFilters("get_actual_from_log", filters);
         console.log(result);
 
@@ -263,7 +265,7 @@ function WaterReportForm() {
         {waterObjects.map((obj) => (
           <option
           key={obj.id}
-          value={obj.water_body_id.id}
+          value={obj.id}
           >
           {obj.water_body_id.code_obj.code_value} - {obj.water_body_id.code_obj.code_symbol}
           </option>

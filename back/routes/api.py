@@ -167,6 +167,7 @@ def rest_get_mf():
 @token_required
 def rest_edit_reference():
     try:
+        print("=== START rest_edit_reference ===")
         if request.method == 'GET':
             selected_reference = request.args.get('reference_select')
             if not selected_reference:
@@ -183,31 +184,46 @@ def rest_edit_reference():
             }), 200
         elif request.method == 'POST':
             data = request.json or {}
+            print(f"Received POST data: {data}")
             selected_reference = data.get('reference_select')
+            print(f"selected_reference: {selected_reference}")
             if not selected_reference:
+                print("No selected_reference provided")
                 return jsonify({"error": "Не выбран справочник"}), 400
-            # Обновление записи
+
             if 'record_id' in data and 'record_data' in data:
+                print("Update branch")
                 record_id = data['record_id']
+                print(f"record_id: {record_id}")
                 record_data = validate_data(selected_reference, data['record_data'])
+                print(f"Validated record_data: {record_data}")
                 result = update_record_in(selected_reference, record_id, record_data)
                 print_operation_result(result, 'update_record_in')
+                print("=== END rest_edit_reference - update branch ===")
                 return jsonify({"message": "Запись успешно изменена"}), 200
-            # Удаление записи
+
             if 'delete_id' in data:
+                print("Delete branch")
                 delete_id = data['delete_id']
+                print(f"delete_id: {delete_id}")
                 result = delete_record_from(selected_reference, delete_id)
                 print_operation_result(result, 'delete_record_from')
+                print("=== END rest_edit_reference - delete branch ===")
                 return jsonify({"message": "Запись помечена удаленной"}), 200
-            # Если ни одно из условий POST не выполнено
+
+            print("Invalid POST data")
             return jsonify({"error": "Некорректные данные"}), 400
 
         else:
+            print("Unsupported method")
             return jsonify({"error": "Метод не поддерживается"}), 405
 
     except Exception as e:
-        # Можно добавить логирование ошибки, например: logger.error(...)
+        import traceback
+        print("=== EXCEPTION in rest_edit_reference ===")
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
+
 
 
 @api.route('/api/get_single_with_mf', methods=['GET'], strict_slashes=False)
@@ -518,7 +534,8 @@ def notify():
     data = request.json
     target_user = data.get('username')
     message = data.get('message', 'Уведомление от сервера')
-
+    print(f"[target_user]: {target_user}")
+    print(f"[message]: {message}")
     # Сохраняем уведомление в базе
     notif = {
         'username': target_user,
@@ -540,6 +557,7 @@ def notify():
 @api.route('/fetchallnotify', methods=['GET'])
 def fetch_all_notify():
     target_user = request.args.get('username')
+    print(f"[target_user]: {target_user}")
     from .socket_handlers import send_pending_notifications
     r = send_pending_notifications(target_user)
     print_operation_result(r)

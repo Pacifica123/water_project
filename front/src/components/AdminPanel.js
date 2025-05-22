@@ -12,6 +12,7 @@ import Modal from "./Modal"; // Компонент модального окна
 import axios from "axios";
 import {translate} from "../utils/translations.js"
 import { useNotification } from "./NotificationContext.js";
+import InputMask from "react-input-mask";
 
 const AdminPanel = () => {
   // Основные состояния
@@ -384,7 +385,7 @@ const AdminPanel = () => {
           "created_at",
           "created_by",
           "updated_at",
-          // "updated_by",
+          //"updated_by",
           "is_deleted",
           "deleted_at",
           "deleted_by",
@@ -412,6 +413,25 @@ const AdminPanel = () => {
               }
             }}
             />
+          ) : field.field === "latitude_longitude" ? (
+            <div >
+            <InputMask
+            mask="99°99′99″ с.ш., 99°99′99″ в.д."
+            value={formData[field.field] || ""}
+            onChange={(e) =>
+              setFormData({ ...formData, [field.field]: e.target.value })
+            }
+            >
+            {(inputProps) => (
+              <input
+              {...inputProps}
+              type="text"
+              placeholder="55°45′30″ с.ш., 37°36′20″ в.д."
+              className="coordinate-input"
+              />
+            )}
+            </InputMask>
+            </div>
           ) : (
             <input
             type={getInputType(field.type)}
@@ -421,16 +441,11 @@ const AdminPanel = () => {
                 ...formData,
                 [field.field]: e.target.value,
               });
-              if (e.target.value) {
-                // Автоматическое сворачивание поля после заполнения
-                document
-                .getElementById(field.field)
-                ?.classList.add("filled");
-              }
             }}
-            id={field.field} // Добавление ID для управления классами
+            id={field.field}
             />
           )}
+
           </div>
       ))
     ) : (
@@ -444,6 +459,7 @@ const AdminPanel = () => {
     </form>
     </Modal>
   );
+
 
   // Пример стиля для скрытия/сворачивания поля после его заполнения
   const styles = {

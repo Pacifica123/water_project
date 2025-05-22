@@ -31,6 +31,17 @@ def create_app(delete_db=False):
     engine = setup_database(delete_db=delete_db)
     socketio = SocketIO(app, cors_allowed_origins="*")
 
+    # Глобальный обработчик ошибок
+    import traceback
+    import sys
+
+    @app.errorhandler(Exception)
+    def all_exception_handler(error):
+        print("=== GLOBAL EXCEPTION HANDLER ===")
+        print(traceback.format_exc())
+        sys.stdout.flush()
+        return jsonify({"error": str(error)}), 500
+
     @app.before_request
     def before_request():
         g.session = get_session(engine)

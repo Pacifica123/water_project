@@ -5,7 +5,7 @@ import PaymentCalculationForm from "./PaymentCalculationForm";
 import Water from "./Water";
 import OrganizationInfo from "./OrganizationInfo";
 import HistoryTable from "./HistoryTable";
-import AccountingPost from "./AccountingPost";
+// import AccountingPost from "./AccountingPost";
 import AdminPanel from "./AdminPanel";
 import UserPage from "./UserPage";
 import Rates from "./Rates";
@@ -48,7 +48,8 @@ function ProtectedContent({ onLogout }) {
       case "waterReport":
         return <WaterReportForm />;
       case "AccountingPost":
-        return <AccountingPost/>;
+        return "тех.работы"
+        // return <AccountingPost/>;
       case "Water":
         return <Water />;
       case "paymentCalc":

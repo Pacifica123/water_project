@@ -1,145 +1,148 @@
-
 import React, { useState, useEffect } from "react";
-import { sendSingleData } from "../api/add_records";
 import { fetchSingleTableData } from "../api/fetch_records";
 import "../App.css";
 import { translate } from "../utils/translations";
 
 function UsersPage() {
     const [users, setUsers] = useState([]);
-    const [showForm, setShowForm] = useState(false);
-    const [newUserInfo, setNewUserInfo] = useState({
-        last_name: "",
-        first_name: "",
-        middle_name: "",
-        birth_date: "",
-        username: "",
-        email: "",
-        password: "",
-        role: "",
-    });
-
-    const fetchUsers = async () => {
-        try {
-            const users = await fetchSingleTableData("users");
-            setUsers(users || []);
-        } catch (error) {
-            console.error("Ошибка загрузки пользователей:", error);
-        }
-    };
+    const [roleFilter, setRoleFilter] = useState("ALL");
+    const [orgFilter, setOrgFilter] = useState("ALL");
 
     useEffect(() => {
-        fetchUsers();
+        const fetchData = async () => {
+            try {
+                const userData = await fetchSingleTableData("users");
+                setUsers(userData || []);
+            } catch (error) {
+                console.error("Ошибка при загрузке пользователей:", error);
+            }
+        };
+
+        fetchData();
     }, []);
-
-    const handleInputChange = (e) => {
-        setNewUserInfo({ ...newUserInfo, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await sendSingleData("users", newUserInfo);
-            alert("Данные успешно отправлены!");
-            console.log("Ответ сервера:", response)
-            fetchUsers(); // Обновление списка пользователей после добавления
-            setNewUserInfo({
-                last_name: "",
-                first_name: "",
-                middle_name: "",
-                birth_date: "",
-                username: "",
-                email: "",
-                password: "",
-                role: "",
-            });
-            setShowForm(false);
-        } catch (error) {
-            console.error("Ошибка отправки данных:", error);
-            alert("Ошибка при отправке данных.");
+    useEffect(() => {
+        if (roleFilter !== "EMPLOYEE" && roleFilter !== "ALL") {
+            setOrgFilter("ALL");
         }
+    }, [roleFilter]);
+    const extractOrgList = () => {
+        const uniqueOrgs = new Map();
+        users.forEach((user) => {
+            const org = user.organisation_id;
+            if (org && !uniqueOrgs.has(org.id)) {
+                uniqueOrgs.set(org.id, org.organisation_name);
+            }
+        });
+        return Array.from(uniqueOrgs.entries());
     };
+
+    // Фильтрация пользователей по роли и организации
+    const filteredUsers = users.filter((user) => {
+        const roleMatch = roleFilter === "ALL" || user.role === roleFilter;
+        const orgMatch =
+        orgFilter === "ALL" ||
+        (user.organisation_id && String(user.organisation_id.id) === orgFilter);
+        return roleMatch && orgMatch;
+    });
+
+    // Разделяем пользователей на администраторов и сотрудников
+    const filteredAdmins = filteredUsers.filter(
+        (user) => user.role === "ADMIN" || user.role === "ORG_ADMIN" || user.role === "REPORT_ADMIN"
+    );
+
+    const filteredEmployees = filteredUsers.filter(
+        (user) => user.role === "EMPLOYEE"
+    );
 
     return (
         <div className="form-container">
         <h2>Пользователи системы</h2>
-        {/* <button onClick={() => setShowForm(!showForm)} className="add-button">
-        {showForm ? "Скрыть форму" : "Добавить пользователя"}
-        </button>
-        {showForm && (
-            <div className="form-container">
-            <h3>Добавление пользователя</h3>
-            <form onSubmit={handleSubmit}>
-            <div className="input-group">
-            <label>Фамилия:</label>
-            <input type="text" name="last_name" value={newUserInfo.last_name} onChange={handleInputChange} required />
-            </div>
-            <div className="input-group">
-            <label>Имя:</label>
-            <input type="text" name="first_name" value={newUserInfo.first_name} onChange={handleInputChange} required />
-            </div>
-            <div className="input-group">
-            <label>Отчество:</label>
-            <input type="text" name="middle_name" value={newUserInfo.middle_name} onChange={handleInputChange} />
-            </div>
-            <div className="input-group">
-            <label>Дата рождения:</label>
-            <input type="date" name="birth_date" value={newUserInfo.birth_date} onChange={handleInputChange} />
-            </div>
-            <div className="input-group">
-            <label>Логин:</label>
-            <input type="text" name="username" value={newUserInfo.username} onChange={handleInputChange} required />
-            </div>
-            <div className="input-group">
-            <label>Электронная почта:</label>
-            <input type="email" name="email" value={newUserInfo.email} onChange={handleInputChange} required />
-            </div>
-            <div className="input-group">
-            <label>Пароль:</label>
-            <input type="password" name="password" value={newUserInfo.password} onChange={handleInputChange} required />
-            </div>
-            <div className="input-group">
-            <label>Роль:</label>
-            <select name="role" value={newUserInfo.role} onChange={handleInputChange} required>
-            <option value="">Выберите роль</option>
-            <option value="ADMIN">Администратор</option>
-            <option value="REPORT_ADMIN">Руководитель отчётности</option>
-            <option value="ORG_ADMIN">Администратор организации</option>
-            <option value="EMPLOYEE">Сотрудник</option>
-            </select>
-            </div>
-            <button type="submit" className="submit-button">Сохранить</button>
 
-            </form>
+        <div className="filters" style={{ marginBottom: "20px" }}>
+        <label>
+        Роль:
+        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+        <option value="ALL">Все</option>
+        <option value="EMPLOYEE">Сотрудники</option>
+        <option value="ORG_ADMIN">Орг. админы</option>
+        <option value="REPORT_ADMIN">Отчетные админы</option>
+        <option value="ADMIN">Администраторы</option>
+        </select>
+        </label>
+
+        {/* Показываем выпадающий список "Организация" только если выбрана роль "Сотрудник" или "Все" */}
+        {(roleFilter === "EMPLOYEE" || roleFilter === "ALL") && (
+            <label>
+            Организация:
+            <select value={orgFilter} onChange={(e) => setOrgFilter(e.target.value)}>
+            <option value="ALL">Все</option>
+            {extractOrgList().map(([id, name]) => (
+                <option key={id} value={id}>
+                {name}
+                </option>
+            ))}
+            </select>
+            </label>
+        )}
+        </div>
+
+        {/* Показываем только таблицу, соответствующую выбранной роли */}
+        {roleFilter === "ADMIN" || roleFilter === "ORG_ADMIN" || roleFilter === "REPORT_ADMIN" ||  roleFilter === "ALL" ? (
+            <div className="admin-section">
+            <h3>Администраторы</h3>
+            <table className="info-table">
+            <thead>
+            <tr>
+            <th>Фамилия</th>
+            <th>Имя</th>
+            <th>Отчество</th>
+            <th>Логин</th>
+            <th>Email</th>
+            <th>Роль</th>
+            </tr>
+            </thead>
+            <tbody>
+            {filteredAdmins.map((user, index) => (
+                <tr key={index}>
+                <td>{user.last_name || "—"}</td>
+                <td>{user.first_name || "—"}</td>
+                <td>{user.middle_name || "—"}</td>
+                <td>{user.username}</td>
+                <td>{user.email}</td>
+                <td>{translate(user.role)}</td>
+                </tr>
+            ))}
+            </tbody>
+            </table>
             </div>
-    )} */}
-    <table className="info-table">
-    <thead>
-    <tr>
-    <th>Фамилия</th>
-    <th>Имя</th>
-    <th>Отчество</th>
-    <th>Дата рождения</th>
-    <th>Логин</th>
-    <th>Электронная почта</th>
-    <th>Роль</th>
-    </tr>
-    </thead>
-    <tbody>
-    {users.map((user, index) => (
-        <tr key={index}>
-        <td>{user.last_name}</td>
-        <td>{user.first_name}</td>
-        <td>{user.middle_name}</td>
-        <td>{user.birth_date}</td>
-        <td>{user.username}</td>
-        <td>{user.email}</td>
-        <td>{translate(user.role)}</td>
-        </tr>
-    ))}
-    </tbody>
-    </table>
-    </div>
+        ) : null}
+
+        {roleFilter === "EMPLOYEE" || roleFilter === "ALL" ? (
+            <div className="employee-section">
+            <h3>Сотрудники</h3>
+            <table className="info-table">
+            <thead>
+            <tr>
+            <th>Организация</th>
+            <th>Логин</th>
+            <th>Email</th>
+            <th>Роль</th>
+            </tr>
+            </thead>
+            <tbody>
+            {filteredEmployees.map((user, index) => (
+                <tr key={index}>
+                <td>{user.organisation_id?.organisation_name || "—"}</td>
+                <td>{user.username}</td>
+                <td>{user.email}</td>
+                <td>{translate(user.role)}</td>
+                </tr>
+            ))}
+            </tbody>
+            </table>
+            </div>
+        ) : null}
+        </div>
     );
 }
 

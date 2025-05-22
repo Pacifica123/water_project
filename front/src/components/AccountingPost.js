@@ -67,6 +67,19 @@ const AccountingPost = () => {
   const [monthFilter, setMonthFilter] = useState(new Date().getMonth());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear());
 
+  //  статус заполнения журнала
+  const [pdfFile, setPdfFile] = useState(null);
+  const [sigFile, setSigFile] = useState(null);
+  const [allDatesFilled, setAllDatesFilled] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [showSentModal, setShowSentModal] = useState(false);
+
+  function checkAllDatesFilled(logEntries, month, year) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const filledDates = new Set(logEntries.map(e => (new Date(e.date)).getDate()));
+    return filledDates.size === daysInMonth;
+  }
+
 
   const [statusFilters, setStatusFilters] = useState({
     in_progress: true,
@@ -201,6 +214,13 @@ const AccountingPost = () => {
 
     applyFilters();
   }, [monthFilter, yearFilter, statusFilters, allLogs]);
+
+  useEffect(() => {
+    if (logDetails[selectedLogId]) {
+      setAllDatesFilled(checkAllDatesFilled(logDetails[selectedLogId], monthFilter, yearFilter));
+    }
+  }, [logDetails, selectedLogId, monthFilter, yearFilter]);
+
 
   const handleMonthChange = (event) => {
     setMonthFilter(parseInt(event.target.value));

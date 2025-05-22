@@ -61,7 +61,7 @@ def get_actual_from_log_by_mf(filters: dict) -> OperationResult:
         for rec in all_records:
             log_month = logid_to_month.get(rec.log_id)
             if log_month:
-                month_to_sum[log_month] += float(rec.water_consumption_m3_per_day) * float(rec.operating_time_days)
+                month_to_sum[log_month] += float(rec.water_consumption_m3_per_day) # * float(rec.operating_time_days)
 
         result = {m: round(month_to_sum.get(m, 0.0), 2) for m in months}
 
@@ -321,9 +321,10 @@ def permisionpointlink_by_mf(filters: dict) -> OperationResult:
 
     # Фильтруем точки по organisation_id и собираем их id в множество для быстрого поиска
     water_point_ids = {wp.id for wp in water_points_result.data if wp.organisation_id == organisation_id}
+    print(water_point_ids)
     if not water_point_ids:
         # Если нет точек для данной организации, возвращаем пустой результат
-        return OperationResult(OperationStatus.SUCCESS, data=[])
+        return OperationResult(OperationStatus.SUCCESS, data=[], msg="Точек нет")
 
     # Получаем все связи разрешений
     point_permission_links_result = get_all_from_table(PointPermissionLink)
