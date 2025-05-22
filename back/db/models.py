@@ -35,6 +35,31 @@ class CodeType(PyEnum):
     WATER_TYPE_CODE = "type_of_water_obj"
 
 
+class CategoryQualityWithdrawal(PyEnum):
+    NO = "Забранная из природных водных объектов (кроме морей), в том числе после водоподготовки"
+    TN = "Забранная из природных водных объектов (кроме морей)"
+    CD = "Коллекторно-дренажная"
+    CR = "Карьерная"
+    MO = "Шахтно-рудничная"
+    MN = "Минеральная"
+    TM = "Термальная"
+
+
+class CategoryQualityDischarge(PyEnum):
+    SK = "В системах водоотведения коммунального назначения"
+    SD = "В прочих системах водоотведения"
+    SHR = "Шахтно-рудничная"
+    KR = "Карьерная"
+    KD = "Коллекторно-дренажная"
+    LV = "Ливневая"
+    TN = "Забранная из природных водных объектов (кроме морей)"
+    TR = "Переданная для перераспределения (переброски) стока"
+    TP = "Переданная для пополнения запасов подземных вод"
+    RV = "Сбросная с рыбоводных прудов"
+    BL = "Балластная, льяльная"
+    RS = "Сбросная с рисовых систем"
+
+
 class WaterTreatmentLevel(PyEnum):
     TOTAL = "total"  # Всего
     WITHOUT_CLEANING = "without_cleaning"  # Без очистки
@@ -373,13 +398,14 @@ class Permissions(Base):
     """
     Разрешения
 
-    Атрибуты (устаревшая документация):
+    Атрибуты:
         organisation_id (int): Идентификатор организации, к которой относится разрешение (внешний ключ).
         permission_number (str): Номер разрешения, уникальный для каждой записи.
         registration_date (Date): Дата регистрации разрешения.
         expiration_date (Date): Дата истечения срока действия.
         permission_type (str): Тип разрешения, например, забор, сброс и т.п.
         allowed_volume (float): Допустимый объем, связанный с разрешением (например, объем воды).
+        method_type (Enum): Метод забора, ставка по которой указан допустивый объем
     """
     __tablename__ = 'permissions'
 
@@ -388,8 +414,7 @@ class Permissions(Base):
     registration_date: Mapped[Date] = mapped_column(Date, nullable=False)
     expiration_date: Mapped[Date] = mapped_column(Date, nullable=False)
     permission_type: Mapped[PermissionType] = mapped_column(SQLAEnum(PermissionType), nullable=False)
-    allowed_volume_org: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
-    allowed_volume_pop: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    allowed_volume: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     method_type: Mapped[RatesType] = mapped_column(SQLAEnum(RatesType), nullable=False)
 
     def to_dict(self):
@@ -398,8 +423,7 @@ class Permissions(Base):
             'permission_number': self.permission_number,
             'registration_date': self.registration_date,
             'permission_type': self.permission_type,
-            'allowed_volume_org': self.allowed_volume_org,
-            'allowed_volume_pop': self.allowed_volume_pop,
+            'allowed_volume': self.allowed_volume_org,
             'method_type': self.method_type,
         }
 
@@ -553,8 +577,6 @@ class WaterConsumptionLog(Base):
     __tablename__ = 'water_consumption_log'
 
     point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
-    # consumption_value: Mapped[float] = mapped_column(Numeric(12, 2), nullable=True) # на удаление...
-    treatment_level: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=True)
     exploitation_org_id: Mapped[int] = mapped_column(ForeignKey('organisations.id'), nullable=False)
     month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
     log_status: Mapped[log_status] = mapped_column(SQLAEnum(log_status), nullable=False)
@@ -563,7 +585,6 @@ class WaterConsumptionLog(Base):
     def to_dict(self):
         return {
             'id': self.id,
-            'treatment_level': self.treatment_level,
             'month': self.month,
             'log_status': self.log_status,
             'start_date': self.start_date
@@ -608,19 +629,6 @@ class PointMeterLink(Base):
             'id': self.id,
         }
 
-# class RecordPML(PointMeterLink):
-#     """
-#     Запись измерения для PointMeterLink.
-#
-#     Атрибуты:
-#     - measurement_date: Дата измерения
-#     - value: Значение измерения
-#     """
-#     __tablename__ = 'measurement'
-#
-#     measurement_date: Mapped[DateTime] = mapped_column(nullable=False)  # дата измерения
-#     value: Mapped[float] = mapped_column(Float, nullable=False)  # значение измерения
-
 
 class RecordWCL(Base):
     """
@@ -663,27 +671,54 @@ class WaterConsumptionLogByCategories(Base):
         }
 
 
-class WCLfor3132(Base):
-    __tablename__ = 'wcl_3132'
+class WCLfor31(Base):
+
+    __tablename__ = 'wcl_31'
 
     point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
-    # (есть в point) logtype:Mapped[WaterLogType] = mapped_column(SQLAEnum(PermissionType), nullable=False)
-    water_obj_id: Mapped[int] = mapped_column(ForeignKey('water_object_ref.id'), nullable=False)
-    coordinates: Mapped[str] = mapped_column(String(255), nullable=True)
-    code_type_water_obj_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
-    code_water_obj_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
-    code_category_quality: Mapped[WaterTreatmentLevel] = mapped_column(SQLAEnum(WaterTreatmentLevel), nullable=False)
-    # permission_id
-    month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
-    value: Mapped[float] = mapped_column(Float, nullable=False)
+    month: Mapped[Month] = mapped_column(nullable=False)
+    category_quality: Mapped[CategoryQualityWithdrawal] = mapped_column(
+        SQLAEnum(CategoryQualityWithdrawal), nullable=False
+    )
+    value: Mapped[float] = mapped_column(Float, nullable=True)
+    signed_by: Mapped[str] = mapped_column(String(255), nullable=True)
+
+
+class WCLfor32(Base):
+
+    __tablename__ = 'wcl_32'
+
+    point_id: Mapped[int] = mapped_column(ForeignKey('water_point.id'), nullable=False)
+    month: Mapped[Month] = mapped_column(nullable=False)
+    category_quality: Mapped[CategoryQualityDischarge] = mapped_column(
+        SQLAEnum(CategoryQualityDischarge), nullable=False
+    )
+    # Поля для значений по категориям очистки
+    total: Mapped[float] = mapped_column(Float, nullable=True)
+    without_cleaning: Mapped[float] = mapped_column(Float, nullable=True)
+    not_suff_cleaned: Mapped[float] = mapped_column(Float, nullable=True)
+    standard_without_cleaning: Mapped[float] = mapped_column(Float, nullable=True)
+    standard_biological: Mapped[float] = mapped_column(Float, nullable=True)
+    standard_physico_chemical: Mapped[float] = mapped_column(Float, nullable=True)
+    standard_mechanical: Mapped[float] = mapped_column(Float, nullable=True)
+    other: Mapped[float] = mapped_column(Float, nullable=True)
+    signed_by: Mapped[str] = mapped_column(String(255), nullable=True)
 
     def to_dict(self):
         return {
             'id': self.id,
-            'coordinates': self.coordinates,
-            'code_category_quality': self.code_category_quality,
+            'point_id': self.point_id,
             'month': self.month,
-            'value': self.value
+            'category_quality': self.category_quality.value,
+            'total': self.total,
+            'without_cleaning': self.without_cleaning,
+            'not_suff_cleaned': self.not_suff_cleaned,
+            'standard_without_cleaning': self.standard_without_cleaning,
+            'standard_biological': self.standard_biological,
+            'standard_physico_chemical': self.standard_physico_chemical,
+            'standard_mechanical': self.standard_mechanical,
+            'other': self.other,
+            'signed_by': self.signed_by
         }
 
 
@@ -694,30 +729,3 @@ class Rates(Base):
     value: Mapped[float] = mapped_column(Float, nullable=False)
     rate_type: Mapped[RatesType] = mapped_column(SQLAEnum(RatesType), nullable=False)
 
-# class WCLxPMLrecordLink(Base):
-#     """
-#     Связка записи журнала с Конкретным прибором, существующая по той причине что:
-#     - на одной точке водозабора может быть произвольное количество приборов
-#     - на одной и той же точке с течением времени гипотетически количество приборов может меняться
-#     """
-#     __tablename__ = 'wxprl'
-#
-#     point_meter_link_id: Mapped[int] = mapped_column(ForeignKey('point_meter_link.id'), nullable=False)
-#     record_wcl_id: Mapped[int] = mapped_column(ForeignKey('record_wcl.id'), nullable=False)
-
-# class RecordWCL(WaterConsumptionLog):
-#     """
-#     Запись журнала учета водопотребления (наследник WaterConsumptionLog)\n
-#     -------------------------------------\n
-#     Атрибуты:\n
-#     - measurement_date: Дата измерения\n
-#     - point_meter_link_id: Ссылка на запись измерения для PointMeterLink\n
-#     - operating_time_days: Время работы измерительного прибора в сутках\n
-#     - water_consumption_m3_per_day: Расход воды (тыс.м3)\n
-#     """
-#     __tablename__ = 'record_wcl'
-#
-#     measurement_date: Mapped[DateTime] = mapped_column(nullable=False)  # дата измерения
-#     point_meter_link_id: Mapped[int] = mapped_column(ForeignKey('measurement.id'), nullable=False)  # ссылка на RecordPML НО НАДО НЕСКОЛЬКО СЮДА...
-#     operating_time_days: Mapped[float] = mapped_column(Float, nullable=False)  # время работы в сутках
-#     water_consumption_m3_per_day: Mapped[float] = mapped_column(Float, nullable=False)  # расход воды в м3/сут

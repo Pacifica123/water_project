@@ -8,6 +8,11 @@ from db.setup import setup_database, get_session
 from routes import register_routes
 from routes.socket_handlers import register_socket_handlers
 from flask_socketio import SocketIO
+from flask_mail import Mail
+
+mail = Mail()
+YANDEX_EMAIL = "asasassasasasas12@yandex.ru"
+YANDEX_PASSWORD = "sukfnyvhqrijchbt"
 
 
 def save_to_stub(data):
@@ -26,8 +31,15 @@ def create_app(delete_db=False):
     app.secret_key = LONG_KEY
     CORS(app, supports_credentials=True)
     app.config['SESSION_TYPE'] = 'filesystem'
-    # Session(app)
-    # app.config["SECRET_KEY"] = LONG_KEY
+    # ─── Конфиг Flask-Mail ─────────────────────────────────────────────
+    app.config['MAIL_SERVER'] = "smtp.yandex.ru"
+    app.config['MAIL_PORT'] = 465
+    app.config['MAIL_USE_SSL'] = True
+    app.config['MAIL_USERNAME'] = YANDEX_EMAIL
+    app.config['MAIL_PASSWORD'] = YANDEX_PASSWORD
+    app.config['MAIL_DEFAULT_SENDER'] = ("Служба поддержки", YANDEX_EMAIL)
+    mail.init_app(app)
+    # ─────────────────────────────────────────────────────────────────
     engine = setup_database(delete_db=delete_db)
     socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -62,4 +74,4 @@ if __name__ == '__main__':
     delete_db_flag = os.getenv('DELETE_DB', 'False') == 'True'
     app, socketio = create_app(delete_db_flag)
     # app.run(debug=True)
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)

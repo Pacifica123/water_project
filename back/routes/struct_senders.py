@@ -12,8 +12,12 @@ def create_full_waterpoint(
     data_meter: dict,
     data_permission: dict,
 ) -> OperationResult:
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
+    pprint.pprint(data_point)
+    pprint.pprint(data_meter)
+    pprint.pprint(data_permission)
     # Вспомогательный парсер дат
-    parse_date = lambda src, key: datetime.strptime(src[key], "%d.%m.%Y").date()
+    parse_date = lambda src, key: datetime.datetime.strptime(src[key], "%d.%m.%Y").date()
 
     # 1. Проверка наличия идёт/создаётся ли счётчик
     has_existing_meter = bool(data_point.get("meter_id") and data_meter.get("id"))
@@ -73,7 +77,19 @@ def create_full_waterpoint(
             # 1.4. Неизвестная ошибка поиска
             print_operation_result(find)
             return find
+    else:
+        exist_meter = get_record_by_id(Meters, int(data_meter.get("id")))
+        if exist_meter.status != OperationStatus.SUCCESS:
+            return OperationResult(
+                OperationStatus.DATABASE_ERROR,
+                msg="Прибора с таким id не существует")
+        for key in ("serial_number", "brand_id", "verification_date", "verification_interval", "next_verification_date"):
+            if key not in data_meter or not data_meter.get(key):
+                data_meter[key] = getattr(exist_meter.data, key, None)
 
+    # debug
+    date_str = data_meter.get("expiration_date")
+    print(f"date raw value: {date_str!r}")
     # 2. Подготовка всех полезадок
     waterpoint_payload = {
         "organisation_id": int(data_point["organisation_id"]),
@@ -85,11 +101,10 @@ def create_full_waterpoint(
     permission_payload = {
         "organisation_id": int(data_point["organisation_id"]),
         "permission_number": data_permission["permission_number"],
-        "registration_date": parse_date(data_meter, "registration_date"),
-        "expiration_date": parse_date(data_meter, "expiration_date"),
+        "registration_date": parse_date(data_permission, "registration_date"),
+        "expiration_date": parse_date(data_permission, "expiration_date"),
         "permission_type": data_permission["permission_type"],
-        "allowed_volume_org": float(data_permission["allowed_volume_org"]),
-        "allowed_volume_pop": float(data_permission["allowed_volume_pop"]),
+        "allowed_volume": float(data_permission["allowed_volume_org"]),
         "method_type": data_permission["method_type"],
     }
     link_meter_payload = {
@@ -100,8 +115,8 @@ def create_full_waterpoint(
     link_permission_payload = {
         "point_id": None,
         "permission_id": None,
-        "actual_start_date": parse_date(data_meter, "actual_start_date"),
-        "actual_end_date": parse_date(data_meter, "actual_end_date"),
+        "actual_start_date": parse_date(data_permission, "registration_date"),
+        "actual_end_date": parse_date(data_permission, "expiration_date"),
         "active": False,
     }
 
@@ -117,13 +132,13 @@ def create_full_waterpoint(
             if not create_record_entity(model, payload):
                 raise RuntimeError(f"Ошибка при создании нового {desc}")
             ids[model.__name__] = get_last_record_id(model)
-
+        pprint.pprint(ids)
         # Проставляем связи
         link_meter_payload["point_id"] = ids["WaterPoint"]
         link_permission_payload["point_id"] = ids["WaterPoint"]
         link_permission_payload["permission_id"] = ids["Permissions"]
 
-        # Берём сами записи связей (ошибки не критичны — либо создадутся, либо упадут в ЛОГ)
+        # Берём сами записи связей (ошибки не критичны — либо создадутся, либо упадут в лог)
         create_record_entity(PointMeterLink, link_meter_payload)
         create_record_entity(PointPermissionLink, link_permission_payload)
 
@@ -243,17 +258,3 @@ def send_quarter(form_data: any):
                     msg=f"Ошибка в create_record_entity для {WaterConsumptionLogByCategories.__tablename__}"
                 )
     return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
-
-
-def send_extempl31or32(form_data: any) -> OperationResult:
-    print(f" ===== Зашло в функцию {sys._getframe().f_code.co_name} ===== ")
-    # TODO ПЕРЕДЕЛАТЬ В ЦИКЛ ДЛЯ МНОЖЕСТВА ЗАПИСЕЙ
-    table31or32 = form_data["table31or32"]
-    pprint.pprint(table31or32)
-    oprez = recognize_model(table31or32)
-
-    print_operation_result(oprez, "send_extempl31or32")
-    if oprez.status == OperationStatus.SUCCESS:
-        final_rez = add_to(WCLfor3132.__tablename__, oprez.data)
-        return final_rez
-    return oprez

@@ -11,7 +11,7 @@ import pprint
 import importlib
 from routes.struct_getters import get_water_logs
 import sys
-
+from utils.email_utils import send_credentials_email2
 import secrets
 import string
 
@@ -29,6 +29,7 @@ def generate_password(length=12):
 
 
 def create_org_user(orgdata) -> OperationResult:
+    from .email_utils import send_credentials_email2
     users_data = {
             "last_name": orgdata['legal_form'],
             "first_name": orgdata['organisation_name'],
@@ -39,9 +40,20 @@ def create_org_user(orgdata) -> OperationResult:
             "organisation_id": orgdata['organisation_id']
     }
     if create_record_entity(User, users_data):
+        # отправка письма
+        email_sent = send_credentials_email2(
+            to_email=users_data['email'],
+            username=users_data['username'],
+            password=users_data['password']
+        )
+        msg = "Пользователь организации создан"
+        if email_sent:
+            msg += " и письмо отправлено"
+        else:
+            msg += ", но не удалось отправить письмо"
         return OperationResult(
             status=OperationStatus.SUCCESS,
-            msg=f"Пользователь организации создан, временные данные: логин - {users_data['username']} временный пароль - {users_data['password']}",
+            msg=f"{msg}. Временные данные: логин - {users_data['username']}, пароль - {users_data['password']}",
             data={'username': users_data['username'], 'password': users_data['password']}
         )
     return OperationResult(
@@ -311,7 +323,9 @@ def get_all_models() -> OperationResult:
             # ["WCLfor3132", WCLfor3132.__tablename__],
             ["Записи журналов", RecordWCL.__tablename__],
             ["Файлы", FileRecord.__tablename__],
-            ["PPL_debug", PointPermissionLink.__tablename__]
+            ["PPL_debug", PointPermissionLink.__tablename__],
+            ["31", WCLfor31.__tablename__],
+            ["32", WCLfor32.__tablename__]
         ]
 
         return OperationResult(OperationStatus.SUCCESS, data=models_list)

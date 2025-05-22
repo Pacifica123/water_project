@@ -11,6 +11,343 @@ import sys
 import pprint
 
 
+def get_struct32(filters: dict) -> OperationResult:
+    """
+    Формирует структуру для Form32:
+      - waterPool: бассейновые округа → участки → гидроединицы
+      - permissions: все активные разрешения
+      - instrumentBrands: все активные приборы (для выбора на фронте) с данными калибровки
+      - waterObjects: водные объекты с кодами, координатами, sectionId и permissibleDischarge
+    """
+    org_id = filters.get('org_id')
+    if org_id is None:
+        return OperationResult(OperationStatus.FAILURE, message="org_id не передан")
+    # 1) Собираем карту area_id → pool_id и сами бассейновые округа + участки
+    pool_res = get_all_by_conditions(WaterPoolRef, [
+        {'organisation_id': org_id},
+        {'is_deleted': False}
+    ])
+    if pool_res.status != OperationStatus.SUCCESS:
+        return pool_res
+    pools = pool_res.data or []
+    waterPool = []
+    area_to_pool = {}  # для дальнейшей фильтрации waterObjects
+
+    for pool in pools:
+        # Получаем все участки в этом бассейне
+        area_res = get_all_by_conditions(WaterAreaRef, [
+            {'water_pool_id': pool.id},
+            {'is_deleted': False}
+        ])
+        if area_res.status != OperationStatus.SUCCESS:
+            return area_res
+        areas = area_res.data or []
+
+        sections = []
+        for area in areas:
+            # код участка из таблицы Codes
+            code_area_res = get_record_by_id(Codes, area.code_area_id)
+            code_area = code_area_res.data if code_area_res.status == OperationStatus.SUCCESS else None
+            # гидроединица - первые три сегмента кода участка
+            hydro_code = None
+            if code_area and code_area.code:
+                # допустим код_area.code = "13.01.02.006"
+                parts = code_area.code.split('.')
+                hydro_code = '.'.join(parts[:3])
+            hydro_unit = {
+                'id': area.id,
+                'name': area.name,         # или другое поле названия участка
+                'code': hydro_code or ''
+            }
+            sections.append({
+                'id': area.id,
+                'name': area.name,
+                'code': code_area.code if code_area else '',
+                'hydroUnits': [hydro_unit]
+            })
+            area_to_pool[area.id] = pool.id
+        waterPool.append({
+            'id': pool.id,
+            'name': pool.pool_name,   # или pool.name
+            'sections': sections
+        })
+    # 2) permissions — все активные разрешения для этой организации
+    ppl_res = get_all_by_conditions(Permissions, [
+        {'organisation_id': org_id},
+        {'active': True},
+        {'is_deleted': False}
+    ])
+    if ppl_res.status != OperationStatus.SUCCESS:
+        return ppl_res
+    permissions = [convert_to_dict(p) for p in (ppl_res.data or [])]
+    # 3) instrumentBrands — все приборы, привязанные к точкам этой организации, is_active=True
+    #    можно аналогично через PointMeterLink, но здесь возьмём напрямую:
+    mlink_res = get_all_by_conditions(PointMeterLink, [
+        {'point.organisation_id': org_id},  # если связь так выражается
+        {'is_active': True}
+    ])
+    if mlink_res.status != OperationStatus.SUCCESS:
+        return mlink_res
+    instrumentBrands = []
+    seen_meters = set()
+    for link in (mlink_res.data or []):
+        meter_res = get_record_by_id(Meters, link.meter_id)
+        if meter_res.status != OperationStatus.SUCCESS:
+            return meter_res
+        m = meter_res.data
+        if m.id in seen_meters:
+            continue
+        seen_meters.add(m.id)
+        instrumentBrands.append({
+            'id': m.id,
+            'name': m.name,                                          # заменить на корректное поле
+            'calibration': {
+                'lastCalibrationDate': m.last_calibration_date or '', # YYYY-MM-DD
+                'calibrationPeriodMonths': m.calibration_period_months or 0
+            }
+        })
+
+    # 4) waterObjects — все объекты в участках org_id с координатами и discharge
+    #    Координаты берём из WaterPoint.latitude_longitude, discharge — из Permissions
+    wp_res = get_all_by_conditions(WaterPoint, [
+        {'organisation_id': org_id},
+        {'point_type': PermissionType.WATER_DISCHARGE},  # если есть такой тип
+        {'is_deleted': False}
+    ])
+    if wp_res.status != OperationStatus.SUCCESS:
+        return wp_res
+    points = wp_res.data or []
+    waterObjects = []
+    for p in points:
+        # привязанный water object
+        wor_res = get_record_by_id(WaterObjectRef, p.water_body_id)
+        if wor_res.status != OperationStatus.SUCCESS:
+            return wor_res
+        wor = wor_res.data
+        # коды объекта и типа (code_obj_id, code_type_id)
+        code_obj_res  = get_record_by_id(Codes, wor.code_obj_id)
+        code_type_res = get_record_by_id(Codes, wor.code_type_id)
+        code_obj  = code_obj_res.data if code_obj_res.status == OperationStatus.SUCCESS else None
+        code_type = code_type_res.data if code_type_res.status == OperationStatus.SUCCESS else None
+        # discharge — ищем активное разрешение на сброс для этой точки
+        ppl_link_res = get_all_by_conditions(PointPermissionLink, [
+            {'point_id': p.id},
+            {'active': True}
+        ])
+        if ppl_link_res.status != OperationStatus.SUCCESS:
+            return ppl_link_res
+        discharge = 0
+        for link in (ppl_link_res.data or []):
+            perm_res = get_record_by_id(Permissions, link.permission_id)
+            if perm_res.status != OperationStatus.SUCCESS:
+                return perm_res
+            perm = perm_res.data
+            # предполагаем поле perm.permissible_discharge_thousand_m3
+            discharge = getattr(perm, 'permissible_discharge_thousand_m3', discharge)
+            break  # берём первое
+        waterObjects.append({
+            'id': wor.id,
+            'name': getattr(wor, 'name', ''),
+            'codes': {
+                'objectCode': code_obj.code if code_obj else '',
+                'subsystemCode': code_type.code if code_type else ''
+            },
+            'coordinates': p.latitude_longitude or '',
+            'sectionId': wor.water_area_id,
+            'permissibleDischargeThousandM3': discharge
+        })
+    return OperationResult(OperationStatus.SUCCESS, data={
+        'waterPool': waterPool,
+        'permissions': permissions,
+        'instrumentBrands': instrumentBrands,
+        'waterObjects': waterObjects
+    })
+
+
+def get_struct31(filters: dict) -> OperationResult:
+    """
+    Функция для получения структуры 3.1 (открытие формы).
+
+    На вход ожидается org_id.
+    На выход:
+      - пункты учета (только WATER_WITHDRAWAL)
+      - водный объект + его коды
+      - водохозяйственный участок + бассейновый округ
+      - разрешения (active=True)
+      - последний прибор (is_active=True)
+    """
+    print(f"===== Зашло в функцию {sys._getframe().f_code.co_name} =====")
+    org_id = filters.get('org_id')
+    if org_id is None:
+        return OperationResult(OperationStatus.FAILURE, message="org_id не передан в фильтрах")
+    # Уже сразу фильтруем по org_id и по типу точки:
+    wp_res = get_all_by_conditions(
+        WaterPoint,
+        [
+            {'organisation_id': org_id},
+            {'point_type': PermissionType.WATER_WITHDRAWAL}
+        ]
+    )
+    if wp_res.status != OperationStatus.SUCCESS:
+        return wp_res
+    points = wp_res.data or []
+    result_list = []
+    for p in points:
+        # базовая структура
+        point_dict = {
+            'id': p.id,
+            'latitude_longitude': p.latitude_longitude,
+            'point_type': p.point_type.value,
+        }
+        # 1) водный объект + коды
+        wor = get_record_by_id(WaterObjectRef, p.water_body_id)
+        if wor.status != OperationStatus.SUCCESS:
+            return wor
+        wor_obj = wor.data
+        # коды
+        code_type = get_record_by_id(Codes, wor_obj.code_type_id)
+        code_obj  = get_record_by_id(Codes, wor_obj.code_obj_id)
+        point_dict['water_object'] = {
+            'id': wor_obj.id,
+            'name': getattr(wor_obj, 'name', None),
+            'code_type': convert_to_dict(code_type.data) if code_type.status == OperationStatus.SUCCESS else None,
+            'code_object': convert_to_dict(code_obj.data)  if code_obj.status  == OperationStatus.SUCCESS else None,
+        }
+        # 2) водохозяйственный участок
+        war = get_record_by_id(WaterAreaRef, wor_obj.water_area_id)
+        if war.status != OperationStatus.SUCCESS:
+            return war
+        area = war.data
+        # код участка
+        code_area = get_record_by_id(Codes, area.code_area_id)
+        # бассейновый округ
+        wpr = get_record_by_id(WaterPoolRef, area.water_pool_id)
+        if wpr.status != OperationStatus.SUCCESS:
+            return wpr
+        pool = wpr.data
+        point_dict['water_area'] = {
+            'id': area.id,
+            'code_area': convert_to_dict(code_area.data) if code_area.status == OperationStatus.SUCCESS else None,
+            'pool_name': pool.pool_name,
+        }
+
+        # 3) разрешения (active=True)
+        ppl_res = get_all_by_conditions(PointPermissionLink, [
+            {'point_id': p.id}, {'active': True}
+        ])
+        if ppl_res.status != OperationStatus.SUCCESS:
+            return ppl_res
+        permissions = []
+        for link in ppl_res.data or []:
+            perm = get_record_by_id(Permissions, link.permission_id)
+            if perm.status != OperationStatus.SUCCESS:
+                return perm
+            permissions.append(convert_to_dict(perm.data))
+        point_dict['permissions'] = permissions
+        # 4) последний прибор (is_active=True)
+        pml_res = get_all_by_conditions(PointMeterLink, [
+            {'point_id': p.id}, {'is_active': True}
+        ])
+        if pml_res.status != OperationStatus.SUCCESS:
+            return pml_res
+        last_meter = None
+        if pml_res.data:
+            mlink = pml_res.data[0]
+            meter = get_record_by_id(Meters, mlink.meter_id)
+            if meter.status != OperationStatus.SUCCESS:
+                return meter
+            last_meter = convert_to_dict(meter.data)
+        point_dict['last_meter'] = last_meter
+        result_list.append(point_dict)
+
+    print(f"===== Вышло из функции {sys._getframe().f_code.co_name} =====")
+    return OperationResult(OperationStatus.SUCCESS, data=result_list)
+
+
+def getall_coord_points(filters: dict) -> OperationResult:
+    """
+    Возвращает маркеры, привязанные к записям журнала WaterConsumptionLog.
+    Для каждой записи логов (разный месяц, статус) формируется отдельный маркер,
+    даже если point_id/organisation_id/координаты совпадают.
+    """
+    try:
+        # 1. Берём все логи по фильтрам
+        if not filters:
+            log_res = get_all_from_table(WaterConsumptionLog)
+        else:
+            bad = [k for k in filters if not hasattr(WaterConsumptionLog, k)]
+            if bad:
+                return OperationResult(
+                    OperationStatus.VALIDATION_ERROR,
+                    msg=f"Неизвестные фильтры для журнала: {bad}"
+                )
+            conditions = [{"column": k, "value": v} for k, v in filters.items()]
+            log_res = get_all_by_conditions(WaterConsumptionLog, conditions)
+        if log_res.status != OperationStatus.SUCCESS:
+            return log_res
+        logs = log_res.data  # List[WaterConsumptionLog]
+    except SQLAlchemyError as e:
+        return OperationResult(OperationStatus.DATABASE_ERROR, msg=str(e))
+
+    # 2. Собираем все уникальные точки, чтобы один раз достать из БД
+    point_ids = {log.point_id for log in logs}
+    points_cache: Dict[int, WaterPoint] = {}
+    for pid in point_ids:
+        p_res = get_record_by_id(WaterPoint, pid)
+        if p_res.status == OperationStatus.SUCCESS and p_res.data:
+            points_cache[pid] = p_res.data
+        else:
+            # если вдруг точки нет — пропускаем все её логи
+            points_cache[pid] = None
+
+    # 3. Собираем все уникальные организации
+    org_ids = {
+        wp.organisation_id
+        for wp in points_cache.values()
+        if wp is not None
+    }
+    org_cache: Dict[int, str] = {}
+    for oid in org_ids:
+        o_res = get_record_by_id(Organisations, oid)
+        org_cache[oid] = (
+            o_res.data.organisation_name
+            if o_res.status == OperationStatus.SUCCESS and o_res.data
+            else f"id={oid}"
+        )
+
+    # 4. Формируем результат: одну запись на каждый WaterConsumptionLog
+    markers: List[Dict[str, Any]] = []
+    for log in logs:
+        wp = points_cache.get(log.point_id)
+        if not wp:
+            continue  # точки нет, пропускаем
+
+        # парсим координаты точки
+        try:
+            lat, lng = parse_dms_to_decimal(wp.latitude_longitude)
+        except ValueError:
+            print(f"[WARN] Bad coords for point {wp.id!r}: {wp.latitude_longitude!r}")
+            continue
+
+        # подпись и статус берём из кэша/лога
+        label = org_cache.get(wp.organisation_id, f"id={wp.organisation_id}")
+        status = log.log_status.value if hasattr(log.log_status, 'value') else str(log.log_status)
+        month  = log.month.value if hasattr(log.month, 'value') else str(log.month)
+        markers.append({
+            "lat": float(lat),
+            "lng": float(lng),
+            "label": label,
+            "status": status,
+            "month": month,
+        })
+
+    return OperationResult(
+        OperationStatus.SUCCESS,
+        msg="Markers by consumption logs",
+        data=markers
+    )
+
+
 def get_actual_from_log_by_mf(filters: dict) -> OperationResult:
     try:
         months = filters.get("months") or filters.get("months[]")
@@ -69,7 +406,6 @@ def get_actual_from_log_by_mf(filters: dict) -> OperationResult:
 
     except Exception as e:
         return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
-
 
 
 def organisations_familiar_by_mf(filters: dict) -> OperationResult:
@@ -504,22 +840,6 @@ def get_points_consumption(filter_k: str, filter_v: any) -> OperationResult:
     except Exception as e:
         print(f"Error in get_points_consumption: {e}")
         return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
-
-
-def get_header_for_e31_32(filter_k, filter_v) -> OperationResult:
-    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
-    try:
-        # ищем по point_id (скорее всего)
-        logs = get_all_by_foreign_key(WaterPoint, filter_k, filter_v)
-        if logs.status != OperationStatus.SUCCESS:
-            pprint.pprint(logs)
-            return logs
-        replace_logs = replace_fks(logs, WCLfor3132.__tablename__)
-        if replace_logs.status != OperationStatus.SUCCESS:
-            pprint.pprint(replace_logs)
-        return replace_logs
-    except Exception as e:
-        print(f"в get_header_for_e31_32 что-то сломалось {e}")
 
 
 def get_orgstatistics(org_id) -> OperationResult:

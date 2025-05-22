@@ -10,7 +10,7 @@ from sqlalchemy.exc import NoResultFound
 
 from db.models import Base
 import inspect
-
+from decimal import Decimal
 import enum
 import sys
 
@@ -32,6 +32,60 @@ class OperationResult:
         self.status = status
         self.message = msg
         self.data = data
+
+
+_DEC_PAIR_UNDERSCORE = re.compile(r'^\s*([+-]?\d+(?:\.\d+))[_\s]+([+-]?\d+(?:\.\d+))\s*$')
+_DECIMAL_PAIR_RE   = re.compile(r'([+-]?\d+(?:\.\d+))\s*[, ]\s*([+-]?\d+(?:\.\d+))')
+_DMS_LATIN_RE      = re.compile(
+    r"""(\d+)[°\s]+(\d+)[′']+(\d+(?:\.\d+)?)[″"]+\s*([NS])
+        [ ,;]+
+        (\d+)[°\s]+(\d+)[′']+(\d+(?:\.\d+)?)[″"]+\s*([EW])""",
+    re.VERBOSE | re.IGNORECASE
+)
+_DMS_CYRIL_RE      = re.compile(
+    r"""(\d+)[°\s]+(\d+)[′']+(\d+(?:\.\d+)?)[″"]+\s*с\.ш\.
+        [ ,;]+
+        (\d+)[°\s]+(\d+)[′']+(\d+(?:\.\d+)?)[″"]+\s*в\.д\.
+    """,
+    re.VERBOSE | re.IGNORECASE
+)
+
+
+def parse_dms_to_decimal(s: str) -> (Decimal, Decimal):
+    s = s.strip()
+    # 0) цифры через подчёркивание или пробел
+    m = _DEC_PAIR_UNDERSCORE.match(s)
+    if m:
+        return Decimal(m.group(1)), Decimal(m.group(2))
+
+    # 1) десятичка через запятую или пробел
+    m = _DECIMAL_PAIR_RE.match(s)
+    if m:
+        return Decimal(m.group(1)), Decimal(m.group(2))
+
+    # 2) DMS латиницей
+    m = _DMS_LATIN_RE.search(s)
+    if m:
+        lat = _to_dec(m.group(1), m.group(2), m.group(3), m.group(4))
+        lng = _to_dec(m.group(5), m.group(6), m.group(7), m.group(8))
+        return lat, lng
+
+    # 3) DMS кириллицей
+    m = _DMS_CYRIL_RE.search(s)
+    if m:
+        lat = _to_dec(m.group(1), m.group(2), m.group(3), 'N')
+        lng = _to_dec(m.group(4), m.group(5), m.group(6), 'E')
+        return lat, lng
+
+    # 4) Если всё ещё не распарсили:
+    raise ValueError(f"Unknown coord format: {s!r}")
+
+
+def _to_dec(deg, minu, sec, hemi):
+    dec = Decimal(deg) + Decimal(minu)/60 + Decimal(sec)/3600
+    if hemi.upper() in ('S','W'):
+        dec = -dec
+    return dec
 
 
 def print_operation_result(result, func_name=None):
@@ -400,3 +454,37 @@ def convert_to_dict(record):
         return {column.name: getattr(record, column.name) for column in record.__table__.columns}
     else:  # Если record — словарь
         return record  # Просто возвращаем словарь как есть
+
+
+def convert_date(date_str: str, mode: str) -> str:
+    """
+    Конвертирует дату между форматами:
+    - 'to_frontend': из 'YYYY-MM-DD' в 'DD.MM.YY'
+    - 'to_postgres': из 'DD.MM.YY' в 'YYYY-MM-DD'
+
+    Args:
+        date_str (str): дата в исходном формате
+        mode (str): режим конвертации, 'to_frontend' или 'to_postgres'
+
+    Returns:
+        str: дата в целевом формате
+
+    Raises:
+        ValueError: если формат даты не соответствует ожидаемому
+    """
+    if mode == 'to_frontend':
+        # из '2023-04-04' -> '04.04.23'
+        try:
+            dt = datetime.strptime(date_str, '%Y-%m-%d')
+            return dt.strftime('%d.%m.%y')
+        except ValueError:
+            raise ValueError("Ожидается формат даты 'YYYY-MM-DD' для режима 'to_frontend'")
+    elif mode == 'to_postgres':
+        # из '04.04.23' -> '2023-04-04'
+        try:
+            dt = datetime.strptime(date_str, '%d.%m.%y')
+            return dt.strftime('%Y-%m-%d')
+        except ValueError:
+            raise ValueError("Ожидается формат даты 'DD.MM.YY' для режима 'to_postgres'")
+    else:
+        raise ValueError("Неверный режим. Используйте 'to_frontend' или 'to_postgres'.")
