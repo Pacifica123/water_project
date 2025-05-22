@@ -12,6 +12,7 @@ import Modal from "./Modal"; // Компонент модального окна
 import axios from "axios";
 import {translate} from "../utils/translations.js"
 import { useNotification } from "./NotificationContext.js";
+import "../css/Admin.css";
 import InputMask from "react-input-mask";
 
 const AdminPanel = () => {
@@ -29,6 +30,19 @@ const AdminPanel = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [error, setError] = useState(null);
   const [showTechnicalFields, setShowTechnicalFields] = useState(false);
+
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const tableCategories = {
+    "Пользователи и Организации": ["users", "organisations","permissions"],
+    "Приборы": ["meters_brand_ref", "meters"],
+    "Локации и объекты":["water_area_ref","water_object_ref","water_pool_ref","water_point","sampling_location"],
+    "Журналы и записи":["water_consumption_log","record_wcl","wcl_category","wcl_31","wcl_32"],
+    "Все об веществах":["concentrates","substances_ref","chemical_analysis_protocol","standarts_ref"],
+    "Другое":["codes","file_records"],
+    // Добавляй категории по необходимости
+  };
+
+
   // Получение списка таблиц при монтировании компонента
   useEffect(() => {
     const getTableList = async () => {
@@ -226,30 +240,59 @@ const AdminPanel = () => {
   };
 
   // Рендер списка таблиц
-  const renderTableList = () => (
+  const renderCategoryList = () => (
     <div className="content-container_for_renderTableList">
     <div className="table-section">
-    <h2 className="table-title">Список таблиц</h2>
-    {tableList.length === 0 && <div>Нет данных</div>}
+    <h2 className="table-title">Разделы</h2>
     <ul className="table-grid">
-    {tableList.map((table, idx) => {
-      const [displayName, modelName] = Object.entries(table)[0];
-      if (modelName === "history") return null;
-      return (
-        <li key={idx} className="table-item">
-        <button
-        className="table-card-button"
-        onClick={() => handleSelectTable(modelName)}
-        >
-        {displayName}
-        </button>
-        </li>
-      );
-    })}
+    {Object.keys(tableCategories).map((category, idx) => (
+      <li key={idx} className="table-item">
+      <button
+      className="table-card-button"
+      onClick={() => setSelectedCategory(category)}
+      >
+      {category}
+      </button>
+      </li>
+    ))}
     </ul>
     </div>
     </div>
   );
+  const renderTablesInCategory = () => {
+    const tablesInCategory = tableList.filter((table) => {
+      const modelName = Object.values(table)[0];
+      return tableCategories[selectedCategory]?.includes(modelName);
+    });
+
+    return (
+      <div className="content-container_for_renderTableList">
+      <button
+      className="back-button"
+      onClick={() => setSelectedCategory(null)}
+      >
+      Назад к разделам
+      </button>
+      <h2 className="table-title">Таблицы раздела: {selectedCategory}</h2>
+      <ul className="table-grid">
+      {tablesInCategory.map((table, idx) => {
+        const [displayName, modelName] = Object.entries(table)[0];
+        return (
+          <li key={idx} className="table-item">
+          <button
+          className="table-card-button"
+          onClick={() => handleSelectTable(modelName)}
+          >
+          {displayName}
+          </button>
+          </li>
+        );
+      })}
+      </ul>
+      </div>
+    );
+  };
+
 
   const renderCellValue = (value, fieldSchema) => {
     if (
@@ -414,10 +457,10 @@ const AdminPanel = () => {
             }}
             />
           ) : field.field === "latitude_longitude" ? (
-            <div >
+            <div className="coordinate-input-wrapper">
             <InputMask
             mask="99°99′99″ с.ш., 99°99′99″ в.д."
-            value={formData[field.field] || ""}
+            value={formData[field.field] || "00°00′00″ с.ш., 00°00′00″"}
             onChange={(e) =>
               setFormData({ ...formData, [field.field]: e.target.value })
             }
@@ -460,7 +503,6 @@ const AdminPanel = () => {
     </Modal>
   );
 
-
   // Пример стиля для скрытия/сворачивания поля после его заполнения
   const styles = {
     ".filled": {
@@ -493,76 +535,93 @@ const AdminPanel = () => {
   };
 
   // Пример компонента для внешнего ключа, который выполняет отдельный запрос для получения значений
-  const ForeignKeySelect = ({ field, value, onChange }) => {
+  const ForeignKeySelect = React.memo(({ field, value, onChange }) => {
     const [options, setOptions] = useState(field.options || []);
     const [loading, setLoading] = useState(false);
 
+    // Глобальный кеш (на уровне модуля)
+    ForeignKeySelect.cache = ForeignKeySelect.cache || {};
+    const cache = ForeignKeySelect.cache;
+
+    const cacheKey = field.enumType || field.field;
+
     useEffect(() => {
+      // Если уже есть в кеше — используем
+      if (cache[cacheKey]) {
+        setOptions(cache[cacheKey]);
+        return;
+      }
+
+      // Если уже загружается — пропускаем
+      if (cache[cacheKey + "_loading"]) return;
+
       const fetchOptions = async () => {
+        cache[cacheKey + "_loading"] = true;
         setLoading(true);
         try {
+          let result = [];
+
           if (field.isEnum) {
-            console.log("В ForeignKeySelect попало!");
-            // Если это перечисление, получаем варианты через API
-            const response = await fetchStructureData("enum_" + field.enumType);
-            console.log("Вот что попадет в setOptions: ", response.data);
-            setOptions(response.data);
-          } else if (field.foreignKey) {
-            // Если это внешний ключ, используем существующие опции
-            setOptions(field.options);
+            const res = await fetchStructureData("enum_" + field.enumType);
+            result = res.data;
+          } else if (field.foreignKey && (!field.options || field.options.length === 0)) {
+            const res = await fetchStructureData("foreign_" + field.field);
+            result = res.data;
           } else {
-            // Если это не перечисление и не внешний ключ, не делаем запрос
-            setOptions([]);
+            result = field.options || [];
           }
-        } catch (error) {
-          console.error("Ошибка получения опций для", field.field, error);
+
+          cache[cacheKey] = result;
+          setOptions(result);
+        } catch (e) {
+          console.error("Ошибка получения опций:", e);
         } finally {
+          cache[cacheKey + "_loading"] = false;
           setLoading(false);
         }
       };
+
       fetchOptions();
-    }, [field.field, field.enumType]);
+    }, [cacheKey, field.enumType, field.foreignKey, field.options]);
 
     return (
-      <select
-      value={value}
-      onChange={(e) => {
-        onChange(e.target.value);
-      }}
-      >
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
       {loading ? (
         <option>Загрузка...</option>
       ) : (
         <>
         <option value="">Выберите значение</option>
-        {options?.map((opt, idx) => (
+        {options.map((opt, idx) => (
           <option key={idx} value={opt.value}>
-          {opt.label}
+          {translate(opt.label)}
           </option>
         ))}
         </>
       )}
       </select>
     );
-  };
+  });
+
 
   return (
     <div className="admin-panel">
     {alertVisible && (
-      <div className="custom-alert">
-      ✅ Данные успешно добавлены!
-      </div>
+      <div className="custom-alert">✅ Данные успешно добавлены!</div>
     )}
     <center><h1>Админ-панель</h1></center>
+
     {isLoading && <div>Загрузка...</div>}
+
     {!selectedTable ? (
-      renderTableList()
+      selectedCategory ? renderTablesInCategory() : renderCategoryList()
     ) : (
-      <div>{renderTableRecords()}</div>
+      renderTableRecords()
     )}
+
     {modalVisible && renderModal()}
     </div>
   );
+
 };
 
 export default AdminPanel;

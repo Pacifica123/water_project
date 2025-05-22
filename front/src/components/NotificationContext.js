@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext } from "react";
+import "../css/alert.css";
 
 const NotificationContext = createContext();
 
@@ -28,7 +29,7 @@ export const NotificationProvider = ({ children }) => {
 
     const showEdit = (message = "✏️ Данные успешно обновлены!") => {
         setEditMessage(message);
-        setTimeout(() => setEditMessage(null), 5000);
+        setTimeout(() => setEditMessage(null), 60000);
     };
 
     const askConfirmation = (message = "Вы уверены, что хотите продолжить?") => {
@@ -50,24 +51,24 @@ export const NotificationProvider = ({ children }) => {
 
     return (
         <NotificationContext.Provider value={{ showSuccess, showError, showEdit, askConfirmation }}>
+            
+            {successMessage && <div className="custom-alert">{successMessage}</div>}
+            {editMessage && <div className="custom-alert-edit">{editMessage}</div>}
+            {errorMessage && <div className="custom-alert-error">{errorMessage}</div>}
 
-        {successMessage && <div className="custom-alert">{successMessage}</div>}
-        {editMessage && <div className="custom-alert-edit">{editMessage}</div>}
-        {errorMessage && <div className="custom-alert-error">{errorMessage}</div>}
-
-        {confirmState.isOpen && (
-            <div className="confirm-modal-overlay">
-            <div className="confirm-modal">
-            <p>{confirmState.message}</p>
-            <div className="confirm-buttons">
-            <button onClick={confirmState.onConfirm}>Да</button>
-            <button onClick={confirmState.onCancel}>Нет</button>
-            </div>
-            </div>
-            </div>
-
-        )}
-        {children}
+            {confirmState.isOpen && (
+                <div className="confirm-modal-overlay">
+                    <div className="confirm-modal">
+                        <p>{confirmState.message}</p>
+                        <div className="confirm-buttons">
+                            <button onClick={confirmState.onConfirm}>Да</button>
+                            <button onClick={confirmState.onCancel}>Нет</button>
+                        </div>
+                    </div>
+                </div>
+                
+            )}
+            {children}
         </NotificationContext.Provider>
     );
 };

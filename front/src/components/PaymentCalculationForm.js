@@ -4,7 +4,7 @@ import { fetchSingleTableData, fetchStructDataWithFilters } from "../api/fetch_r
 import "../css/Water.css";
 
 const PaymentCalculationForm = () => {
-
+   const [openSection,setOpenSection] = useState(null);
   // ........... Фетчим ставки ..............
 
   const [ratesData, setRatesData] = useState({}); // Состояние для хранения ставок из БД
@@ -85,16 +85,16 @@ const PaymentCalculationForm = () => {
         if (rate.id === "1.1.1") return {
           ...rate,
           establishedVolume: filteredPermission.POPULATION?.value || 0,
-          // actualVolume: filteredPermission.POPULATION?.value || 0,
-          // withinLimitsVolume: filteredPermission.POPULATION?.value || 0,
-          // exceededVolume: filteredPermission.POPULATION?.value || 0
+          actualVolume: filteredPermission.POPULATION?.value || 0,
+          withinLimitsVolume: filteredPermission.POPULATION?.value || 0,
+           exceededVolume: filteredPermission.POPULATION?.value || 0
         };
         if (rate.id === "1.1.2") return {
           ...rate,
           establishedVolume: filteredPermission.ORG?.value || 0,
-          // actualVolume: filteredPermission.ORG?.value || 0,
-          // withinLimitsVolume: filteredPermission.ORG?.value || 0,
-          // exceededVolume: filteredPermission.ORG?.value || 0
+          actualVolume: filteredPermission.ORG?.value || 0,
+          withinLimitsVolume: filteredPermission.ORG?.value || 0,
+          exceededVolume: filteredPermission.ORG?.value || 0
         };
         return rate;
       });
@@ -120,16 +120,6 @@ const PaymentCalculationForm = () => {
 
   const initialRows = {
     parameters: [
-      {
-        id: "1",
-        indicator: "Параметры водопользования",
-        unit: "тыс.м3",
-        establishedVolume: "", // заглушка – значение подгружается из БД
-        actualVolume: 0,
-        withinLimitsVolume: 0,
-        exceededVolume: 0,
-        totalPayment: ""
-      },
       {
         id: "1.1",
         indicator: "Забор (изъятие) водных ресурсов из поверхностного водного объекта",
@@ -165,16 +155,6 @@ const PaymentCalculationForm = () => {
     ],
     rates: [
       {
-        id: "2",
-        indicator: "Ставка платы",
-        unit: "руб/тыс.м3",
-        establishedVolume: 0,
-        actualVolume: 0,
-        withinLimitsVolume: 0,
-        exceededVolume: 0,
-        totalPayment: ""
-      },
-      {
         id: "2.1",
         indicator: "За забор (изъятие) водных ресурсов для населения",
         unit: "руб/тыс.м3",
@@ -206,16 +186,6 @@ const PaymentCalculationForm = () => {
       }
     ],
     payment: [
-      {
-        id: "3",
-        indicator: "Размер платы",
-        unit: "руб",
-        establishedVolume: "",
-        actualVolume: "",
-        withinLimitsVolume: "",
-        exceededVolume: "",
-        totalPayment: ""
-      },
       {
         id: "3.1",
         indicator:
@@ -360,94 +330,81 @@ const PaymentCalculationForm = () => {
   const computedPayment = computePayment();
 
   // Универсальная функция рендеринга секции таблицы
-  const renderTableSection = (title, section) => {
-    // Выбираем набор строк в зависимости от секции
+  const renderTableSection = (title, sectionKey, showTotalPayment=true) => {
     const sectionRows =
-    section === "parameters"
-    ? computedParameters
-    : section === "payment"
-    ? computedPayment
-    : rows[section]; // rates не менялись
-
+      sectionKey === "parameters"
+        ? computedParameters
+        : sectionKey === "payment"
+        ? computedPayment
+        : rows[sectionKey];
+  
     return (
       <>
-      <h3>{title}</h3>
-      <table className="payment-table">
-      <thead>
-      <tr>
-      <th>№ п/п</th>
-      <th>Показатель</th>
-      <th>Ед. изм.</th>
-      <th>Установленные объемы ВП в квартал</th>
-      <th>Фактические объемы ВП в квартал</th>
-      <th>Фактические объемы ВП в пределах установленных объемов</th>
-      <th>Превышение установленных объемов ВП в квартале</th>
-      <th>Итого оплата за квартал, руб</th>
-      </tr>
-      </thead>
-      <tbody>
-      {sectionRows.map((row) => (
-        <tr key={row.id}>
-        <td>{row.id}</td>
-        <td>
-        {/* Для строк-шапок (id "1", "2", "3") выводим просто пустую ячейку */}
-        {row.id === "1" || row.id === "2" || row.id === "3"
-          ? ""
-          : row.indicator}
-          </td>
-          <td>{row.id === "1" || row.id === "2" || row.id === "3" ? "" : row.unit}</td>
-          {/* Для каждой колонки, если поле редактируемое – инпут, иначе метка */}
-          {["establishedVolume", "actualVolume", "withinLimitsVolume", "exceededVolume"].map(
-            (field) => (
-              <td key={field}>
-              {isEditable(section, row, field) ? (
-                <input
-                type="number"
-                value={row[field]}
-                onChange={(e) =>
-                  handleChange(section, row.id, field, e.target.value)
-                }
-                />
-              ) : (
-                // Если значение равно 0 или 0.00, выводим пустую строку (для итоговых строк)
-                row[field] === 0 || row[field] === "0.00" || row[field] === 0.0
-                ? ""
-                : row[field]
-              )}
-              </td>
-            )
-          )}
-          {/* Последний столбец "Итого оплата за квартал" */}
-          <td>
-          {section === "payment" ||
-            row.id === "1" ||
-            row.id === "2"
-            ? // Для таблицы 3 все поля вычисляются, для таблиц 1 и 2 итог показываем пустую ячейку
-            row.totalPayment
-            : isEditable(section, row, "totalPayment") ? (
-              <input
-              type="number"
-              value={row.totalPayment}
-              onChange={(e) =>
-                handleChange(section, row.id, "totalPayment", e.target.value)
-              }
-              />
-            ) : (
-              row.totalPayment
-            )}
-            </td>
+        <h3 align="center">{title}</h3>
+        <table className="payment-table">
+          <thead>
+            <tr>
+              <th>№ п/п</th>
+              <th>Показатель</th>
+              <th>Ед. изм.</th>
+              <th>Установленные объемы ВП в квартал</th>
+              <th>Фактические объемы ВП в квартал</th>
+              <th>Фактические объемы ВП в пределах установленных объемов</th>
+              <th>Превышение установленных объемов ВП в квартале</th>
+              {showTotalPayment &&<th>Итого оплата за квартал, руб</th>}
             </tr>
-      ))}
-      </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sectionRows.map((row) => (
+              <tr key={row.id}>
+                <td>{row.id}</td>
+                <td>{["1", "2", "3"].includes(row.id) ? "" : row.indicator}</td>
+                <td>{["1", "2", "3"].includes(row.id) ? "" : row.unit}</td>
+                {["establishedVolume", "actualVolume", "withinLimitsVolume", "exceededVolume"].map(
+                  (field) => (
+                    <td key={field}>
+                      {isEditable(sectionKey, row, field) ? (
+                        <input
+                          type="number"
+                          value={row[field]}
+                          onChange={(e) =>
+                            handleChange(sectionKey, row.id, field, e.target.value)
+                          }
+                        />
+                      ) : row[field] === 0 || row[field] === "0.00" || row[field] === 0.0
+                        ? ""
+                        : row[field]}
+                    </td>
+                  )
+                )}
+                {showTotalPayment && (
+                <td>
+                  {sectionKey === "payment" ||
+                  row.id === "1" ||
+                  row.id === "2"
+                    ? row.totalPayment
+                    : isEditable(sectionKey, row, "totalPayment") ? (
+                      <input
+                        type="number"
+                        value={row.totalPayment}
+                        onChange={(e) =>
+                          handleChange(sectionKey, row.id, "totalPayment", e.target.value)
+                        }
+                      />
+                    ) : row.totalPayment}
+                </td>
+  )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </>
     );
   };
-
   return (
     <div className="payment-container">
-    <h2>Расчет суммы оплаты</h2>
-
+    <h2 align="center">Расчет суммы оплаты</h2>
+    <div className="form-step">
 
 
     <div>
@@ -470,10 +427,34 @@ const PaymentCalculationForm = () => {
       )}
 
     </div>
+    <div className="toggle-buttons-container">
+  <button
+    className="toggle-button"
+    onClick={() => setOpenSection(openSection === "parameters" ? null : "parameters")}
+  >
+    {openSection === "parameters" ? "Скрыть" : "Показать"} 1. Параметры
+  </button>
+  <button
+    className="toggle-button"
+    onClick={() => setOpenSection(openSection === "rates" ? null : "rates")}
+  >
+    {openSection === "rates" ? "Скрыть" : "Показать"} 2. Ставки
+  </button>
+  <button
+    className="toggle-button"
+    onClick={() => setOpenSection(openSection === "payment" ? null : "payment")}
+  >
+    {openSection === "payment" ? "Скрыть" : "Показать"} 3. Плата
+  </button>
+</div>
 
-    {renderTableSection("1. Параметры водопользования", "parameters")}
-    {renderTableSection("2. Ставки платы", "rates")}
-    {renderTableSection("3. Размер платы", "payment")}
+{/* Отображаем только один активный раздел ниже */}
+<div className="section-wrapper">
+  {openSection === "parameters" && renderTableSection("1. Параметры водопользования", "parameters",false)}
+  {openSection === "rates" && renderTableSection("2. Ставки платы", "rates",false)}
+  {openSection === "payment" && renderTableSection("3. Размер платы", "payment",true)}
+</div>
+    </div>
     </div>
   );
 };

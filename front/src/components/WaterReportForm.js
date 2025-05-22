@@ -4,6 +4,8 @@ import {fetchWaterObjects }from "../api/records.js";
 import {sendFormData} from "../api/add_records.js";
 import { fetchSingleTableData, fetchStructDataWithFilters } from "../api/fetch_records.js";
 import { useNotification } from "./NotificationContext.js";
+import "../css/WaterReport.css";
+import "../css/Rates.css"
 
 
 import React, { useState, useEffect } from "react";
@@ -40,8 +42,6 @@ function WaterReportForm() {
           water_point_id: parseInt(selectedWaterObject),
             months: quarterMonthsEnum[quarter],
         };
-
-        console.log("EMPLOYEE filters:", filters);
 
         const result = await fetchStructDataWithFilters("get_actual_from_log", filters);
         console.log(result);
@@ -265,7 +265,7 @@ function WaterReportForm() {
         {waterObjects.map((obj) => (
           <option
           key={obj.id}
-          value={obj.id}
+          value={obj.water_body_id.id}
           >
           {obj.water_body_id.code_obj.code_value} - {obj.water_body_id.code_obj.code_symbol}
           </option>
@@ -288,7 +288,7 @@ function WaterReportForm() {
         </label>
         </div>
         </div>
-        <table className="data-table">
+        <table className="data-table-result">
         <thead>
         <tr>
         <th>Дата</th>
@@ -424,7 +424,7 @@ function WaterReportForm() {
         </div>
         </div>
         {/* Отображение данных для ORG_ADMIN */}
-        <table className="data-table">
+        <table className="data-table-result">
         <thead>
         <tr>
         <th>Дата</th>

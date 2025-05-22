@@ -129,9 +129,9 @@ const Water = () => {
       alert("Выберите прибор учета!");
       return;
     }
-    const confirmed = await askConfirmation("Вы уверены, что хотитеть отправить данные?");
-    if(!confirmed) return;
-    const data = {
+   const confirmed = await askConfirmation("Вы уверены, что хотитеть отправить данные?");
+   if(!confirmed) return;
+   const data = {
       measurement_date: formData.measurementDate,
       operating_time_days: formData.workingTime,
       water_consumption_m3_per_day: formData.waterUsage,

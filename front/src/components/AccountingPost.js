@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../css/Water.css";
+import "../css/AccountingPost.css";
+
 import {
   fetchSingleTableData,
   fetchSingleTableDataWithFilters,
@@ -11,52 +13,100 @@ import {
 } from "../api/add_files"
 import {translate} from "../utils/translations.js";
 import FileUpload from "./FileUpload";
-
+import { sendFormData } from "../api/add_records";
+import { isoToRu } from "../utils/converters.js";
 
 
 // Универсальный селект для перечислений и внешних ключей
 const ForeignKeySelect = ({ field, value, onChange }) => {
   const [options, setOptions] = useState(field.options || []);
   const [loading, setLoading] = useState(false);
+  const isMounted = useRef(true);
 
   useEffect(() => {
+    // флаг для избежания setState на размонтированном компоненте
+    isMounted.current = true;
     const fetchOptions = async () => {
       setLoading(true);
       try {
         if (field.isEnum) {
           const response = await fetchStructureData("enum_" + field.enumType);
-          console.log("RES for " + field.enumType + "IS : " + response);
+          if (!isMounted.current) return;
           setOptions(response.data || []);
-        } else if (field.foreignKey) {
-          setOptions(field.options || []);
-        } else {
+        }
+        else if (field.foreignKey) {
+          // если уже передали готовые опции
+          if (field.options && field.options.length > 0) {
+            setOptions(field.options);
+          } else if (field.referenceTable) {
+            // fallback: запросим все записи связанной таблицы
+            const records = await fetchSingleTableDataWithFilters(
+              field.referenceTable,
+              {}  // можно сюда передать начальные фильтры
+            );
+            if (!isMounted.current) return;
+            // API возвращает массив или { data: [...] }
+            const items = Array.isArray(records)
+              ? records
+              : records?.data || [];
+            setOptions(
+              items.map(item => ({
+                value: item.id,
+                label: item.name || item.serial_number || String(item.id)
+              }))
+            );
+          } else {
+            setOptions([]);
+          }
+        }
+        else {
           setOptions([]);
         }
       } catch (error) {
         console.error("Ошибка получения опций для", field.field, error);
+        if (isMounted.current) {
+          setOptions([]);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     };
+
     fetchOptions();
-  }, [field.field, field.enumType]);
+
+    return () => {
+      // помечаем, что компонент размонтирован
+      isMounted.current = false;
+    };
+  }, [
+    field.field,
+    field.enumType,
+    field.foreignKey,
+    JSON.stringify(field.options),
+    field.referenceTable
+  ]);
 
   return (
     <select
-    name={field.field}
-    value={value}
-    onChange={(e) => onChange({ target: { name: field.field, value: e.target.value } })}
-    disabled={loading}
+      name={field.field}
+      value={value}
+      onChange={e =>
+        onChange({ target: { name: field.field, value: e.target.value } })
+      }
+      disabled={loading}
     >
-    <option value="">Выберите...</option>
-    {options.map((opt) => (
-      <option key={opt.value} value={opt.value}>
-      {opt.label}
-      </option>
-    ))}
+      <option value="">Выберите...</option>
+      {options.map(opt => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
     </select>
   );
 };
+
 
 
 const AccountingPost = () => {
@@ -66,19 +116,6 @@ const AccountingPost = () => {
   const [allLogs, setAllLogs] = useState([]);
   const [monthFilter, setMonthFilter] = useState(new Date().getMonth());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear());
-
-  //  статус заполнения журнала
-  const [pdfFile, setPdfFile] = useState(null);
-  const [sigFile, setSigFile] = useState(null);
-  const [allDatesFilled, setAllDatesFilled] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [showSentModal, setShowSentModal] = useState(false);
-
-  function checkAllDatesFilled(logEntries, month, year) {
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const filledDates = new Set(logEntries.map(e => (new Date(e.date)).getDate()));
-    return filledDates.size === daysInMonth;
-  }
 
 
   const [statusFilters, setStatusFilters] = useState({
@@ -132,6 +169,12 @@ const AccountingPost = () => {
     allowed_volume_pop: "",
     method_type: "",
   });
+  const permissionTypeOptions = [
+    { value: "WATER_WITHDRAWAL", label: "Забор" },
+    { value: "DISCHARGE", label: "Сброс" },
+    // и т.д. — значения зависят от бэкенда
+  ];
+
 
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
@@ -214,13 +257,6 @@ const AccountingPost = () => {
 
     applyFilters();
   }, [monthFilter, yearFilter, statusFilters, allLogs]);
-
-  useEffect(() => {
-    if (logDetails[selectedLogId]) {
-      setAllDatesFilled(checkAllDatesFilled(logDetails[selectedLogId], monthFilter, yearFilter));
-    }
-  }, [logDetails, selectedLogId, monthFilter, yearFilter]);
-
 
   const handleMonthChange = (event) => {
     setMonthFilter(parseInt(event.target.value));
@@ -330,10 +366,70 @@ const AccountingPost = () => {
     });
   };
 
-  const handleSaveNewPoint = async () => {
-    console.log("Сохраняем новый пункт учета:", formData, newMeterData);
-    setShowAddModal(false);
+const handleSaveNewPoint = async () => {
+  // 1. Собираем data_point
+  const data_point = {
+    organisation_id: formData.organisation_id,
+    water_body_id: formData.water_body_id,
+    latitude_longitude: formData.latitude_longitude,
+    point_type: formData.point_type,
+    // переназначаем существующий счётчик в то, что ждёт бэкенд
+    meter_id: formData.existing_meter_id || null,
   };
+
+  // 2. Собираем data_meter
+  let data_meter;
+  if (formData.existing_meter_id) {
+    // только id, чтобы бэкенд понял, что счётчик уже есть
+    data_meter = { id: formData.existing_meter_id };
+  } else {
+    // создаём новый прибор
+    data_meter = {
+      brand_id: newMeterData.brand_id,
+      serial_number: newMeterData.serial_number,
+      verification_date: isoToRu(newMeterData.verification_date),
+      verification_interval: newMeterData.verification_interval,
+      next_verification_date: isoToRu(newMeterData.next_verification_date),
+    };
+  }
+
+  // 3. Собираем data_permission
+  const data_permission = {
+    permission_number: permissionData.permission_number,
+    registration_date: isoToRu(permissionData.registration_date),
+    expiration_date: isoToRu(permissionData.expiration_date),
+    permission_type: permissionData.permission_type,
+    allowed_volume_org: permissionData.allowed_volume_org,
+    allowed_volume_pop: permissionData.allowed_volume_pop,
+    method_type: permissionData.method_type,
+  };
+
+  // 4. Формируем общий payload
+  const payload = { data_point, data_meter, data_permission };
+
+  try {
+    const result = await sendFormData("create_water_point", payload);
+    // result: { status, msg, data? }
+    console.log(result);
+    if (result === "успешно") {
+      alert("Пункт учета успешно создан");
+      // тут можно сбросить форму, перезагрузить список и т.п.
+    } else if (result === "VALIDATION_ERROR") {
+      alert("Ошибка валидации: " + result.msg);
+    } else if (result === "CHOICE_WARNING") {
+      console.warn("Найдено несколько приборов:", result.data);
+      // тут можно например вывести модалку с выбором из result.data
+    } else {
+      alert("Не удалось создать: " + result.msg);
+    }
+  } catch (e) {
+    console.error(e);
+    alert("Сетевая ошибка при отправке данных");
+  } finally {
+    setShowAddModal(false);
+  }
+};
+
 
   const handlePermissionChange = (e) => {
     const { name, value } = e.target;
@@ -355,12 +451,6 @@ const AccountingPost = () => {
   return (
     <div className="accounting-container">
     <h2 align="center">Журнал учета водопотребления</h2>
-    {/* Кнопка добавления нового пункта */}
-    {userInfo.role === "UserRoles.EMPLOYEE" && (
-      <div style={{ textAlign: 'right', margin: '10px 0' }}>
-      <button className="custom-button" onClick={() => setShowAddModal(true)}>Добавить пункт учета</button>
-      </div>
-    )}
 
     {/* Модальное окно для добавления */}
     {showAddModal && (
@@ -377,7 +467,7 @@ const AccountingPost = () => {
       <div className="label-modal">
       <label>Водный объект:</label>
       <ForeignKeySelect
-      field={{ field: 'water_body_id', foreignKey: true, options: waterBodyOptions }}
+      field={{ field: 'water_body_id', foreignKey: true, options: [], referenceTable: 'water_object_ref' }}
       value={formData.water_body_id}
       onChange={handleFormChange}
       />
@@ -405,7 +495,7 @@ const AccountingPost = () => {
       <div className="label-modal">
       <label>Выбрать существующий прибор:</label>
       <ForeignKeySelect
-      field={{ field: 'existing_meter_id', foreignKey: true, options: meterOptions }}
+      field={{ field: 'existing_meter_id', foreignKey: true, options: [], referenceTable:"meters" }}
       value={formData.existing_meter_id}
       onChange={handleFormChange}
       />
@@ -416,7 +506,7 @@ const AccountingPost = () => {
       <div className="new-meter-form">
       <label>Марка прибора:</label>
       <ForeignKeySelect
-      field={{ field: 'brand_id', foreignKey: true, options: brandOptions }}
+      field={{ field: 'brand_id', foreignKey: true, options: [], referenceTable:"meters_brand_ref" }}
       value={newMeterData.brand_id}
       onChange={handleNewMeterChange}
       />
@@ -483,15 +573,15 @@ const AccountingPost = () => {
       onChange={handlePermissionChange}
       />
       </div>
-      <div className="label-modal">
-      <label>Тип разрешения:</label>
-      <input
-      type="text"
-      name="permission_type"
-      value={permissionData.permission_type}
-      onChange={handlePermissionChange}
-      />
-      </div>
+<div className="label-modal">
+  <label>Тип разрешения:</label>
+  <ForeignKeySelect
+    field={{ field: 'permission_type', isEnum: true, enumType: 'PermissionType' }}
+    value={permissionData.permission_type}
+    onChange={handlePermissionChange}
+  />
+</div>
+
       <div className="label-modal">
       <label>Разрешённый объём (организации):</label>
       <input
@@ -512,21 +602,28 @@ const AccountingPost = () => {
       step="0.01"
       />
       </div>
-      <div className="label-modal">
-      <label>Тип метода:</label>
-      <select
-      name="method_type"
-      value={permissionData.method_type}
-      onChange={handlePermissionChange}
-      >
-      <option value="">Выберите...</option>
-      {methodTypeOptions.map(opt => (
-        <option key={opt.value} value={opt.value}>{opt.label}</option>
-      ))}
-      </select>
-      </div>
+
+<div className="label-modal">
+<label>Выберете метод:</label>
+<ForeignKeySelect
+field={{ field: 'method_type', isEnum: true, enumType: 'RatesType' }}
+value={permissionData.method_type}
+onChange={handlePermissionChange}
+/>
+</div>
+
+
       <div className="label-modal" style={{marginTop: 10, color: "#888", fontStyle: "italic"}}>
-      место для загрузки pdf-скана разрешения
+          <FileUpload
+            label="Скан разрешения"
+            accept="application/pdf"
+            icon="📄"
+            entityType="permission"
+            entityId={permissionData.permission_number}
+            fileType={"PERMISSION_SCAN"}
+            preview={true}
+            onUpload={uploadFileToBackend}
+          />
       </div>
       </div>
 
@@ -589,7 +686,19 @@ const AccountingPost = () => {
         </div>
       )}
       </div>
+
+      <div className="filter-block">
+      {userInfo.role === "UserRoles.EMPLOYEE" && (
+
+        <button className="custom-button" onClick={() => setShowAddModal(true)}>Добавить пункт учета</button>
+
+      )}
+      {userInfo.role === "UserRoles.EMPLOYEE" && (
+        <button className="custom-button" onClick={()=> setShowAddModal(true) }>Создать журнал учета</button>
+      )}
       </div>
+      </div>
+
 
 
 

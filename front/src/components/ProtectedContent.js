@@ -5,11 +5,14 @@ import PaymentCalculationForm from "./PaymentCalculationForm";
 import Water from "./Water";
 import OrganizationInfo from "./OrganizationInfo";
 import HistoryTable from "./HistoryTable";
-// import AccountingPost from "./AccountingPost";
+import AccountingPost from "./AccountingPost";
 import AdminPanel from "./AdminPanel";
 import UserPage from "./UserPage";
 import Rates from "./Rates";
 import MainNotify from "./MainNotify";
+import DGisMap from "./Map"; 
+import EditableWaterReport from "./WaterForm";
+import Form32 from "./Form32Test";
 
 function ProtectedContent({ onLogout }) {
   const [isSidebarVisible, setSidebarVisible] = useState(true);
@@ -48,8 +51,7 @@ function ProtectedContent({ onLogout }) {
       case "waterReport":
         return <WaterReportForm />;
       case "AccountingPost":
-        return "тех.работы"
-        // return <AccountingPost/>;
+        return <AccountingPost/>;
       case "Water":
         return <Water />;
       case "paymentCalc":
@@ -57,7 +59,7 @@ function ProtectedContent({ onLogout }) {
       case "resourceAccounting":
         return <div>Форма: Учет объема забора водных ресурсов</div>;
       case "wasteWater":
-        return <div>Форма: Учет объема сброса сточных вод</div>;
+        return <Form32/>;
       case "organizationInfo":
         return <OrganizationInfo />;
       case "history":
@@ -68,6 +70,10 @@ function ProtectedContent({ onLogout }) {
         return <AdminPanel />;
       case "Rates":
         return <Rates />;
+      case "Map":
+        return <DGisMap />
+      case "Form31":
+        return <EditableWaterReport />
       default:
         return <div>Выберите раздел</div>;
     }
@@ -95,7 +101,7 @@ function getAllowedSections(role) {
   switch (role) {
     case "UserRoles.ADMIN":
       return [
-        "AdminPanel"
+        "AdminPanel", "Map"
       ];
     case "UserRoles.ORG_ADMIN":
       return [
@@ -108,7 +114,7 @@ function getAllowedSections(role) {
     case "UserRoles.EMPLOYEE":
       return [
         "notifications", "organizationInfo", "waterReport", "paymentCalc",
-        "resourceAccounting", "wasteWater", "Water", "AccountingPost"
+        "resourceAccounting", "wasteWater", "Water", "AccountingPost", "Form31"
       ];
     default:
       return [];
@@ -195,6 +201,16 @@ function Sidebar({ setActiveSection, allowedSections, activeSection,isVisible })
     {allowedSections.includes("Rates") && (
       <button className={getButtonClass("Rates")} onClick={() => setActiveSection("Rates")}>
       Ставки оплаты
+      </button>
+    )}
+    {allowedSections.includes("Map") && (
+      <button className={getButtonClass("Map")} onClick={() => setActiveSection("Map")}>
+      Карта
+      </button>
+    )}
+    {allowedSections.includes("Form31") && (
+      <button className={getButtonClass("Map")} onClick={() => setActiveSection("Form31")}>
+      Форма 3.1
       </button>
     )}
     </ div>
