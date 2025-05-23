@@ -683,6 +683,15 @@ class WCLfor31(Base):
     value: Mapped[float] = mapped_column(Float, nullable=True)
     signed_by: Mapped[str] = mapped_column(String(255), nullable=True)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'point_id': self.point_id,
+            'month': self.month,
+            'category_quality': self.category_quality.value,
+            'signed_by': self.signed_by
+        }
+
 
 class WCLfor32(Base):
 

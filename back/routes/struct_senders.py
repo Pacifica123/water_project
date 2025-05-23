@@ -5,6 +5,278 @@ from datetime import date, datetime
 from db.crudcore import *
 from db.models import *
 import sys
+from typing import Any, List, Optional, Dict, Tuple
+
+
+def parse_f31(
+    excel_data: List[List[Any]],
+    replace_duplicates: bool = False
+) -> OperationResult:
+    print("[parse_f31] Начало обработки формы 3.1")
+    # 1. Проверка формы
+    if not excel_data or not isinstance(excel_data[0], list) or not str(excel_data[0][0]).startswith(
+            "Сведения, полученные в результате учета объема забора"):
+        print("[parse_f31] Форма 3.1 не найдена")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                               msg="Не найдена форма 3.1 в переданном файле")
+    print("[parse_f31] Форма найдена")
+
+    # 2. Квартал/год → Month
+    try:
+        quarter = int(excel_data[1][5])
+        year = int(excel_data[1][8])
+        print(f"[parse_f31] quarter={quarter}, year={year}")
+        month_map = {1: Month.MARCH, 2: Month.JUNE, 3: Month.SEPTEMBER, 4: Month.DECEMBER}
+        form_month = month_map[quarter]
+    except Exception as e:
+        print(f"[parse_f31] Ошибка квартал/год: {e}")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                               msg="Неверный формат квартала или года")
+
+    # 3. Поиск по лейблу
+    def find_row(substr: str) -> Optional[int]:
+        for i, row in enumerate(excel_data):
+            if isinstance(row, list):
+                for cell in row:
+                    if isinstance(cell, str) and substr.lower() in cell.lower():
+                        print(f"[parse_f31] Метка '{substr}' найдена в строке {i}")
+                        return i
+        print(f"[parse_f31] Метка '{substr}' не найдена")
+        return None
+
+    # 4. Разбор шапки
+    headers = {
+        'org_name': 'Наименование - для юридического лица',
+        'inn': 'ИНН',
+        'pool': 'Бассейновый округ',
+        'region': 'Наименование субъекта Российской Федерации',
+        'meter_brand': 'Марка прибора водоучета',
+        'verif': 'Дата последней поверки'
+    }
+    parsed: Dict[str, Any] = {}
+    for key, lbl in headers.items():
+        idx = find_row(lbl)
+        if idx is None:
+            return OperationResult(OperationStatus.VALIDATION_ERROR,
+                                   msg=f"Не найдена метка '{lbl}'")
+        row = excel_data[idx]
+        try:
+            val = next(c for c in row[4:] if c not in (None, ""))
+            print(f"[parse_f31] {lbl} = {val}")
+        except StopIteration:
+            print(f"[parse_f31] Пустое значение для '{lbl}'")
+            return OperationResult(OperationStatus.VALIDATION_ERROR,
+                                   msg=f"Пустое значение для '{lbl}'")
+        parsed[key] = val
+
+    # 5. Разбор блока разрешений
+    perm_row = find_row('Реквизиты документа')
+    if perm_row is None or perm_row + 1 >= len(excel_data):
+        print("[parse_f31] Блок разрешений не найден")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                               msg="Не найден блок Реквизиты документа")
+    vals = excel_data[perm_row + 1]
+    try:
+        perm_number = next(c for c in vals[4:] if isinstance(c, str) and c.strip())
+        def parse_date_cell(x):
+            if isinstance(x, (int, float)):
+                return datetime.date(1899, 12, 30) + datetime.timedelta(days=int(x))
+            return datetime.datetime.strptime(str(x), "%m/%d/%Y").date()
+        perm_reg_date = parse_date_cell(vals[12])
+        perm_end_date = parse_date_cell(vals[14])
+        print(f"[parse_f31] perm_number={perm_number}, reg={perm_reg_date}, end={perm_end_date}")
+    except Exception as e:
+        print(f"[parse_f31] Ошибка разрешений: {e}")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                               msg="Неверный формат блока разрешений")
+
+    # 6. Типы шапки
+    try:
+        org_inn = int(parsed['inn'])
+        meter_brand = str(parsed['meter_brand'])
+        verif_raw = parsed['verif']
+        if isinstance(verif_raw, (int, float)):
+            verif_date = datetime.date(1899, 12, 30) + datetime.timedelta(days=int(verif_raw))
+            verif_interval = None
+        else:
+            p = str(verif_raw).split('-')
+            verif_date = datetime.datetime.strptime(p[0].strip(), "%m/%d/%Y").date()
+            verif_interval = int(p[1].split()[0])
+        print(f"[parse_f31] org_inn={org_inn}, meter={meter_brand}, verif={verif_date}/{verif_interval}")
+    except Exception as e:
+        print(f"[parse_f31] Ошибка типов шапки: {e}")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                                   msg="Неверный формат данных шапки")
+
+    # 7. Поиск организации
+    of = get_all_by_conditions(Organisations, [{'inn': str(org_inn)}])
+    if of.status != OperationStatus.SUCCESS or len(of.data) != 1:
+        print(f"[parse_f31] Организация не найдена или неоднозначна: {of}")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                               msg="Организация не найдена или неоднозначна")
+    organisation_id = of.data[0].id
+    print(f"[parse_f31] organisation_id={organisation_id}")
+
+    # 8. Определение water_object_ref через Codes из табличной части
+    # заголовки таблицы
+    k0 = find_row('Наименование водного объекта')
+    k1 = find_row('вида водного объекта')
+    k2 = find_row('град.')
+    if k0 is None or k1 is None or k2 is None:
+        print("[parse_f31] Заголовки таблицы не найдены")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                               msg="Шапка таблицы не распознана")
+    data_start = max(k0, k1, k2) + 2
+    first_data = next(r for r in excel_data[data_start:] if any(c not in (None, "") for c in r))
+    # код водного объекта в колонке "Коды"
+    code_col = next(i for i, c in enumerate(excel_data[k0]) if isinstance(c, str) and 'коды' in c.lower())
+    water_code = first_data[code_col+1]
+    print(f"[parse_f31] water_object_code={water_code}")
+    code_rec = get_all_by_conditions(Codes,
+                                     [{'code_type': CodeType.WATER_OBJ_CODE},
+                                      {'code_symbol': str(water_code)}])
+    if code_rec.status != OperationStatus.SUCCESS or len(code_rec.data) != 1:
+        print(f"[parse_f31] Код объекта не найден в Codes: {code_rec}")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                               msg="Код водного объекта не найден")
+    code_id = code_rec.data[0].id
+    wor = get_all_by_conditions(WaterObjectRef,
+                                 [{'code_obj_id': code_id}])
+    if wor.status != OperationStatus.SUCCESS or len(wor.data) != 1:
+        print(f"[parse_f31] WaterObjectRef не найден: {wor}")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                               msg="WaterObjectRef не найден")
+    water_object_ref_id = wor.data[0].id
+    print(f"[parse_f31] water_object_ref_id={water_object_ref_id}")
+
+    # 9. Определение latitude_longitude из первой строки данных
+    # в first_data: [ ..., lat_deg, lat_min, lat_sec, lon_deg, lon_min, lon_sec, ... ]
+    lat_deg, lat_min, lat_sec = first_data[5], first_data[6], first_data[7]
+    lon_deg, lon_min, lon_sec = first_data[8], first_data[9], first_data[10]
+    lat_str = f"{int(lat_deg)}°{int(lat_min)}′{int(lat_sec)}″ с.ш."
+    lon_str = f"{int(lon_deg)}°{int(lon_min)}′{int(lon_sec)}″ в.д."
+    latlon = f"{lat_str}, {lon_str}"
+    print(f"[parse_f31] latitude_longitude={latlon}")
+
+    # 10. Поиск water_point по organisation_id, water_object_ref_id, latitude_longitude
+    wp = get_all_by_conditions(WaterPoint, [
+        {'organisation_id': organisation_id},
+        {'water_body_id': water_object_ref_id},
+        {'latitude_longitude': latlon}
+    ])
+    if wp.status != OperationStatus.SUCCESS or len(wp.data) != 1:
+        print(f"[parse_f31] WaterPoint не найден или неоднозначен: {wp}")
+        return OperationResult(OperationStatus.VALIDATION_ERROR,
+                               msg="WaterPoint не найден или неоднозначен")
+    point_id = wp.data[0].id
+    print(f"[parse_f31] point_id={point_id}")
+
+    # 11. Разбор табличной части: категории и значения по месяцам
+    h1, h2 = excel_data[k1], excel_data[k2]
+    cat_col = next(i for i, c in enumerate(h1) if isinstance(c, str) and 'катег' in c.lower())
+    m1 = next(i for i, c in enumerate(h2) if isinstance(c, str) and '1 месяц' in c.lower())
+    m2 = next(i for i, c in enumerate(h2) if isinstance(c, str) and '2 месяц' in c.lower())
+    m3 = next(i for i, c in enumerate(h2) if isinstance(c, str) and '3 месяц' in c.lower())
+    print(f"[parse_f31] cat_col={cat_col}, month_cols={[m1,m2,m3]}")
+
+    code_map = {'ПО': 'NO', 'ТН': 'TN', 'КД': 'CD', 'КР': 'CR', 'ШР': 'MO', 'МН': 'MN', 'ТМ': 'TM'}
+    records: List[Any] = []
+    for idx, row in enumerate(excel_data[data_start:], start=data_start):
+        if not any(c not in (None, "") for c in row):
+            continue
+        raw_code = row[cat_col]
+        if raw_code in (None, ""):
+            print(f"[parse_f31] Пустой код качества воды на строке {idx}, пропускаем")
+            continue
+        print(f"[DEBUG] Строка {idx}, raw_code={raw_code!r}")  # Выведет None или значение
+        if raw_code not in code_map:
+            print(f"[parse_f31] Неизвестный код качества воды {raw_code} на строке {idx}")
+            return OperationResult(OperationStatus.VALIDATION_ERROR,
+                                msg=f"Неизвестный код качества воды {raw_code}")
+        cq = CategoryQualityWithdrawal[code_map[raw_code]]
+        print(f"[parse_f31] Строка {idx}, код качества={raw_code}")
+
+        month_map = {
+            1: Month.JANUARY,
+            2: Month.FEBRUARY,
+            3: Month.MARCH,
+            4: Month.APRIL,
+            5: Month.MAY,
+            6: Month.JUNE,
+            7: Month.JULY,
+            8: Month.AUGUST,
+            9: Month.SEPTEMBER,
+            10: Month.OCTOBER,
+            11: Month.NOVEMBER,
+            12: Month.DECEMBER,
+        }
+        for col, mi in ((m1,1),(m2,2),(m3,3)):
+            rv = row[col]
+            if rv in (None, ""):
+                continue
+            try:
+                val = float(rv)
+            except Exception:
+                print(f"[parse_f31] Нечисловое значение: {rv} на {idx},{col}")
+                return OperationResult(OperationStatus.VALIDATION_ERROR,
+                                       msg=f"Нечисловое значение: {rv}")
+            rec = WCLfor31(
+                point_id=point_id,
+                month=month_map[mi],
+                category_quality=cq,
+                value=val,
+                signed_by=None
+            )
+            records.append(rec)
+    print(f"[parse_f31] Подготовлено записей: {len(records)}")
+
+    # 12. Поиск и запись подписи
+    signed = None
+    for row in excel_data[data_start+1:]:
+        if not any(c not in (None, "") for c in row): continue
+        for c in row:
+            if isinstance(c, str) and len(c) > 10:
+                signed = c.strip()
+                print(f"[parse_f31] signed_by={signed}")
+                break
+        if signed: break
+    for r in records:
+        r.signed_by = signed
+
+    # 13. Сохранение и дубликаты
+    saved_ids: List[int] = []
+    for rec in records:
+        ex = get_all_by_conditions(WCLfor31,[
+            {'point_id': rec.point_id},
+            {'month': rec.month},
+            {'category_quality': rec.category_quality}
+        ])
+        if ex.status == OperationStatus.SUCCESS and ex.data:
+            if not replace_duplicates:
+                print(f"[parse_f31] Дубликат для month={rec.month}")
+                return OperationResult(OperationStatus.DATA_DUPLICATE_ERROR, msg="Дубликат найден")
+            old = ex.data[0]
+            print(f"[parse_f31] Перезапись ID={old.id}")
+            old.value, old.signed_by = rec.value, rec.signed_by
+            if not create_record_entity(old.__class__, old.__dict__):
+                print("[parse_f31] Ошибка обновления")
+                return OperationResult(OperationStatus.DATABASE_ERROR, msg="Ошибка обновления")
+            create_record_entity(History, {'table_name':'wcl_31','record_id':old.id,'comment':'parse_f31 overwrite'})
+            saved_ids.append(old.id)
+        else:
+            rec_dict = {k: v for k, v in rec.__dict__.items() if k != '_sa_instance_state'}
+            if not create_record_entity(WCLfor31, rec_dict):
+                print("[parse_f31] Ошибка создания")
+                return OperationResult(OperationStatus.DATABASE_ERROR, msg="Ошибка сохранения")
+            nid = get_last_record_id(WCLfor31)
+            print(f"[parse_f31] Создана запись ID={nid}")
+            saved_ids.append(nid)
+
+    print(f"[parse_f31] Завершено, сохранено={len(saved_ids)}")
+    return OperationResult(OperationStatus.SUCCESS,
+                           msg=f"Обработано {len(saved_ids)} записей",
+                           data=saved_ids)
+
 
 
 def create_full_waterpoint(

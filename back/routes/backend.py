@@ -288,6 +288,10 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
             pass
         case "payment_calculation":
             pass
+        case "f31":
+            filtered_data = {k: v for k, v in form_data.items() if k != 'send_form'}
+            excel_data = list(filtered_data.values())
+            return parse_f31(excel_data, replace_duplicates=False)
         case "create_water_point":
             if all(key in form_data for key in ['data_point', 'data_meter', 'data_permission']):
                 # Все ключи присутствуют
