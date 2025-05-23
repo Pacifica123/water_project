@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { fetchStructDataWithFilters } from "../api/fetch_records";
+import { sendFormData } from "../api/add_records";
 import "../css/Water.css";
+import * as XLSX from "xlsx";
+import FileUpload from "./FileUpload";
 
 const parseDMS = (dms) => {
   const re = /(\d+)°(\d+)′(\d+)″/;
@@ -82,7 +85,10 @@ const EditableWaterReport = () => {
   const [org, setOrg] = useState({});
   const [records, setRecords] = useState([]);
   const [months, setMonths] = useState({});
-  const [activeStep, setActiveStep] = useState(1);
+  const [excelData, setExcelData] = useState([]);
+  const [fileReady, setFileReady] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [resultMsg, setResultMsg] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -106,43 +112,100 @@ const EditableWaterReport = () => {
     setMonths(ms => ({ ...ms, [pointId]: { ...ms[pointId], [field]: value } }));
   };
 
+  const handleExcelUpload = async (file) => {
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[1]];
+    const parsedData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    console.log(parsedData);
+    setExcelData(parsedData);
+    setFileReady(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!fileReady) return;
+    setSubmitting(true);
+    setResultMsg("");
+    try {
+      const resp = await sendFormData("f31", excelData);
+      if (resp.status === "success") {
+        setResultMsg(`Успех: ${resp.message || "Форма отправлена"}`);
+      } else {
+        setResultMsg(`Ошибка: ${resp.message || "Не удалось обработать форму"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setResultMsg("Ошибка при отправке запроса");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const first = records[0] || {};
-  const wobj = first.water_object || {};
   const warea = first.water_area || {};
-  const perm = Array.isArray(first.permissions) && first.permissions[0] || {};
-  const meter = first.last_meter || {};
 
   return (
     <div className="water-container">
-      <div className="form-container">
-      <h2>Сведения по водопользованию (Форма 3.1)</h2>
+    <div className="form-container">
+    <h2>Сведения по водопользованию (Форма 3.1)</h2>
 
-      <div className="steps">
-        {[1, 2, 3, 4, 5].map(step => (
-          <div
-            key={step}
-            className={`step ${activeStep === step ? "active" : ""}`}
-            onClick={() => setActiveStep(step)}
-          >
-            {step}
-          </div>
-        ))}
+    <GeneralInfoSection org={org} warea={warea} />
+
+    <FileUpload
+    label="Excel файл"
+    accept=".xlsx,.xls"
+    fileType="excel"
+    entityType="water_report"
+    entityId={org.id}
+    onUpload={(file) => handleExcelUpload(file)}
+    />
+
+    {fileReady && (
+      <>
+      <div style={{ display: "flex", gap: "40px", marginTop: "20px" }}>
+      <table className="data-table">
+      <thead>
+      <tr>
+      {excelData[0].map((cell, idx) => <th key={idx}>{cell}</th>)}
+      </tr>
+      </thead>
+      <tbody>
+      {excelData.slice(1).map((row, rIdx) => (
+        <tr key={rIdx}>
+        {row.map((cell, cIdx) => <td key={cIdx}>{cell}</td>)}
+        </tr>
+      ))}
+      </tbody>
+      </table>
+
+      <div style={{ flex: 1 }}>
+      <WaterPointsSection
+      records={records}
+      months={months}
+      handleMonthChange={handleMonthChange}
+      />
+      </div>
       </div>
 
-      {activeStep === 1 && <GeneralInfoSection org={org} warea={warea} />}
-      {activeStep === 2 && <HydroInfoSection wobj={wobj} />}
-      {activeStep === 3 && <ContractSection perm={perm} />}
-      {activeStep === 4 && <MeterSection meter={meter} />}
-      {activeStep === 5 && <WaterPointsSection records={records} months={months} handleMonthChange={handleMonthChange} />}
-
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
-        <button disabled={activeStep === 1} onClick={() => setActiveStep(activeStep - 1)}>Назад</button>
-        <button disabled={activeStep === 5} onClick={() => setActiveStep(activeStep + 1)}>Далее</button>
+      <div style={{ marginTop: 20 }}>
+      <button
+      onClick={handleSubmit}
+      disabled={submitting}
+      className="submit-button"
+      >
+      {submitting ? "Отправка..." : "Отправить форму 3.1"}
+      </button>
+      {resultMsg && <p style={{ marginTop: 8 }}>{resultMsg}</p>}
       </div>
-      </div>
+      </>
+    )}
+    </div>
     </div>
   );
 };
+
+
+
 
 export default EditableWaterReport;
 

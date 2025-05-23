@@ -1,0 +1,133 @@
+.notify-page {
+    font-family: sans-serif;
+    padding: 20px;
+    max-width: 1000px;
+    margin: auto;
+}
+
+.notify-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 16px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 8px;
+}
+
+.notify-dates {
+    color: #007bff;
+}
+
+.notify-tabs {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+    margin-top: 12px;
+}
+
+.tab {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 2px solid transparent;
+}
+
+.tab.active {
+    border-color: #00bcd4;
+    color: #00bcd4;
+}
+
+.notify-table-wrapper {
+    margin-top: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.notify-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.notify-table th,
+.notify-table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    font-size: 14px;
+}
+
+.notify-table th {
+    background-color: #f5f5f5;
+}
+
+.empty {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+    font-style: italic;
+}
+
+.notify-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 16px;
+}
+
+.show-count select {
+    margin-left: 8px;
+    font-size: 14px;
+}
+
+.pagination {
+    display: flex;
+    gap: 6px;
+}
+
+.pagination button {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+}
+
+.pagination .current {
+    padding: 4px 8px;
+    border: 1px solid #00bcd4;
+    color: #00bcd4;
+}
+
+
+
+.large-notify {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #f9f9f9;
+    zoom: 1.5;
+    max-height: 700px;
+    height: 504px;
+    width: 964px;
+}
+
+.notify-date-selectors {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.notify-date-selectors input {
+    padding: 4px;
+    font-size: 12px;
+}
+
+.notify-tabs .tab {
+    cursor: pointer;
+}
+
+.notify-tabs .tab.active {
+    font-weight: bold;
+    color: #fff;
+    background-color: #007bff;
+}

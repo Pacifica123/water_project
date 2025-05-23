@@ -178,9 +178,9 @@ div {
 }
 
 .footer button {
-  padding: 5px 10px;
+  padding: 1vh 1vw;
   border: 1px solid #ddd;
-  border-radius: 5px;
+  border-radius: 2vh;
   background-color: #ffffff;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -307,14 +307,14 @@ input {
 }
 
 .content-container_for_renderTableList {
-  background-color: #f9f9f9; /* Светлый фон */
-  padding: 10px;
+  background-color: #f9f9f9;
+  padding: 20px;
   border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Тень */
-  display: flex; /* Добавляем flexbox */
-  flex-wrap: wrap; /* Позволяет элементам переходить на новую строку */
-  justify-content: space-around; /* Распределяет элементы по горизонтали */
-  gap: 20px; /* Добавляет пробел между элементами */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: fit-content;
+  margin: auto;
+  text-align: center;
 }
 
 .selectors_for_renderTableList{
@@ -336,6 +336,8 @@ input {
   margin-bottom: 5px;
 }
 
+
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -355,9 +357,9 @@ input {
   color: white;
   border: none;
   padding: 10px 20px;
-  border-radius: 5px;
+  border-radius: 2vh;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .submit-button:hover {
@@ -406,34 +408,44 @@ input {
 
 
 .back-button {
-  padding: 10px;
+  padding: 3vh;
   border: none;
-  border-radius: 5px;
+  border-radius: 2vh;
   background-color: #6c757d;
   color: white;
   cursor: pointer;
+  font-size: 16px;
 }
 
 .submit-button {
-  margin-top: 20px; /* Отступ сверху */
+  margin-top: 20px;
   margin-left: auto;
   padding: 15px;
   border: 20px;
-  border-radius: 10px;
+  border-radius: 2vh;
   background-color: #28a745;
   color: white;
   cursor: pointer;
+  margin-right: 2vh;
 }
 
 .submit-button-org {
-  margin-top: 20px; /* Отступ сверху */
-  margin-left: 10%;
-  padding: 20px;
+  margin-left: 5%;
+  padding: 2.5vh 7vw;
   border: 100px;
-  border-radius: 10px;
+  border-radius: 3vh;
   background-color: #28a745;
   color: white;
   cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 1.3rem;
+
+}
+
+.submit-button-org:hover {
+  background-color: #28a745;
+  color:white;
+  font-weight: bold;
 }
 
 .edit-button {
@@ -736,6 +748,7 @@ input {
 }
 
 
+
 .data-table-result {
   width: fit-content;
   max-width: max-content;
@@ -773,4 +786,14 @@ input {
 
 .data-table-result thead {
   background-color: #b9b9b9;
+}
+
+
+/* Контейнер формы */
+.form-UsePage {
+  background-color: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  margin: 1vh 1vh;
 }

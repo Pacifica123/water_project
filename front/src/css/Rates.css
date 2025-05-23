@@ -1,48 +1,49 @@
 .water-Rates-form {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 65vh; /* Высота на весь экран */
-    padding: 25px;
-    font-family: Arial, sans-serif;
-  
-  }
-  
-  
-  .data-Rates-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-inline: auto;
-    margin-bottom: auto;
-  }
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 25px;
+  font-family: Arial, sans-serif;
+  font-size: 1.4rem;
+  zoom: 1.25;
 
-  .submit-button-WaterReportForm {
-    margin-top: 20px; /* Отступ сверху */
-    margin-left: 45%;
-    padding: 20px;
-    border: 100px;
-    border-radius: 10px;
-    background-color: #28a745;
-    color: white;
-    cursor: pointer;
-  
-  }
+}
 
-  .modal-edit-button {
-    padding: 5px 10px;
-    border: none;
-    border-radius: 5px;
-    background-color: #17a2b8;
-    color: white;
-    cursor: pointer;
-  }
+
+.data-Rates-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-inline: auto;
+  margin-bottom: auto;
+}
+
+.submit-button-WaterReportForm {
+  margin-left: 21%;
+  padding: 20px;
+  border: 100px;
+  border-radius: 2vh;
+  background-color: #28a745;
+  color: white;
+  cursor: pointer;
+  font-size: 20px;
+  width: 56%;
+}
+
+.modal-edit-button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #17a2b8;
+  color: white;
+  cursor: pointer;
+}
 
 
 .modal-back-button {
-    padding: 5px 10px;
-    border: none;
-    border-radius: 5px;
-    background-color: #dc3545;
-    color: white;
-    cursor: pointer;
-  }
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: #dc3545;
+  color: white;
+  cursor: pointer;
+}

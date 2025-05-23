@@ -2,11 +2,10 @@
 // import axios from "axios";
 import {fetchWaterObjects }from "../api/records.js";
 import {sendFormData} from "../api/add_records.js";
-import { fetchSingleTableData, fetchStructDataWithFilters } from "../api/fetch_records.js";
+import { fetchSingleTableData } from "../api/fetch_records.js";
 import { useNotification } from "./NotificationContext.js";
 import "../css/WaterReport.css";
 import "../css/Rates.css"
-
 
 import React, { useState, useEffect } from "react";
 import { translate } from "../utils/translations.js";
@@ -25,48 +24,7 @@ function WaterReportForm() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [role, setRole] = useState(null);
 
-  // useEffect для  фактического из Журнала
-  useEffect(() =>{
-    const loadActualData = async () => {
-      const quarterMonthsEnum = {
-        1: ["JANUARY", "FEBRUARY", "MARCH"],
-        2: ["APRIL", "MAY", "JUNE"],
-        3: ["JULY", "AUGUST", "SEPTEMBER"],
-        4: ["OCTOBER", "NOVEMBER", "DECEMBER"],
-      };
-      if (role !== "EMPLOYEE" || !selectedWaterObject || !year || !quarter) return;
-
-      try {
-        const filters = {
-          year,
-          water_point_id: parseInt(selectedWaterObject),
-            months: quarterMonthsEnum[quarter],
-        };
-
-        const result = await fetchStructDataWithFilters("get_actual_from_log", filters);
-        console.log(result);
-
-        const newData = quarters[quarter].map((monthRu, idx) => {
-          const monthEn = quarterMonthsEnum[quarter][idx];
-          return {
-            month: monthRu,
-            fact: result.data[monthEn] || 0,
-            population: 0,
-            other: 0,
-          };
-        });
-        console.log(newData);
-        setData(newData);
-      } catch (error) {
-        console.error("Ошибка загрузки фактических данных:", error);
-      }
-    };
-
-    loadActualData();
-  }, [selectedWaterObject, year, quarter, role]);
-
-
-  // Новый useEffect для загрузки данных ORG_ADMIN
+  // Новый useEffect для загрузки данных REPORT_ADMIN
   useEffect(() => {
     const loadReportData = async () => {
       try {
@@ -141,7 +99,7 @@ function WaterReportForm() {
         console.error("Ошибка загрузки водных объектов", error);
       }
     };
-    if (role === "EMPLOYEE" || role === "ORG_ADMIN") {
+    if (role === "EMPLOYEE" || role === "ORG_ADMIN" ) {
       console.log("Роль перед loadWaterObjects: ", role);
       loadWaterObjects();
     }
@@ -242,7 +200,7 @@ function WaterReportForm() {
 
   return (
     <div className="water-report-form">
-    <div className="content-container-waterReropt">
+    <div className="content-container_waterReropt ">
     <h2  align="center" >
     {role === "EMPLOYEE"
       ? 'Ввод показаний "Забор поверхностной воды за квартал"'
@@ -255,11 +213,12 @@ function WaterReportForm() {
         <div className="selector-row">
         <label>
         Выберите точку забора:
+        </label>
         <select
         className="custom-select"
         value={selectedWaterObject}
         onChange={(e) => setSelectedWaterObject(e.target.value)}
-        disabled={role !== "EMPLOYEE"} // Disable для админа
+        disabled={role === "ORG_ADMIN"} // Disable для админа
         >
         <option value="">Выберите точку забора/сброса</option>
         {waterObjects.map((obj) => (
@@ -271,9 +230,11 @@ function WaterReportForm() {
           </option>
         ))}
         </select>
-        </label>
+        </div>
+        <div className="selector-row">
         <label>
         Выберите квартал:
+        </label>
         <select
         className="custom-select"
         value={quarter}
@@ -285,7 +246,6 @@ function WaterReportForm() {
         <option value={3}>3 квартал</option>
         <option value={4}>4 квартал</option>
         </select>
-        </label>
         </div>
         </div>
         <table className="data-table-result">
@@ -364,17 +324,18 @@ function WaterReportForm() {
           ✅ Данные успешно отправлены!
           </div>
         )}
-        <button className="submit-button-WaterReportForm" onClick={handleSubmit}>
+        <button className="btn btn-success" onClick={handleSubmit}>
         Отправить
         </button>
         </>
       ) : (
-        // Интерфейс для ORG_ADMIN
+        // Интерфейс для REPORT_ADMIN
         <>
         <div className="selectors">
         <div className="selector-row">
         <label>
         Выберите квартал:
+        </label>
         <select
         className="custom-select"
         value={quarter}
@@ -385,9 +346,11 @@ function WaterReportForm() {
         <option value={3}>3 квартал</option>
         <option value={4}>4 квартал</option>
         </select>
-        </label>
+        </div>
+        <div className="selector-row">
         <label>
         Выберите год:
+        </label>
         <select
         className="custom-select"
         value={year}
@@ -402,9 +365,11 @@ function WaterReportForm() {
           );
         })}
         </select>
-        </label>
+        </div>
+        <div className="selector-row">
         <label>
         Выберите точку забора:
+        </label>
         <select
         className="custom-select"
         value={selectedWaterObject}
@@ -420,10 +385,10 @@ function WaterReportForm() {
           </option>
         ))}
         </select>
-        </label>
+
         </div>
         </div>
-        {/* Отображение данных для ORG_ADMIN */}
+        {/* Отображение данных для REPORT_ADMIN */}
         <table className="data-table-result">
         <thead>
         <tr>
