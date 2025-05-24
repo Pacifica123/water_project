@@ -47,7 +47,7 @@ function OrganizationInfo() {
         loadPointCount();
     }, [orgInfo]);
 
-    const legalForms = ["ООО", "АО", "ИП", "ЗАО", "ПАО"];
+    const legalForms = ["ООО", "АО", "ИП", "ПАО"];
 
     const handleInputChange = (e) => {
         setNewOrgInfo({ ...newOrgInfo, [e.target.name]: e.target.value });

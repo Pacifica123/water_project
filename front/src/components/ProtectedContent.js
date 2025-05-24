@@ -105,7 +105,7 @@ function getAllowedSections(role) {
       ];
     case "UserRoles.ORG_ADMIN":
       return [
-        "notifications", "UserPage", "waterReport", "AccountingPost", "personalInfo", "organizationInfo", "history", "Rates"
+        "notifications", "UserPage", "waterReport", "AccountingPost", "personalInfo", "organizationInfo", "history", "Rates", "Map"
       ];
     // case "UserRoles.REPORT_ADMIN":
     //   return [
