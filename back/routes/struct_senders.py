@@ -370,15 +370,31 @@ def create_full_waterpoint(
         "latitude_longitude": data_point["latitude_longitude"],
         "point_type": data_point["point_type"],
     }
-    permission_payload = {
-        "organisation_id": int(data_point["organisation_id"]),
-        "permission_number": data_permission["permission_number"],
-        "registration_date": parse_date(data_permission, "registration_date"),
-        "expiration_date": parse_date(data_permission, "expiration_date"),
-        "permission_type": data_permission["permission_type"],
-        "allowed_volume": float(data_permission["allowed_volume_org"]),
-        "method_type": data_permission["method_type"],
-    }
+    permissions_to_create = []
+
+    # Разрешение для allowed_volume_org
+    if "allowed_volume_org" in data_permission and data_permission["allowed_volume_org"]:
+        permissions_to_create.append({
+            "organisation_id": int(data_point["organisation_id"]),
+            "permission_number": data_permission["permission_number"],
+            "registration_date": parse_date(data_permission, "registration_date"),
+            "expiration_date": parse_date(data_permission, "expiration_date"),
+            "permission_type": data_permission["permission_type"],
+            "allowed_volume": float(data_permission["allowed_volume_org"]),
+            "method_type": RatesType.ORG,
+        })
+
+    # Разрешение для allowed_volume_pop
+    if "allowed_volume_pop" in data_permission and data_permission["allowed_volume_pop"]:
+        permissions_to_create.append({
+            "organisation_id": int(data_point["organisation_id"]),
+            "permission_number": data_permission["permission_number"],
+            "registration_date": parse_date(data_permission, "registration_date"),
+            "expiration_date": parse_date(data_permission, "expiration_date"),
+            "permission_type": data_permission["permission_type"],
+            "allowed_volume": float(data_permission["allowed_volume_pop"]),
+            "method_type": RatesType.POPULATION,
+        })
     link_meter_payload = {
         "point_id": None,  # заполнится после создания WP
         "meter_id": data_point["meter_id"],
@@ -394,31 +410,63 @@ def create_full_waterpoint(
 
     # 3. Создание записей и связей в БД
     try:
-        # Словарь моделей и их полезадок + читаемый текст ошибки
-        to_create = [
-            (WaterPoint, waterpoint_payload, "пункта учета"),
-            (Permissions, permission_payload, "разрешения"),
-        ]
-        ids = {}
-        for model, payload, desc in to_create:
-            if not create_record_entity(model, payload):
-                raise RuntimeError(f"Ошибка при создании нового {desc}")
-            ids[model.__name__] = get_last_record_id(model)
-        pprint.pprint(ids)
-        # Проставляем связи
-        link_meter_payload["point_id"] = ids["WaterPoint"]
-        link_permission_payload["point_id"] = ids["WaterPoint"]
-        link_permission_payload["permission_id"] = ids["Permissions"]
+        # 1. Создаём пункт учета
+        if not create_record_entity(WaterPoint, waterpoint_payload):
+            raise RuntimeError("Ошибка при создании нового пункта учета")
+        waterpoint_id = get_last_record_id(WaterPoint)
 
-        # Берём сами записи связей (ошибки не критичны — либо создадутся, либо упадут в лог)
-        create_record_entity(PointMeterLink, link_meter_payload)
-        create_record_entity(PointPermissionLink, link_permission_payload)
+        # 2. Создаём разрешения (Permissions)
+        permission_ids = []
+        # Разрешение для allowed_volume_org
+        if "allowed_volume_org" in data_permission and data_permission["allowed_volume_org"]:
+            permission_payload_org = {
+                "organisation_id": int(data_point["organisation_id"]),
+                "permission_number": data_permission["permission_number"],
+                "registration_date": parse_date(data_permission, "registration_date"),
+                "expiration_date": parse_date(data_permission, "expiration_date"),
+                "permission_type": data_permission["permission_type"],
+                "allowed_volume": float(data_permission["allowed_volume_org"]),
+                "method_type": RatesType.ORG,
+            }
+            if not create_record_entity(Permissions, permission_payload_org):
+                raise RuntimeError("Ошибка при создании разрешения (ORG)")
+            permission_ids.append(get_last_record_id(Permissions))
+
+        # Разрешение для allowed_volume_pop
+        if "allowed_volume_pop" in data_permission and data_permission["allowed_volume_pop"]:
+            permission_payload_pop = {
+                "organisation_id": int(data_point["organisation_id"]),
+                "permission_number": data_permission["permission_number"],
+                "registration_date": parse_date(data_permission, "registration_date"),
+                "expiration_date": parse_date(data_permission, "expiration_date"),
+                "permission_type": data_permission["permission_type"],
+                "allowed_volume": float(data_permission["allowed_volume_pop"]),
+                "method_type": RatesType.POPULATION,
+            }
+            if not create_record_entity(Permissions, permission_payload_pop):
+                raise RuntimeError("Ошибка при создании разрешения (POPULATION)")
+            permission_ids.append(get_last_record_id(Permissions))
+
+        # 3. Создаём связь с прибором
+        link_meter_payload["point_id"] = waterpoint_id
+        if not create_record_entity(PointMeterLink, link_meter_payload):
+            raise RuntimeError("Ошибка при создании связи PointMeterLink")
+
+        # 4. Создаём связи разрешений с пунктом учета
+        for pid in permission_ids:
+            link_permission_payload = {
+                "point_id": waterpoint_id,
+                "permission_id": pid,
+                "actual_start_date": parse_date(data_permission, "registration_date"),
+                "actual_end_date": parse_date(data_permission, "expiration_date"),
+                "active": False,
+            }
+            create_record_entity(PointPermissionLink, link_permission_payload)
 
         return OperationResult(
             status=OperationStatus.SUCCESS,
             msg="Все записи таблиц успешно созданы"
         )
-
     except Exception as e:
         print(e)
         print_data_in_func(
