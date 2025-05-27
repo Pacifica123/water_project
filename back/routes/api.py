@@ -300,14 +300,12 @@ def upload_file():
     except ValueError:
         return jsonify({"error": "entity_id должен быть числом"}), 400
 
-    # Преобразуем file_type из строки в enum
-    # try:
-    #     file_type = FileType(file_type_str)
-    # except ValueError:
-    #     return jsonify({"error": f"Неверный file_type: {file_type_str}"}), 400
-
-    # TODO: получить user из токена или контекста
-    created_by = 'auto'
+    created_by = request.form.get('created_by') or request.args.get('created_by') or "non_org"
+    if created_by != "non_org":
+        try:
+            int(created_by)  # проверка, что это число в строке
+        except ValueError:
+            return jsonify({"error": "created_by должен быть числом в строковом формате или 'non_org'"}), 400
 
     res = save_file_to_db_or_fs(
         filename=filename,
@@ -329,7 +327,7 @@ def upload_file():
 @api.route('/api/download_file', methods=['GET'])
 def download_file():
     print(f"[DEBUG] Все параметры: {request.args}")
-    token = token = request.args.get('token')
+    token = request.args.get('token') or request.headers.get('tokenJWTAuthorization')
     print(token)
     auth_res = auth_validate(token)
     if auth_res.status != OperationStatus.SUCCESS:
@@ -369,23 +367,32 @@ def get_file_info():
     entity_type = request.args.get('entity_type')
     entity_id = request.args.get('entity_id')
     file_type = request.args.get('file_type')
+    created_by = request.args.get('created_by') or "non_org"
 
-    if not entity_type or not entity_id or not file_type:
-        return jsonify({"error": "Не переданы обязательные параметры: entity_type, entity_id, file_type"}), 400
     print("Params:", {
         "entity_type": entity_type,
         "entity_id": entity_id,
-        "file_type": file_type
+        "file_type": file_type,
+        "created_by": created_by
     })
+
     try:
-        entity_id = int(entity_id)
+        if entity_id:
+            entity_id = int(entity_id)
     except ValueError:
-        return jsonify({"error": "entity_id должен быть числом"}), 400
+        print(" -- entity_id is None --")
+
+    if created_by != "non_org":
+        try:
+            int(created_by)
+        except ValueError:
+            return jsonify({"error": "created_by должен быть числом в строковом формате или 'non_org'"}), 400
 
     files_res = get_files(
         entity_type=entity_type,
         entity_id=entity_id,
-        file_type=file_type
+        file_type=file_type,
+        created_by=created_by
     )
 
     if files_res.status != OperationStatus.SUCCESS:
@@ -398,23 +405,26 @@ def get_file_info():
         return jsonify({"error": "Файлы не найдены"}), 404
 
     warning = None
-    if len(files) == 1:
-        file_info = files[0]
-    else:
-        # Несколько файлов — берем самый новый по created_at
+    if len(files) > 1:
         files_sorted = sorted(files, key=lambda f: f['created_at'], reverse=True)
         file_info = files_sorted[0]
         warning = "Найдено несколько файлов, возвращён самый новый. Возможна ошибка."
+    else:
+        file_info = files[0]
+
+    file_url = f"http://127.0.0.1:5000/api/download_file?file_id={file_info['id']}"
 
     response = {
         "file_id": file_info["id"],
-        "file_url": f"http://127.0.0.1:5000/api/download_file?file_id={file_info['id']}"
+        "file_url": file_url,
+        "data": files  # полный массив для новой логики фронта
     }
 
     if warning:
         response["warning"] = warning
 
     return jsonify(response), 200
+
 
 
 @api.route('/api/files', methods=['GET'])

@@ -13,6 +13,7 @@ import MainNotify from "./MainNotify";
 import DGisMap from "./Map"; 
 import EditableWaterReport from "./WaterForm";
 import Form32 from "./Form32Test";
+import FileSectionsPage from "./FileSectionsPage";
 
 function ProtectedContent({ onLogout }) {
   const [isSidebarVisible, setSidebarVisible] = useState(true);
@@ -74,6 +75,9 @@ function ProtectedContent({ onLogout }) {
         return <DGisMap />
       case "Form31":
         return <EditableWaterReport />
+      case "FileSections":
+        return <FileSectionsPage />
+
       default:
         return <div>Выберите раздел</div>;
     }
@@ -91,7 +95,7 @@ function ProtectedContent({ onLogout }) {
     />
     <main className="main-content">{renderContent()}</main>
     </div>
-    <Footer />
+    <Footer setActiveSection={setActiveSection} />
     </div>
   );
 }
@@ -114,7 +118,7 @@ function getAllowedSections(role) {
     case "UserRoles.EMPLOYEE":
       return [
         "notifications", "organizationInfo", "waterReport", "paymentCalc",
-        "resourceAccounting", "wasteWater", "Water", "AccountingPost", "Form31"
+        "resourceAccounting", "wasteWater", "Water", "AccountingPost", "Form31", "FileSections"
       ];
     default:
       return [];
@@ -217,13 +221,14 @@ function Sidebar({ setActiveSection, allowedSections, activeSection,isVisible })
   );
 }
 
-function Footer() {
+function Footer({setActiveSection}) {
   return (
-    <footer className="footer">
+    <footer className="footer" >
     <button>Руководство пользователя</button>
-    <button>Загруженные документы</button>
+    <button onClick={() => setActiveSection("FileSections")}>Загруженные документы</button>
     </footer>
   );
 }
+
 
 export default ProtectedContent;

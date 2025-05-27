@@ -33,7 +33,7 @@ def create_org_user(orgdata) -> OperationResult:
     users_data = {
             "last_name": orgdata['legal_form'],
             "first_name": orgdata['organisation_name'],
-            "username": "employee"+str(orgdata['organisation_id']),
+            "username": "employee"+str(orgdata['lui']),
             "email": orgdata['postal_address'],
             "password": generate_password(),
             "role": UserRoles.EMPLOYEE,

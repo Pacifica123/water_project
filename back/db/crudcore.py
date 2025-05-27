@@ -628,3 +628,41 @@ def soft_delete_record(entity_class, record_id, deleted_by=None) -> OperationRes
             status=OperationStatus.UNDEFINE_ERROR,
             msg="Произошла неожиданная ошибка при удалении записи."
         )
+
+
+def hard_delete_record(entity_class, record_id) -> OperationResult:
+    """
+    Универсальная функция для жесткого удаления записи из базы данных.
+
+    :param entity_class: Класс сущности, которую нужно удалить.
+    :param record_id: Идентификатор записи, которую нужно удалить.
+    :return: OperationResult с результатом операции.
+    """
+    try:
+        record = g.session.query(entity_class).get(record_id)
+        if record is None:
+            return OperationResult(
+                status=OperationStatus.DATABASE_ERROR,
+                msg=f"Запись с ID {record_id} не найдена в таблице {entity_class.__name__}."
+            )
+
+        g.session.delete(record)
+        g.session.commit()
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            msg=f"Запись с ID {record_id} успешно удалена жестко."
+        )
+    except SQLAlchemyError as e:
+        g.session.rollback()
+        print(f' ---> ОШИБКА БД при жестком удалении: {e}')
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg="Произошла ошибка при жестком удалении записи в БД."
+        )
+    except Exception as e:
+        g.session.rollback()
+        print(f' ---> НЕОЖИДАННАЯ ОШИБКА при жестком удалении: {e}')
+        return OperationResult(
+            status=OperationStatus.UNDEFINE_ERROR,
+            msg="Произошла неожиданная ошибка при жестком удалении записи."
+        )

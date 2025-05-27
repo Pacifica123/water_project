@@ -4,6 +4,18 @@ const API_URL = "http://127.0.0.1:5000/api";
 
 const getFiles = async (entity_type, entity_id, file_type) => {
     try {
+        const orgData = localStorage.getItem("org");
+        let createdBy = "non_org";
+        if (orgData) {
+            try {
+                const orgInfo = JSON.parse(orgData);
+                if (orgInfo?.id) {
+                    createdBy = String(orgInfo.id);
+                }
+            } catch (error) {
+                console.error("Ошибка парсинга org:", error);
+            }
+        }
         const token = localStorage.getItem('jwtToken');
         const response = await axios.get(API_URL+"/file_info", {
             headers: {
@@ -13,6 +25,7 @@ const getFiles = async (entity_type, entity_id, file_type) => {
                 entity_type: entity_type,
                 entity_id: entity_id,
                 file_type: file_type,
+                created_by: createdBy,
             },
         });
         return { ...response.data, token };

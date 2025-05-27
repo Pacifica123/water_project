@@ -94,4 +94,6 @@ const sendDeleteData = async (tableName, recordId, config = {}) => {
 };
 
 
+
+
 export {sendFormData, sendSingleData, sendUpdateData, sendDeleteData };

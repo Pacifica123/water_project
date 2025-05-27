@@ -33,6 +33,19 @@ const uploadFileToBackend = async (file, { entityType, entityId, fileType }) => 
     formData.append("entity_type", entityType);
     formData.append("entity_id", entityId);
     formData.append("file_type", fileType);
+    const orgData = localStorage.getItem("org");
+    let createdBy = "non_org";
+    if (orgData) {
+        try {
+            const orgInfo = JSON.parse(orgData);
+            if (orgInfo?.id) {
+                createdBy = String(orgInfo.id);
+            }
+        } catch (error) {
+            console.error("Ошибка парсинга org:", error);
+        }
+    }
+    formData.append("created_by", createdBy);
     const token = localStorage.getItem('jwtToken');
     try {
         const response = await fetch(API_URL+"/upload_file", {

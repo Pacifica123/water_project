@@ -186,9 +186,16 @@ def add_to(tablename: str, data: Dict[str, Any]) -> OperationResult:
             return db_error_result()
         # Создать пользователя EMPLOYEE для организации
         org_id = get_last_record_id(Organisations)
+        last_user_id = get_last_record_id(User)
         data['organisation_id'] = org_id
+        data['lui'] = last_user_id
         resdata = create_org_user(data)
         if resdata.status != OperationStatus.SUCCESS:
+            # Если создание пользователя не удалось — жестко удаляем организацию
+            delete_result = hard_delete_record(Organisations, org_id)
+            if delete_result.status != OperationStatus.SUCCESS:
+                # Можно залогировать ошибку удаления, но возвращаем изначальную ошибку создания пользователя
+                print(f"Ошибка при жестком удалении организации с ID {org_id}: {delete_result.msg}")
             return resdata
         return OperationResult(
             status=OperationStatus.SUCCESS,
@@ -358,6 +365,7 @@ def get_files(
     entity_id: Optional[int] = None,
     file_type: Optional[FileType] = None,
     filename: Optional[str] = None,
+    created_by: Optional[str] = None,
     limit: Optional[int] = 100
 ) -> OperationResult:
     """
@@ -385,6 +393,9 @@ def get_files(
 
         if filename:
             query = query.filter(FileRecord.filename.ilike(f"%{filename}%"))
+
+        if created_by:
+            query = query.filter(FileRecord.created_by == created_by)
 
         files = query.order_by(FileRecord.created_at.desc()).limit(limit).all()
 
