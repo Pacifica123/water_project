@@ -1,41 +1,58 @@
 import React, { useEffect, useState } from "react";
 import { getSocket } from "../socket";
 import "../css/MainNotify.css";
+import NotificationModal from "./NotificationModal"; // импорт модалки
+import "../css/MainNotify.css";
 
 function MainNotify() {
     const [notifications, setNotifications] = useState([
         // { text: "Регистрация организации прошла успешно", date: "2025-05-01", type: "РЕГИСТРАЦИЯ ОРГАНИЗАЦИИ" },
-        { text: "Создание пункта учета", date: "2025-05-02", type: "Общее" },
-        { text: "Обновление записи в реестре", date: "2025-05-02", type: "РЕЕСТРЫ" },
-        { text: "Квартальная справка и форма оплаты от организации СКЭК", date: "2025-05-03", type: "ОТЧЕТНОСТЬ" },
-        { text: "Закрытие журнала водопотребления", date: "2025-05-04", type: "ОТЧЕТНОСТЬ" },
+        // { text: "Создание пункта учета", date: "2025-05-02", type: "Общее" },
+        // { text: "Обновление записи в реестре", date: "2025-05-02", type: "РЕЕСТРЫ" },
+        // { text: "Квартальная справка и форма оплаты от организации СКЭК", date: "2025-05-03", type: "ОТЧЕТНОСТЬ" },
+        // { text: "Закрытие журнала водопотребления", date: "2025-05-04", type: "ОТЧЕТНОСТЬ" },
     ]);
     const [dateStart, setDateStart] = useState("");
     const [dateEnd, setDateEnd] = useState("");
     const [selectedTab, setSelectedTab] = useState("ВСЕ");
+    const [selectedNotification, setSelectedNotification] = useState(null);
+
 
     useEffect(() => {
+        const userStr = localStorage.getItem("user");
+        let user = null;
+        try {
+            if (userStr) {
+                user = JSON.parse(userStr);
+                if (user && user._sa_instance_state) delete user._sa_instance_state;
+            }
+        } catch (e) {
+            console.error("Ошибка парсинга user из localStorage", e);
+        }
+
+        if (!user || !user.username) {
+            console.warn("Пользователь не найден в localStorage");
+            return;
+        }
+
+        // Вызов для триггера отправки старых уведомлений через сокет
+        fetch(`http://127.0.0.1:5000/api/fetchallnotify?username=${user.username}`)
+        .catch(err => console.error("Ошибка при вызове fetchallnotify:", err));
+
         const socket = getSocket();
         if (!socket) return;
 
         const handleNotification = (msg) => {
-            const newMsg = typeof msg === "string"
-            ? { text: msg, date: new Date().toISOString().split("T")[0], type: "Общее" }
-            : msg;
-            setNotifications((prev) => [...prev, newMsg]);
+            console.log("Получено уведомление через сокет:", msg);
+
+            setNotifications(prev => [...prev, msg]);
         };
 
         socket.on("notification", handleNotification);
 
-        // Тестовые уведомления при загрузке
-        setNotifications([
-            { text: "Регистрация организации ЛКС", date: "2025-05-01", type: "РЕГИСТРАЦИЯ ОРГАНИЗАЦИИ" },
-            { text: "Закрытие журнала водопотребления", date: "2025-05-02", type: "ОТЧЕТНОСТЬ" },
-            { text: "Квартальная справка и форма оплаты от организации СКЭК", date: "2025-05-03", type: "ОТЧЕТНОСТЬ" },
-        ]);
-
         return () => socket.off("notification", handleNotification);
     }, []);
+
 
     const addNotification = (text, type) => {
         const newNotification = {
@@ -111,7 +128,11 @@ function MainNotify() {
             <tr><td colSpan="4" className="empty">Нет уведомлений</td></tr>
         ) : (
             filteredNotifications.map((msg, idx) => (
-                <tr key={idx}>
+                <tr
+                key={idx}
+                style={{ cursor: "pointer" }}
+                onClick={() => setSelectedNotification(msg)}  // Открываем модалку
+                >
                 <td>{idx + 1}</td>
                 <td>{msg.text}</td>
                 <td>{msg.date}</td>
@@ -121,6 +142,14 @@ function MainNotify() {
         )}
         </tbody>
         </table>
+
+        {/* Модальное окно */}
+        {selectedNotification && (
+            <NotificationModal
+            notification={selectedNotification}
+            onClose={() => setSelectedNotification(null)}
+            />
+        )}
         </div>
 
         {/* Footer */}

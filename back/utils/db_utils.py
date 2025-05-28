@@ -325,7 +325,8 @@ def get_all_models() -> OperationResult:
             ["Файлы", FileRecord.__tablename__],
             ["PPL_debug", PointPermissionLink.__tablename__],
             ["31", WCLfor31.__tablename__],
-            ["32", WCLfor32.__tablename__]
+            ["32", WCLfor32.__tablename__],
+            ["notif_test", Notification.__tablename__]
         ]
 
         return OperationResult(OperationStatus.SUCCESS, data=models_list)

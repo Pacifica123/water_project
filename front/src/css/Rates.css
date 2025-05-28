@@ -18,32 +18,53 @@
 }
 
 .submit-button-WaterReportForm {
-  margin-left: 21%;
-  padding: 20px;
+  padding: 2vh 4vw;
   border: 100px;
   border-radius: 2vh;
   background-color: #28a745;
+  font-weight: bold;
+  transition: background-color 0.2s;
   color: white;
-  cursor: pointer;
-  font-size: 20px;
-  width: 56%;
+  font-size: 1.2rem;
+  margin-left: 30%;
+}
+
+.submit-button-WaterReportForm:hover {
+  background-color: #24963e;
+  color:white;
+  font-weight: bold;
 }
 
 .modal-edit-button {
-  padding: 5px 10px;
+  padding: 1vh 2vw;
   border: none;
-  border-radius: 5px;
+  border-radius: 2vh;
   background-color: #17a2b8;
   color: white;
   cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
 }
 
+.modal-edit-button:hover {
+  background-color: #1493a7;
+  color:white;
+  font-weight: bold;
+}
 
 .modal-back-button {
-  padding: 5px 10px;
+  padding: 1vh 2vw;
   border: none;
-  border-radius: 5px;
+  border-radius: 2vh;
   background-color: #dc3545;
   color: white;
   cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.modal-back-button:hover {
+  background-color: #c5303f;
+  color:white;
+  font-weight: bold;
 }

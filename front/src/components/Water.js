@@ -9,6 +9,8 @@ import {translate} from "../utils/translations"
 const Water = () => {
 
   const {showSuccess, showError,askConfirmation} = useNotification();
+  const [availableLogs, setAvailableLogs] = useState([]);
+  const [selectedLog, setSelectedLog] = useState(null);
 
   const orgData = localStorage.getItem("org");
   let orgInfo = {};
@@ -80,26 +82,77 @@ const Water = () => {
   const [manualNavigation, setManualNavigation] = useState(false);
 
   const [selectedPoint, setSelectedPoint] = useState(null);
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value } = e.target;
-    let updatedFormData = { ...formData, [name]: value };
+    let val = value;
+
+    // Обработка отрицательных значений и ограничение для workingTime
+    if ((name === "waterUsage" || name === "workingTime")) {
+      let parsed = parseFloat(val);
+      if (isNaN(parsed) || parsed < 0) {
+        val = "0";
+      } else if (name === "workingTime" && parsed > 24) {
+        val = "24";
+      } else {
+        val = parsed.toString();
+      }
+    }
+
+    let updatedFormData = { ...formData, [name]: val };
 
     if (name === "controlPoint") {
-      const selected = Points.find((point) => point.latitude_longitude === value);
+      const selected = Points.find((point) => point.latitude_longitude === val);
+
+      let logsForPoint = [];
+
+      try {
+        const resp = await fetchStructDataWithFilters("logs_for_AP", {
+          org_id: orgInfo.id,
+          role: localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")).role : ""
+        });
+        if (resp?.data) {
+          const allowedStatuses = ["IN_PROGRESS","UNDER_CORRECTION"];
+          logsForPoint = resp.data.filter(log =>
+          log.point_id?.latitude_longitude === val && allowedStatuses.includes(log.log_status)
+          );
+          setAvailableLogs(logsForPoint);
+        }
+      } catch (error) {
+        console.error("Ошибка загрузки журналов:", error);
+        showError("Ошибка при проверке журналов.");
+        return;
+      }
+
+      if (logsForPoint.length === 0) {
+        showError("❌ Для выбранного пункта учета не найден журнал.");
+        return;
+      }
+
+      // Если журнал только один — сразу устанавливаем
+      if (logsForPoint.length === 1) {
+        const journal = logsForPoint[0];
+        setSelectedLog(journal);
+
+        const dateObj = new Date(journal.start_date);
+        const today = new Date();
+        const maxDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
+        const safeDay = Math.min(today.getDate(), maxDay);
+        const autoDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), safeDay);
+        const formattedDate = autoDate.toISOString().split("T")[0];
+        updatedFormData.measurementDate = formattedDate;
+      }
+
       setSelectedPoint(selected);
-      updatedFormData.latitude_longitude = value;
-      updatedFormData.coordinates = waterPoints[value] || "";
-      //Автоматически подставляем deviceNumber при выборе controlPoint
+      updatedFormData.latitude_longitude = val;
+      updatedFormData.coordinates = waterPoints[val] ||  "";
       updatedFormData.deviceNumber = selected?.meter_id?.brand?.brand_name && selected?.meter_id?.serial_number
       ? `${selected.meter_id.brand.brand_name} - ${selected.meter_id.serial_number}`
       : "";
       updatedFormData.waterSource = selected?.water_body_id?.code_obj?.code_symbol || "";
-
     }
 
-    //Если меняется deviceNumber, то сохраняем новое значение (ручной ввод)
     if (name === "deviceNumber") {
-      updatedFormData.deviceNumber = value;
+      updatedFormData.deviceNumber = val;
     }
 
     setFormData(updatedFormData);
@@ -129,9 +182,9 @@ const Water = () => {
       alert("Выберите прибор учета!");
       return;
     }
-   const confirmed = await askConfirmation("Вы уверены, что хотитеть отправить данные?");
-   if(!confirmed) return;
-   const data = {
+    const confirmed = await askConfirmation("Вы уверены, что хотитеть отправить данные?");
+    if(!confirmed) return;
+    const data = {
       measurement_date: formData.measurementDate,
       operating_time_days: formData.workingTime,
       water_consumption_m3_per_day: formData.waterUsage,
@@ -169,6 +222,9 @@ const Water = () => {
     <div className="water-container">
 
     <div className="form-container">
+    <center>
+    <h2>Журнал учета водопотребления</h2>
+    </center>
     <div className="steps">
     {[1, 2].map((step) => (
       <div
@@ -182,7 +238,6 @@ const Water = () => {
     </div>
     {activeSection === 1 && (
       <div className="form-step">
-      <h2>Журнал учета водопотребления</h2>
       {/* Объединяем поля из секций 1 и 2 */}
       <div className="input-group">
       <label>Наименование организации: {formData.organisationName || "Без организации"}</label>
@@ -222,6 +277,44 @@ const Water = () => {
 
     {activeSection === 2 && (
       <div className="form-step">
+      {availableLogs.length > 1 && (
+        <div className="input-group">
+        <label>
+        Выберите журнал:
+        <select
+        value={selectedLog?.id || ""}
+        onChange={(e) => {
+          const journal = availableLogs.find(log => log.id.toString() === e.target.value);
+          setSelectedLog(journal);
+          if (journal?.start_date) {
+            const dateObj = new Date(journal.start_date);
+            const today = new Date();
+            const maxDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
+            const safeDay = Math.min(today.getDate(), maxDay);
+            const autoDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), safeDay);
+            const formattedDate = autoDate.toISOString().split("T")[0];
+
+            setFormData(prev => ({
+              ...prev,
+              measurementDate: formattedDate
+            }));
+          }
+        }}
+        >
+        <option value="">Выберите журнал</option>
+        {availableLogs.map((log) => {
+          const date = new Date(log.start_date);
+          const formatted = date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+          return (
+            <option key={log.id} value={log.id}>
+            {formatted} — статус: {translate(log.log_status)}
+            </option>
+          );
+        })}
+        </select>
+        </label>
+        </div>
+      )}
       <h2>Данные измерений</h2>
       {/* Поменяли местами поля "Измерительный прибор" и "Дата измерения" */}
       <div className="input-group">
@@ -244,13 +337,13 @@ const Water = () => {
       <div className="input-group">
       <label>
       Время работы (сут.):
-      <input type="number" pattern="[0-9]*" name="workingTime" value={formData.workingTime} onChange={handleChange} />
+      <input type="number" pattern="[0-9]*"  min="0" max="24" name="workingTime" value={formData.workingTime || 0} onChange={handleChange} />
       </label>
       </div>
       <div className="input-group">
       <label>
       Расход воды (м³/сут.):
-      <input type="number" pattern="[0-9]*" name="waterUsage" value={formData.waterUsage} onChange={handleChange} />
+      <input type="number" pattern="[0-9]*" min="0" name="waterUsage" value={formData.waterUsage || 0} onChange={handleChange} />
       </label>
       </div>
       {/* Добавлено поле ФИО */}

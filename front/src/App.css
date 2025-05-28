@@ -397,6 +397,7 @@ input {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: fit-content;
+  zoom: "1.2";
 }
 
 
@@ -489,7 +490,7 @@ input {
   background: white;
   padding: 20px;
   border-radius: 12px;
-  width: 200px;
+  width: 300px;
   max-width: 90%;
 }
 
@@ -503,6 +504,7 @@ input {
   width: 100%;
   margin-top: 5px;
   padding: 8px;
+  font-size: 0.8rem;
 }
 
 .modal-buttons {

@@ -57,6 +57,9 @@ def send_notification(username: str, message: str) -> OperationResult:
 def send_pending_notifications(username) -> OperationResult:
     print(f"send_pending_notifications : username={username}")
     from db.crudcore import get_all_by_conditions
+    from db.setup import get_session, setup_database
+    engine = setup_database()
+    session = get_session(engine)
     notif_res = get_all_by_conditions(
         Notification,
         [
@@ -76,11 +79,16 @@ def send_pending_notifications(username) -> OperationResult:
     from db.crudcore import bulk_update_records
     notif_reads = []
     for notif in notif_res.data:
-        socketio.emit('notification', notif.message, room=username)
+        notif_dict = notif.to_dict()
+        socketio.emit('notification', notif_dict, room=username)
         notif.delivered = True
         notif.delivered_at = datetime.utcnow()
-        notif_reads.append(notif)
-    upres = bulk_update_records(Notification, notif_reads)
+        notif_reads.append({
+            'id': notif.id,
+            'delivered': notif.delivered,
+            'delivered_at': notif.delivered_at
+        })
+    upres = bulk_update_records(Notification, notif_reads, session=session)
     return upres
 
 

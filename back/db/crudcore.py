@@ -328,6 +328,7 @@ def get_all_by_foreign_key(entity: Type[Any], foreign_key_column: str, foreign_k
 def get_all_by_conditions(
     entity: Type[Any],
     conditions: List[Dict[str, Any]],
+    session=None,
     is_deleted: bool = False
 ) -> OperationResult:
     """
@@ -341,6 +342,16 @@ def get_all_by_conditions(
     print_data_in_func(entity, "get_all_by_conditions")
     print(f"conditions: {conditions}")
     print(f"types in conditions: {[type(c) for c in conditions]}")
+
+    if session is None:
+        from db.setup import get_session, setup_database
+        engine = setup_database()
+        session = get_session(engine)
+        close_session = True
+    else:
+        close_session = False
+
+
 
     try:
         # Формируем фильтр для запроса по условиям
@@ -369,7 +380,7 @@ def get_all_by_conditions(
             filter_conditions.append(entity.is_deleted == False)
 
         # Используем функцию all() для объединения условий по логическому И
-        records = g.session.query(entity).filter(*filter_conditions).all()
+        records = session.query(entity).filter(*filter_conditions).all()
 
         return OperationResult(
             status=OperationStatus.SUCCESS,
@@ -392,6 +403,10 @@ def get_all_by_conditions(
             status=OperationStatus.UNDEFINE_ERROR,
             msg="Произошла неожиданная ошибка, не связанная с БД."
         )
+
+    finally:
+        if close_session:
+            session.close()
 
 
 # - - - - - - - - - - - - - - - - - - - -
@@ -476,7 +491,11 @@ def update_record(entity_class, record_id, data: dict, required_fields: list = N
         )
 
 
-def bulk_update_records(entity_class, records_data: list, required_fields: list = None) -> OperationResult:
+def bulk_update_records(
+    entity_class,
+    records_data: list,
+    required_fields: list = None,
+    session=None) -> OperationResult:
     """
     Массовое обновление записей с проверкой обязательных полей и оптимизацией по времени.
 
@@ -502,9 +521,12 @@ def bulk_update_records(entity_class, records_data: list, required_fields: list 
                 )
 
     try:
-        # Выполняем массовое обновление
-        g.session.bulk_update_mappings(entity_class, records_data)
-        g.session.commit()
+        if session is not None:
+            session.bulk_update_mappings(entity_class, records_data)
+            session.commit()
+        else:
+            g.session.bulk_update_mappings(entity_class, records_data)
+            g.session.commit()
 
         return OperationResult(
             status=OperationStatus.SUCCESS,
@@ -512,20 +534,25 @@ def bulk_update_records(entity_class, records_data: list, required_fields: list 
             data={'updated_count': len(records_data)}
         )
     except SQLAlchemyError as e:
-        g.session.rollback()
+        if session is not None:
+            session.rollback()
+        else:
+            g.session.rollback()
         print(f' ---> ОШИБКА БД: {e}')
         return OperationResult(
             status=OperationStatus.DATABASE_ERROR,
             msg="Ошибка при массовом обновлении записей в базе данных."
         )
     except Exception as e:
-        g.session.rollback()
+        if session is not None:
+            session.rollback()
+        else:
+            g.session.rollback()
         print(f' ---> НЕОЖИДАННАЯ ОШИБКА: {e}')
         return OperationResult(
             status=OperationStatus.UNDEFINE_ERROR,
             msg="Неожиданная ошибка при массовом обновлении записей."
         )
-
 
 
 def update_employee(username: str, data: dict) -> OperationResult:

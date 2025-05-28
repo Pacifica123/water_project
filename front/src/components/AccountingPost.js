@@ -308,23 +308,25 @@ const AccountingPost = () => {
 
   const handleExpandLog = async (logId) => {
     if (expandedLogs[logId]) {
-      setExpandedLogs((prev) => ({ ...prev, [logId]: false }));
+      // Закрываем текущий журнал
+      setExpandedLogs({});
       setLogDetails((prev) => ({ ...prev, [logId]: null }));
     } else {
+      // Закрываем все и открываем только выбранный
       try {
         const response = await fetchStructDataWithFilters("log_details", {
           log_id: logId,
         });
         if (response && response.data) {
-          setLogDetails((prev) => ({ ...prev, [logId]: response.data }));
+          setLogDetails({ [logId]: response.data });
         } else {
-          setLogDetails((prev) => ({ ...prev, [logId]: null }));
+          setLogDetails({ [logId]: null });
         }
       } catch (error) {
         console.error("Ошибка загрузки деталей журнала", error);
-        setLogDetails((prev) => ({ ...prev, [logId]: null }));
+        setLogDetails({ [logId]: null });
       }
-      setExpandedLogs((prev) => ({ ...prev, [logId]: true }));
+      setExpandedLogs({ [logId]: true });
     }
   };
 
@@ -788,35 +790,45 @@ onChange={handlePermissionChange}
 
           </table>
 
+          {["in_progress", "under_correction"].some((s) =>
+            allLogs.find(log => log.id === Number(logId))?.status?.toLowerCase().includes(s)
+          ) ? (
+            <div className="log-files-upload">
+            <h4 style={{ textAlign: "center" }}>Загрузка файлов:</h4>
+            <div className="upload-row">
+            <FileUpload
+            label="PDF-скан"
+            accept="application/pdf"
+            icon="📄"
+            entityType="water_consumption_log"
+            entityId={logId}
+            fileType="MONTH_CLOSURE_SCAN"
+            preview={true}
+            onUpload={uploadFileToBackend}
+            />
+            </div>
+            <div className="upload-row">
+            <FileUpload
+            label="Sig-файл подписи"
+            accept=".sig"
+            icon="🔏"
+            entityType="water_consumption_log"
+            entityId={logId}
+            fileType="SIGNATURE"
+            preview={false}
+            onUpload={uploadFileToBackend}
+            />
+            </div>
+            </div>
+          ) : (
+            <div className="log-files-upload">
+            <h4 style={{ textAlign: "center", color: "gray" }}>Загрузка недоступна</h4>
+            <p style={{ textAlign: "center", color: "#888", fontStyle: "italic" }}>
+            Файлы можно загрузить или заменить только в статусах <b>"На доработке"</b> или <b>"В процессе"</b>
+            </p>
+            </div>
+          )}
 
-
-          <div className="log-files-upload">
-          <h4 style={{textAlign:"center"}}>Загрузка файлов:</h4>
-          <div className="upload-row">
-          <FileUpload
-          label="PDF-скан"
-          accept="application/pdf"
-          icon="📄"
-          entityType="water_consumption_log"
-          entityId={logId}
-          fileType="MONTH_CLOSURE_SCAN"
-          preview={true}
-          onUpload={uploadFileToBackend}
-          />
-          </div>
-          <div className="upload-row">
-          <FileUpload
-          label="Sig-файл подписи"
-          accept=".sig"
-          icon="🔏"
-          entityType="water_consumption_log"
-          entityId={logId}
-          fileType="SIGNATURE"
-          preview={false}
-          onUpload={uploadFileToBackend}
-          />
-          </div>
-          </div>
           </div>
         ) : null
       )}

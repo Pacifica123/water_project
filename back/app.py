@@ -41,7 +41,7 @@ def create_app(delete_db=False):
     mail.init_app(app)
     # ─────────────────────────────────────────────────────────────────
     engine = setup_database(delete_db=delete_db)
-    socketio = SocketIO(app, cors_allowed_origins="*")
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
     # Глобальный обработчик ошибок
     import traceback
@@ -74,4 +74,4 @@ if __name__ == '__main__':
     delete_db_flag = os.getenv('DELETE_DB', 'False') == 'True'
     app, socketio = create_app(delete_db_flag)
     # app.run(debug=True)
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, allow_unsafe_werkzeug=True)

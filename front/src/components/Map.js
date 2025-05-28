@@ -3,19 +3,67 @@ import styled from "styled-components";
 import "../css/AccountingPost.css";
 import { fetchStructDataWithFilters } from "../api/fetch_records";
 
-const Container = styled.div`height: 88vh; display: flex; flex-direction: column; background: #f4f4f9; font-family: Arial, sans-serif; width: -moz-available;`;
-const ContentWrapper = styled.div`display: flex; flex: 1; width: 100%;`;
-const MapContainer = styled.div`flex: 1; widtn:200px;  min-width: 350px; border-bottom: 2px solid #ddd;`;
-const MarkerList = styled.div` text-align: center; padding: 20px; background: #fff; overflow-y: auto; max-height: 100%; max-width: fit-content ; width: 725px; border-left: 2px solid #ddd; box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);`;
+const Container = styled.div`
+height: 88vh;
+display: flex;
+flex-direction: column;
+background: #f4f4f9;
+font-family: Arial, sans-serif;
+width: -moz-available;
+`;
 
-const Table = styled.table`width: fit-content;
+const ContentWrapper = styled.div`
+display: flex;
+flex: 1;
+width: 100%;
+`;
+
+const MapContainer = styled.div`
+flex: 1;
+min-width: 350px;
+border-bottom: 2px solid #ddd;
+`;
+
+const MarkerList = styled.div`
+text-align: center;
+padding: 20px;
+background: #fff;
+overflow-y: auto;
+max-height: 100%;
+max-width: fit-content;
+width: 740px;
+border-left: 2px solid #ddd;
+box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+`;
+
+const Table = styled.table`
+width: fit-content;
 border-collapse: collapse;
 margin-top: 15px;
 margin-left: 2px;
-font-size: 28px;`;
-const TableHeader = styled.th`padding: 12px; background-color: #4CAF50; color: white; font-weight: bold; border-bottom: 2px solid #ddd;`;
-const TableRow = styled.tr`border-bottom: 1px solid #ddd; &:hover { background-color: #f8f8f8; }`;
-const TableCell = styled.td`padding: 12px; text-align: center; color: #333;`;
+font-size: 27px;
+`;
+
+const TableHeader = styled.th`
+padding: 12px;
+background-color: #4CAF50;
+color: white;
+font-weight: bold;
+border-bottom: 2px solid #ddd;
+`;
+
+const TableRow = styled.tr`
+border-bottom: 1px solid #ddd;
+&:hover {
+  background-color: #f8f8f8;
+}
+`;
+
+const TableCell = styled.td`
+padding: 12px;
+text-align: center;
+color: #333;
+`;
 
 const StatusBadge = styled.span`
 padding: 6px 12px;
@@ -23,17 +71,13 @@ border-radius: 20px;
 font-weight: bold;
 color: white;
 background: ${(props) =>
-  props.status === "sent"
-  ? "#4CAF50"
-  : props.status === "in_progress"
-  ? "#FFB900"
-  : props.status === "not_sent"
-  ? "#FF6347"
-  : props.status === "closed"
-  ? "#808080"
-  : ""};
-
-  text-transform: capitalize;
+  props.status === "sent" ? "#004085" :
+  props.status === "in_progress" ? "#FFB900" :
+  props.status === "under_correction" ? "#721c24" :
+  props.status === "is_done" ? "#155724" :
+  props.status === "under_watch" ? "#383d41" :
+  props.status === "not_sent" ? "#FF6347" :
+  props.status === "closed" ? "#0c5460" : "#000000"};
   `;
 
   const STRUCT_NAME = "getall_coord_points";
@@ -47,29 +91,31 @@ background: ${(props) =>
     const mapContainer = useRef(null);
     const mapRef = useRef(null);
     const markersRef = useRef([]);
+    const [isMapReady, setIsMapReady] = useState(false);
     const [markers, setMarkers] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const [statusFilter, setStatusFilter] = useState("");
     const [orgFilter, setOrgFilter] = useState("");
     const [monthFilter, setMonthFilter] = useState("");
+    const [yearFilter, setYearFilter] = useState("");
 
     const getShortLabel = (label) => {
       const match = label.match(/\((.*?)\)/);
-      if (match) {
-        return match[1]; // если есть текст в скобках — используем его
-      }
-
+      if (match) return match[1];
       return label
-      .split(" ")                  // разбить на слова
-      .filter(w => w.length > 0)   // убрать лишние пробелы
-      .map(w => w[0].toUpperCase()) // взять первую букву и сделать её заглавной
-      .join("");                   // соединить в строку
+      .split(" ")
+      .filter(w => w.length > 0)
+      .map(w => w[0].toUpperCase())
+      .join("");
     };
 
     const getStatusText = (status) => ({
       sent: "Отчет отправлен",
       in_progress: "В процессе",
+      is_done: "Подписан",
+      under_correction: "На доработке",
+      under_watch: "На рассмотрении",
       not_sent: "Не отправлен",
       closed: "Закрыт"
     }[status]);
@@ -80,17 +126,18 @@ background: ${(props) =>
         const statusMatch = !statusFilter || m.status === statusFilter;
         const orgMatch = !orgFilter || m.label === orgFilter;
         const monthMatch = !monthFilter || m.month === monthFilter;
-        return statusMatch && orgMatch && monthMatch;
+        const yearMatch = !yearFilter || String(m.year) === String(yearFilter);
+        return statusMatch && orgMatch && monthMatch && yearMatch;
       })
       .sort((a, b) => {
         return MONTH_ORDER.indexOf(a.month) - MONTH_ORDER.indexOf(b.month);
       });
-    }, [markers, statusFilter, orgFilter, monthFilter]);
+    }, [markers, statusFilter, orgFilter, monthFilter, yearFilter]);
 
     const uniqueOrgs = useMemo(() => [...new Set(markers.map(m => m.label))], [markers]);
-    const uniqueMonths = useMemo(() => [...new Set(markers.map(m => m.month))].sort(
-      (a, b) => MONTH_ORDER.indexOf(a) - MONTH_ORDER.indexOf(b)
-    ), [markers]);
+    const uniqueMonths = useMemo(() => [...new Set(markers.map(m => m.month))]
+    .sort((a, b) => MONTH_ORDER.indexOf(a) - MONTH_ORDER.indexOf(b)), [markers]);
+    const uniqueYears = useMemo(() => [...new Set(markers.map(m => m.year))].sort(), [markers]);
 
     useEffect(() => {
       let cancelled = false;
@@ -118,18 +165,8 @@ background: ${(props) =>
       return () => document.body.removeChild(script);
     }, []);
 
-    useEffect(() => {
-      if (!mapRef.current) return;
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-      filteredMarkers.forEach((m) => {
-        const mk = addMarker(mapRef.current, m);
-        markersRef.current.push(mk);
-      });
-    }, [filteredMarkers]);
-
     const initMap = () => {
-      if (mapRef.current) return; // предотвратим повторную инициализацию
+      if (mapRef.current) return;
       const map = window.DG.map(mapContainer.current, {
         center: [55.35, 86.07],
         zoom: 9,
@@ -140,14 +177,28 @@ background: ${(props) =>
         [56.5, 89.0],
       ]);
       mapRef.current = map;
+      setIsMapReady(true);
     };
+
+    useEffect(() => {
+      if (!isMapReady) return;
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+      filteredMarkers.forEach((m) => {
+        const mk = addMarker(mapRef.current, m);
+        markersRef.current.push(mk);
+      });
+    }, [isMapReady, filteredMarkers]);
 
     const addMarker = (map, { lat, lng, label, status }) => {
       const statusColors = {
         not_sent: "#FF6347",
         in_progress: "#FFB900",
-        sent: "#4CAF50",
-        closed: "#808080",
+        sent: "#004085",
+        closed: "#0c5460",
+        under_correction: "#721c24",
+        is_done: "#155724",
+        under_watch: "#383d41"
       };
       const icon = window.DG.divIcon({
         className: "custom-icon",
@@ -197,7 +248,10 @@ background: ${(props) =>
       <option value="">Все статусы</option>
       <option value="not_sent">Не отправлен</option>
       <option value="in_progress">В процессе</option>
+      <option value="is_done">Подписан</option>
       <option value="sent">Отправлен</option>
+      <option value="under_watch">На рассмотрении</option>
+      <option value="under_correction">На доработке</option>
       <option value="closed">Закрыт</option>
       </select>
       </div>
@@ -207,6 +261,15 @@ background: ${(props) =>
       <option value="">Все месяцы</option>
       {uniqueMonths.map((month, i) => (
         <option key={i} value={month}>{month}</option>
+      ))}
+      </select>
+      </div>
+      <div className="filter-block">
+      <label>Год</label>
+      <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)}>
+      <option value="">Все годы</option>
+      {uniqueYears.map((year, i) => (
+        <option key={i} value={year}>{year}</option>
       ))}
       </select>
       </div>
@@ -240,3 +303,4 @@ background: ${(props) =>
   };
 
   export default DGisMap;
+

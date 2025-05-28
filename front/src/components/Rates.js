@@ -3,6 +3,7 @@ import { sendSingleData } from "../api/add_records";
 import { fetchSingleTableData } from "../api/fetch_records";
 import "../css/Rates.css";
 import "../css/alert.css";
+import {validateAndCorrectDate} from "../components/Checks.js";
 
 function Rates() {
     const [rates, setRates] = useState(null);
@@ -41,7 +42,13 @@ function Rates() {
     };
 
     const handleChange = (e) => {
-        setNewRate({ ...newRate, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+
+        if (name === "start_date") {
+            setNewRate({ ...newRate, start_date: validateAndCorrectDate(value) });
+        } else {
+            setNewRate({ ...newRate, [name]: value });
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -77,7 +84,7 @@ function Rates() {
         <div className="content-container">
         <h2 align="center">Ставки за водопотребление</h2>
 
-        <div className="current-rate" text-align="left" align="center">
+        <div text-align="left" align="center">
         <h3>Текущие ставки по типам</h3>
         {Object.entries(getLatestRatesByType()).length > 0 ? (
             <div>
@@ -96,7 +103,7 @@ function Rates() {
         {rates === null ? (
             <p align="center">Загрузка...</p>
         ) : (
-            <table className="data-Rates-table">
+            <table className="data-table-result">
             <thead>
             <tr>
             <th>Дата</th>
@@ -127,11 +134,11 @@ function Rates() {
             <form onSubmit={handleSubmit}>
             <label>
             Дата начала:
-            <input type="date" name="start_date" value={newRate.start_date} onChange={handleChange} required />
+            <input type="date" name="start_date"   value={newRate.start_date} onChange={handleChange} required/>
             </label>
             <label>
             Ставка:
-            <input type="number" step="0.01" name="value" value={newRate.value} onChange={handleChange} required />
+            <input type="number" pattern="[0-9]*" min="0" step="0.01" name="value" value={newRate.value} onChange={handleChange} required />
             </label>
             <label>
             Тип ставки:

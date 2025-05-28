@@ -140,6 +140,20 @@ class Notification(Base):
     delivered: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     delivered_at: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'text': self.message,  # переименовал для фронта, чтобы не путать
+            'date': self.created_at.strftime("%Y-%m-%d"),
+            'delivered_at': self.delivered_at.strftime("%Y-%m-%d"),
+            'type': self.get_type_display(),  # если есть поле типа, или просто "Общее"
+            # добавь другие поля, если нужно
+        }
+
+    def get_type_display(self):
+        # если у тебя нет отдельного поля type, можно вернуть "Общее" или логику по message
+        return "Общее"
+
 
 class FileRecord(Base):
     __tablename__ = 'file_records'

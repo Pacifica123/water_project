@@ -25,15 +25,18 @@ function ProtectedContent({ onLogout }) {
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
   let orgInfo = {};
-
-  if (orgData) {
+  if (typeof orgData === "string" && orgData.trim().startsWith("{")) {
     try {
       orgInfo = JSON.parse(orgData);
     } catch (error) {
       console.error("Ошибка парсинга org:", error);
       orgInfo = {};
     }
+  } else {
+    orgInfo = {};
   }
+
+
 
   const token = localStorage.getItem('jwtToken');
   console.log("Токен: ", token);
@@ -57,8 +60,6 @@ function ProtectedContent({ onLogout }) {
         return <Water />;
       case "paymentCalc":
         return <PaymentCalculationForm />;
-      case "resourceAccounting":
-        return <div>Форма: Учет объема забора водных ресурсов</div>;
       case "wasteWater":
         return <Form32/>;
       case "organizationInfo":
@@ -118,7 +119,7 @@ function getAllowedSections(role) {
     case "UserRoles.EMPLOYEE":
       return [
         "notifications", "organizationInfo", "waterReport", "paymentCalc",
-        "resourceAccounting", "wasteWater", "Water", "AccountingPost", "Form31", "FileSections"
+       "wasteWater", "Water", "AccountingPost", "Form31", "FileSections"
       ];
     default:
       return [];
@@ -131,7 +132,7 @@ function Header({ userInfo, onLogout, orgInfo, toggleSidebar }) {
     <button className="sidebar-toggle"  onClick={toggleSidebar}>☰</button>
     <h1>Личный кабинет ({orgInfo.organisation_name || 'Без организации'})</h1>
     <div className="header-right">
-    <span>{userInfo.last_name} {userInfo.first_name} {userInfo.middle_name}</span>
+    <span className="visibel">{userInfo.last_name} {userInfo.first_name} {userInfo.middle_name}</span>
     <button className="logout-button" onClick={onLogout}>Выход</button>
     </div>
     </header>
@@ -167,11 +168,7 @@ function Sidebar({ setActiveSection, allowedSections, activeSection,isVisible })
       Расчет суммы оплаты
       </button>
     )}
-    {allowedSections.includes("resourceAccounting") && (
-      <button className={getButtonClass("resourceAccounting")} onClick={() => setActiveSection("resourceAccounting")}>
-      Учет объема забора водных ресурсов
-      </button>
-    )}
+
     {allowedSections.includes("wasteWater") && (
       <button className={getButtonClass("wasteWater")} onClick={() => setActiveSection("wasteWater")}>
       Учет объема сброса сточных вод

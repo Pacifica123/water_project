@@ -539,7 +539,7 @@ def json_to_excel_route():
 #  ---------- Notify Routers ----------
 
 
-@api.route('/notify', methods=['POST'])
+@api.route('/api/notify', methods=['POST'])
 def notify():
     data = request.json
     target_user = data.get('username')
@@ -564,14 +564,19 @@ def notify():
     return jsonify({'status': 'sent', 'or_msg': res.message}), 200
 
 
-@api.route('/fetchallnotify', methods=['GET'])
+@api.route('/api/fetchallnotify', methods=['GET'])
 def fetch_all_notify():
     target_user = request.args.get('username')
     print(f"[target_user]: {target_user}")
-    from .socket_handlers import send_pending_notifications
-    r = send_pending_notifications(target_user)
-    print_operation_result(r)
-    if r.status != OperationStatus.SUCCESS:
-        return jsonify({"error": "Ошибка при отправке уведомлений", "message": r.message}), 500
-
-    return jsonify({'status': 'sent', 'or_msg': r.message}), 200
+    try:
+        from .socket_handlers import send_pending_notifications
+        r = send_pending_notifications(target_user)
+        print_operation_result(r)
+        if r.status != OperationStatus.SUCCESS:
+            return jsonify({"error": "Ошибка при отправке уведомлений", "message": r.message}), 500
+        return jsonify({'status': 'sent', 'or_msg': r.message}), 200
+    except Exception as e:
+        import traceback
+        print("Ошибка в fetch_all_notify:", e)
+        print(traceback.format_exc())
+        return jsonify({"error": "Внутренняя ошибка", "message": str(e)}), 500
