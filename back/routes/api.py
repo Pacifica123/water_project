@@ -544,24 +544,13 @@ def notify():
     data = request.json
     target_user = data.get('username')
     message = data.get('message', 'Уведомление от сервера')
-    print(f"[target_user]: {target_user}")
-    print(f"[message]: {message}")
-    # Сохраняем уведомление в базе
-    notif = {
-        'username': target_user,
-        'message': message,
-        'delivered': False
-    }
-    if not create_record_entity(Notification, notif):
-        return jsonify({'error': 'Не удалось сохранить уведомление в БД'}), 500
 
-    # Пытаемся отправить уведомление, если пользователь онлайн
-    from .socket_handlers import send_notification
-    res = send_notification(target_user, message)
+    res = create_and_send_notification(target_user, message)
     if res.status != OperationStatus.SUCCESS:
         return jsonify({"error": "Ошибка при отправке уведомления", "message": res.message}), 500
 
     return jsonify({'status': 'sent', 'or_msg': res.message}), 200
+
 
 
 @api.route('/api/fetchallnotify', methods=['GET'])

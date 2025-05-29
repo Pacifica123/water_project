@@ -577,4 +577,21 @@ def send_quarter(form_data: any):
                     status=OperationStatus.DATABASE_ERROR,
                     msg=f"Ошибка в create_record_entity для {WaterConsumptionLogByCategories.__tablename__}"
                 )
+
+    try:
+        notification_payload = {
+            "type": "waterreportform",
+            "header": f"Отправлен квартальный отчет за {form_data['quarter']} квартал",
+            "message": "Новый квартальный отчет получен",
+            "quarter": form_data['quarter'],
+            "waterPointId": form_data['waterPointId'],
+            "reportData": form_data['data'],
+        }
+
+        message = json.dumps(notification_payload, ensure_ascii=False)
+        # Здесь "orgadmin" — имя пользователя-админа, можно сделать динамически
+        from utils.notify_utils import create_and_send_notification
+        create_and_send_notification("orgadmin", message)
+    except Exception as e:
+        print("Ошибка при отправке уведомления orgadmin-у:", e)
     return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")

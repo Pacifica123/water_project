@@ -32,3 +32,22 @@
     font-size: 24px;
     cursor: pointer;
 }
+
+
+.water-report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.water-report-table th,
+.water-report-table td {
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+    text-align: center;
+}
+
+.water-report-table th {
+    background-color: #222;
+    color: #eee;
+}

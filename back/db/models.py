@@ -136,7 +136,7 @@ class Notification(Base):
     __tablename__ = 'notifications'
 
     username: Mapped[str] = mapped_column(String(64), nullable=False, index=True)  # username или user_id
-    message: Mapped[str] = mapped_column(String(256), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
     delivered: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     delivered_at: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
 

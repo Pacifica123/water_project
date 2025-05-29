@@ -1,21 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { getSocket } from "../socket";
 import "../css/MainNotify.css";
-import NotificationModal from "./NotificationModal"; // импорт модалки
-import "../css/MainNotify.css";
+import NotificationModal from "./NotificationModal";
 
 function MainNotify() {
-    const [notifications, setNotifications] = useState([
-        // { text: "Регистрация организации прошла успешно", date: "2025-05-01", type: "РЕГИСТРАЦИЯ ОРГАНИЗАЦИИ" },
-        // { text: "Создание пункта учета", date: "2025-05-02", type: "Общее" },
-        // { text: "Обновление записи в реестре", date: "2025-05-02", type: "РЕЕСТРЫ" },
-        // { text: "Квартальная справка и форма оплаты от организации СКЭК", date: "2025-05-03", type: "ОТЧЕТНОСТЬ" },
-        // { text: "Закрытие журнала водопотребления", date: "2025-05-04", type: "ОТЧЕТНОСТЬ" },
-    ]);
+    const [notifications, setNotifications] = useState([]);
     const [dateStart, setDateStart] = useState("");
     const [dateEnd, setDateEnd] = useState("");
     const [selectedTab, setSelectedTab] = useState("ВСЕ");
     const [selectedNotification, setSelectedNotification] = useState(null);
+
+
+    const getNotificationTitle = (text) => {
+        try {
+            const parsed = JSON.parse(text);
+            // Если есть поле header — возвращаем его, иначе весь объект как строку
+            if (parsed.header) return parsed.header;
+            // Можно вернуть какой-то fallback, например, тип или stringify
+            return JSON.stringify(parsed);
+        } catch (e) {
+            // Если не JSON — возвращаем сам текст
+            return text;
+        }
+    };
 
 
     useEffect(() => {
@@ -37,6 +44,13 @@ function MainNotify() {
 
         // Вызов для триггера отправки старых уведомлений через сокет
         fetch(`http://127.0.0.1:5000/api/fetchallnotify?username=${user.username}`)
+        .then(res => res.json())
+        .then(data => {
+            console.log("Данные из fetchallnotify:", data);
+            // НЕ меняем логику, просто вызываем fetch, не обновляем state здесь
+            // Если нужно, можно раскомментировать и добавить в notifications:
+            // setNotifications(prev => [...prev, ...data]);
+        })
         .catch(err => console.error("Ошибка при вызове fetchallnotify:", err));
 
         const socket = getSocket();
@@ -44,7 +58,6 @@ function MainNotify() {
 
         const handleNotification = (msg) => {
             console.log("Получено уведомление через сокет:", msg);
-
             setNotifications(prev => [...prev, msg]);
         };
 
@@ -53,6 +66,10 @@ function MainNotify() {
         return () => socket.off("notification", handleNotification);
     }, []);
 
+    // Логируем весь массив уведомлений при его изменении
+    useEffect(() => {
+        console.log("Текущий список уведомлений:", notifications);
+    }, [notifications]);
 
     const addNotification = (text, type) => {
         const newNotification = {
@@ -131,10 +148,10 @@ function MainNotify() {
                 <tr
                 key={idx}
                 style={{ cursor: "pointer" }}
-                onClick={() => setSelectedNotification(msg)}  // Открываем модалку
+                onClick={() => setSelectedNotification(msg)}
                 >
                 <td>{idx + 1}</td>
-                <td>{msg.text}</td>
+                <td>{getNotificationTitle(msg.text)}</td>
                 <td>{msg.date}</td>
                 <td>{msg.type}</td>
                 </tr>
@@ -175,5 +192,3 @@ function MainNotify() {
 }
 
 export default MainNotify;
-
-

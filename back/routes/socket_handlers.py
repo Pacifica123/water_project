@@ -52,8 +52,6 @@ def send_notification(username: str, message: str) -> OperationResult:
             OperationStatus.CONNECTION_ERROR,
             msg="Проблема с socketio"
         )
-
-
 def send_pending_notifications(username) -> OperationResult:
     print(f"send_pending_notifications : username={username}")
     from db.crudcore import get_all_by_conditions
@@ -76,20 +74,52 @@ def send_pending_notifications(username) -> OperationResult:
             )
         return notif_res
 
-    from db.crudcore import bulk_update_records
-    notif_reads = []
     for notif in notif_res.data:
         notif_dict = notif.to_dict()
         socketio.emit('notification', notif_dict, room=username)
-        notif.delivered = True
-        notif.delivered_at = datetime.utcnow()
-        notif_reads.append({
-            'id': notif.id,
-            'delivered': notif.delivered,
-            'delivered_at': notif.delivered_at
-        })
-    upres = bulk_update_records(Notification, notif_reads, session=session)
-    return upres
+    # Не обновляем статус уведомлений, чтобы они оставались непрочитанными
+    return OperationResult(
+        OperationStatus.SUCCESS,
+        msg=f"Отправлено {len(notif_res.data)} уведомлений, статусы не изменены."
+    )
+
+
+# def send_pending_notifications(username) -> OperationResult:
+#     print(f"send_pending_notifications : username={username}")
+#     from db.crudcore import get_all_by_conditions
+#     from db.setup import get_session, setup_database
+#     engine = setup_database()
+#     session = get_session(engine)
+#     notif_res = get_all_by_conditions(
+#         Notification,
+#         [
+#             {'username': username},
+#             {'delivered': False}
+#         ]
+#     )
+#     if notif_res.status != OperationStatus.SUCCESS:
+#         if notif_res.message and "Не найдено" in notif_res.message:
+#             print(f"Уведомлений для {username} нет")
+#             return OperationResult(
+#                 OperationStatus.SUCCESS,
+#                 msg=f"Уведомлений для {username} нет"
+#             )
+#         return notif_res
+#
+#     from db.crudcore import bulk_update_records
+#     notif_reads = []
+#     for notif in notif_res.data:
+#         notif_dict = notif.to_dict()
+#         socketio.emit('notification', notif_dict, room=username)
+#         notif.delivered = True
+#         notif.delivered_at = datetime.utcnow()
+#         notif_reads.append({
+#             'id': notif.id,
+#             'delivered': notif.delivered,
+#             'delivered_at': notif.delivered_at
+#         })
+#     upres = bulk_update_records(Notification, notif_reads, session=session)
+#     return upres
 
 
 def register_socket_handlers(sio):
