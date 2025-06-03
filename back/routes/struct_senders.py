@@ -595,3 +595,60 @@ def send_quarter(form_data: any):
     except Exception as e:
         print("Ошибка при отправке уведомления orgadmin-у:", e)
     return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
+
+
+def process_create_water_consumption_header(form_data: dict) -> OperationResult:
+    print(f"==== process_create_water_consumption_header ====")
+    try:
+        # Проверяем наличие полей
+        required = ["point_id", "exploitation_org_id", "month", "log_status", "start_date"]
+        if not all(k in form_data for k in required):
+            return OperationResult(OperationStatus.VALIDATION_ERROR,
+                msg="Не переданы все поля для создания журнала учета")
+
+        point_id = form_data["point_id"]
+        exploitation_org_id = form_data["exploitation_org_id"]
+        month = form_data["month"]           # ожидать int или строку enum?
+        log_status = form_data["log_status"] # строка, совпадающая с log_status enum
+        start_date = form_data["start_date"] # строка "YYYY-MM-DD"
+
+        # Здесь может потребоваться перевести month в тип Month:
+        #   month_enum = Month[int(month)]  или Month[month_str]
+        # и аналогично для log_status
+
+        # Проверить дубли по point_id и month:
+        conditions = [
+            {"point_id": point_id},
+            {"month": month}
+        ]
+        existing = get_all_by_conditions(WaterConsumptionLog, conditions)
+        if existing.status != OperationStatus.SUCCESS:
+            return existing
+        if existing.data:
+            return OperationResult(
+                OperationStatus.VALIDATION_ERROR,
+                msg=f"Журнал за месяц {month} для точки {point_id} уже существует."
+            )
+
+        # Собираем данные для создания
+        data = {
+            "point_id": point_id,
+            "exploitation_org_id": exploitation_org_id,
+            "month": month,
+            "log_status": log_status,
+            "start_date": start_date
+        }
+
+        if create_record_entity(WaterConsumptionLog, data):
+            return OperationResult(
+                status=OperationStatus.SUCCESS,
+                msg="Журнал учета успешно создан"
+            )
+        else:
+            return OperationResult(
+                status=OperationStatus.DATABASE_ERROR,
+                msg="Не удалось создать журнал учета — ошибка БД"
+            )
+    except Exception as e:
+        print(f"Error in process_create_water_consumption_header: {e}")
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))

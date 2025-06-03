@@ -544,13 +544,12 @@ def notify():
     data = request.json
     target_user = data.get('username')
     message = data.get('message', 'Уведомление от сервера')
-
+    from utils.notify_utils import create_and_send_notification
     res = create_and_send_notification(target_user, message)
     if res.status != OperationStatus.SUCCESS:
         return jsonify({"error": "Ошибка при отправке уведомления", "message": res.message}), 500
 
     return jsonify({'status': 'sent', 'or_msg': res.message}), 200
-
 
 
 @api.route('/api/fetchallnotify', methods=['GET'])
@@ -569,3 +568,41 @@ def fetch_all_notify():
         print("Ошибка в fetch_all_notify:", e)
         print(traceback.format_exc())
         return jsonify({"error": "Внутренняя ошибка", "message": str(e)}), 500
+
+
+@api.route('/api/notification_reaction', methods=['POST'])
+@token_required
+def notification_reaction():
+    """
+    Ответная реакция на полученное уведомление,
+    основные типы реакций:\n
+        - "принято"\n
+        - "на доработку"\n
+        - "прочтено"
+    """
+    try:
+        payload = request.get_json(force=True)
+    except Exception as e:
+        print(f"[NOTIFY_R ERROR]: {e}")
+        return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+
+    reaction = payload.get('reaction')
+    if not reaction:
+        return jsonify({"success": False, "error": "Field 'reaction' is required"}), 400
+
+    # Debug logging
+    print(f" --> notification_reaction called with reaction: {reaction}")
+    pprint.pprint(payload)
+
+    # Delegate to handler
+    try:
+        from routes.notify_reactions import handle_notification_reaction
+        result = handle_notification_reaction(payload)
+    except Exception as e:
+        print("Error in handle_notification_reaction:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    if result.status != OperationStatus.SUCCESS:
+        return jsonify({"success": False, "error": result.message}), 500
+
+    return jsonify({"success": True, "message": result.message}), 200

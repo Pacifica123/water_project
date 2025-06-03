@@ -1,19 +1,56 @@
+// --- NotificationModal.jsx ---
 import React from "react";
-import "../css/NotificationModal.css"; // стили для модалки
+import "../css/NotificationModal.css";
+import { sendNotificationReaction } from "../api/notify_reaction";
 
-function NotificationModal({ notification, onClose }) {
+function NotificationModal({ notification, onClose, onReact }) {
     let parsedContent = null;
-    try {
-        parsedContent = JSON.parse(notification.text);
-    } catch (e) {
-        // не JSON
+    if (typeof notification.text === "string") {
+        try {
+            parsedContent = JSON.parse(notification.raw.text);
+        } catch (e) {
+            parsedContent = null;
+        }
+    }
+    else if (typeof notification.text === "object" && notification.text !== null) {
+        parsedContent = notification.text;
+    }
+
+
+    function handleReactionClick(reaction) {
+        if (typeof onReact !== "function") {
+            console.error("❌ onReact не передан в NotificationModal");
+            return;
+        }
+        // 1) отправка реакции и 2) перезагрузка списка
+        onReact(notification, reaction)
+        .then(() => {
+            // После успешного onReact обновляем содержимое родителя и закрываем модалку
+            onClose();
+        })
+        .catch((err) => {
+            alert("Ошибка при отправке реакции: " + err.message || err);
+        });
     }
 
     const renderWaterReportTable = (reportData) => {
         if (!Array.isArray(reportData)) return <p>Нет данных для отчёта</p>;
 
-        // Пример рендера таблицы по структуре reportData (массив объектов)
-        // reportData — массив по месяцам, каждый элемент — объект с категориями и значениями
+        const monthNames = [
+            "Январь",
+            "Февраль",
+            "Март",
+            "Апрель",
+            "Май",
+            "Июнь",
+            "Июль",
+            "Август",
+            "Сентябрь",
+            "Октябрь",
+            "Ноябрь",
+            "Декабрь",
+        ];
+
         return (
             <table className="water-report-table">
             <thead>
@@ -25,31 +62,22 @@ function NotificationModal({ notification, onClose }) {
             </tr>
             </thead>
             <tbody>
-            {parsedContent.quarter && reportData.map((monthData, idx) => {
-                // Можно вывести месяц по индексу квартала + месяц
-                const monthNames = [
-                    "Январь", "Февраль", "Март",
-                    "Апрель", "Май", "Июнь",
-                    "Июль", "Август", "Сентябрь",
-                    "Октябрь", "Ноябрь", "Декабрь"
-                ];
-
-                // Получаем месяцы квартала
-                const quarter = parsedContent.quarter;
-                const monthIndex = (quarter - 1) * 3 + idx; // 0-based индекс месяца
-                const monthName = monthNames[monthIndex] || `Месяц ${monthIndex + 1}`;
-
-                return (
-                    <tr key={idx}>
-                    <td>{monthName}</td>
-                    <td>{monthData.fact ?? "-"}</td>
-                    <td>{monthData.population ?? "-"}</td>
-                    <td>{monthData.other ?? "-"}</td>
-                    </tr>
-                );
-            })}
-            </tbody>
-            </table>
+            {parsedContent.quarter &&
+                reportData.map((monthData, idx) => {
+                    const quarter = parsedContent.quarter;
+                    const monthIndex = (quarter - 1) * 3 + idx;
+                    const monthName = monthNames[monthIndex] || `Месяц ${monthIndex + 1}`;
+                    return (
+                        <tr key={idx}>
+                        <td>{monthName}</td>
+                        <td>{monthData.fact ?? "-"}</td>
+                        <td>{monthData.population ?? "-"}</td>
+                        <td>{monthData.other ?? "-"}</td>
+                        </tr>
+                    );
+                })}
+                </tbody>
+                </table>
         );
     };
 
@@ -70,12 +98,20 @@ function NotificationModal({ notification, onClose }) {
                         <p>{parsedContent.message || notification.text}</p>
                         </div>
                     );
-                case "waterreportform":  // новый кейс
+                case "waterreportform":
                     return (
                         <div>
                         <h3>{parsedContent.header}</h3>
                         <p>{parsedContent.message}</p>
                         {renderWaterReportTable(parsedContent.reportData)}
+                        <div className="action-buttons">
+                        <button onClick={() => handleReactionClick("approve")}>
+                        Принять
+                        </button>
+                        <button onClick={() => handleReactionClick("revise")}>
+                        На доработку
+                        </button>
+                        </div>
                         </div>
                     );
                 case "registry":
@@ -105,14 +141,17 @@ function NotificationModal({ notification, onClose }) {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-        <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>×</button>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <button className="modal-close" onClick={onClose}>
+        ×
+        </button>
         {renderDetails()}
-        <p><small>Дата: {notification.date}</small></p>
+        <p>
+        <small>Дата: {notification.date}</small>
+        </p>
         </div>
         </div>
     );
 }
-
 
 export default NotificationModal;

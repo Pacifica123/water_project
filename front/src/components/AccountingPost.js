@@ -15,7 +15,9 @@ import {translate} from "../utils/translations.js";
 import FileUpload from "./FileUpload";
 import { sendFormData } from "../api/add_records";
 import { isoToRu } from "../utils/converters.js";
-
+import { getStringFieldsLabel } from "../utils/extractors";
+import InputMask from 'react-input-mask';
+import jsPDF from "jspdf";
 
 // Универсальный селект для перечислений и внешних ключей
 const ForeignKeySelect = ({ field, value, onChange }) => {
@@ -47,12 +49,13 @@ const ForeignKeySelect = ({ field, value, onChange }) => {
             if (!isMounted.current) return;
             // API возвращает массив или { data: [...] }
             const items = Array.isArray(records)
-              ? records
-              : records?.data || [];
+            ? records
+            : records?.data || [];
             setOptions(
               items.map(item => ({
                 value: item.id,
-                label: item.name || item.serial_number || String(item.id)
+                label: getStringFieldsLabel(item)
+                // label: item.name || item.serial_number || String(item.id)
               }))
             );
           } else {
@@ -85,24 +88,24 @@ const ForeignKeySelect = ({ field, value, onChange }) => {
     field.enumType,
     field.foreignKey,
     JSON.stringify(field.options),
-    field.referenceTable
+            field.referenceTable
   ]);
 
   return (
     <select
-      name={field.field}
-      value={value}
-      onChange={e =>
-        onChange({ target: { name: field.field, value: e.target.value } })
-      }
-      disabled={loading}
+    name={field.field}
+    value={value}
+    onChange={e =>
+      onChange({ target: { name: field.field, value: e.target.value } })
+    }
+    disabled={loading}
     >
-      <option value="">Выберите...</option>
-      {options.map(opt => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
+    <option value="">Выберите...</option>
+    {options.map(opt => (
+      <option key={opt.value} value={opt.value}>
+      {opt.label}
+      </option>
+    ))}
     </select>
   );
 };
@@ -116,7 +119,7 @@ const AccountingPost = () => {
   const [allLogs, setAllLogs] = useState([]);
   const [monthFilter, setMonthFilter] = useState(new Date().getMonth());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear());
-
+  const [exportLogId, setExportLogId] = useState(null);
 
   const [statusFilters, setStatusFilters] = useState({
     in_progress: true,
@@ -138,6 +141,32 @@ const AccountingPost = () => {
   };
   const [expandedLogs, setExpandedLogs] = useState({});
   const [logDetails, setLogDetails] = useState({});
+  // Показать/скрыть модалку создания журнала
+  const [showAddLogModal, setShowAddLogModal] = useState(false);
+  // Список enum-значений месяцев
+  const [monthsEnum, setMonthsEnum] = useState([
+    { value: "JANUARY",    label: "январь" },
+    { value: "FEBRUARY",   label: "февраль" },
+    { value: "MARCH",      label: "март" },
+    { value: "APRIL",    label: "апрель" },
+    { value: "MAY",       label: "май" },
+    { value: "JUNE",      label: "июнь" },
+    { value: "JULY",      label: "июль" },
+    { value: "AUGUST",    label: "август" },
+    { value: "SEPTEMBER",  label: "сентябрь" },
+    { value: "OCTOBER",   label: "октябрь" },
+    { value: "NOVEMBER",    label: "ноябрь" },
+    { value: "DECEMBER",   label: "декабрь" },
+  ]);
+
+  // Данные формы для нового журнала
+  const [headerData, setHeaderData] = useState({
+    point_id: "",
+    exploitation_org_id: null,
+    month: "",
+    log_status: "in_progress",
+    start_date: new Date().toISOString().slice(0, 10),
+  });
 
 
   // Для добавления нового пункта учета
@@ -174,6 +203,33 @@ const AccountingPost = () => {
     { value: "DISCHARGE", label: "Сброс" },
     // и т.д. — значения зависят от бэкенда
   ];
+  // const handleExpandLog = async (logId) => {
+  //   if (expandedLogs[logId]) {
+  //     // Закрываем текущий журнал
+  //     setExpandedLogs({});
+  //     setLogDetails((prev) => ({ ...prev, [logId]: null }));
+  //     setExportLogId(null);
+  //   } else {
+  //     // Закрываем все и открываем только выбранный
+  //     try {
+  //       const response = await fetchStructDataWithFilters("log_details", {
+  //         log_id: logId,
+  //       });
+  //       if (response && response.data) {
+  //         setLogDetails({ [logId]: response.data });
+  //         setExportLogId(logId);
+  //       } else {
+  //         setLogDetails({ [logId]: null });
+  //         setExportLogId(null);
+  //       }
+  //     } catch (error) {
+  //       console.error("Ошибка загрузки деталей журнала", error);
+  //       setLogDetails({ [logId]: null });
+  //       setExportLogId(null);
+  //     }
+  //     setExpandedLogs({ [logId]: true });
+  //   }
+  // };
 
 
   const userInfo = JSON.parse(localStorage.getItem("user"));
@@ -258,6 +314,129 @@ const AccountingPost = () => {
     applyFilters();
   }, [monthFilter, yearFilter, statusFilters, allLogs]);
 
+
+  const handleExportLogsToExcel = async () => {
+    // Если открыт журнал — выгружаем его
+    if (exportLogId && logDetails[exportLogId]) {
+      const log = logDetails[exportLogId];
+      const rows = log.wcl_list.map(entry => ({
+        "Дата измерения": new Date(entry.measurement_date).toLocaleDateString("ru-RU"),
+                                              "Дней эксплуатации": entry.operating_time_days,
+                                              "Расход воды (м³/день)": entry.water_consumption_m3_per_day,
+                                              "Подпись лица": entry.person_signature,
+      }));
+
+      const payload = {
+        status: "success",
+        message: `Детали журнала №${exportLogId}`,
+        data: rows,
+      };
+
+      try {
+        const response = await fetch("http://127.0.0.1:5000/api/json_to_excel", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            tokenJWTAuthorization: localStorage.getItem("token") || ""
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error("Ошибка при создании Excel");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `Журнал_${exportLogId}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (err) {
+        console.error("Ошибка экспорта:", err);
+        alert("Не удалось выгрузить Excel");
+      }
+    } else if (filteredLogs.length > 0) {
+      // Если не открыт конкретный журнал — выгружаем отфильтрованный список
+      const payload = {
+        status: "success",
+        message: "Export water consumption logs",
+        data: filteredLogs.map(log => ({
+          id: log.id,
+          organisation: log.organisation_name,
+          water_body: log.water_body_name,
+          coordinates: log.coordinates,
+          point_type: log.point_type,
+          start_date: log.start_date,
+          status: log.status
+        }))
+      };
+
+      try {
+        const response = await fetch("http://127.0.0.1:5000/api/json_to_excel",{
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            tokenJWTAuthorization: localStorage.getItem("token") || ""
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) throw new Error("Ошибка при создании Excel");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `Журналы_${monthFilter + 1}_${yearFilter}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (err) {
+        console.error("Ошибка экспорта:", err);
+        alert("Не удалось выгрузить Excel");
+      }
+    } else {
+      alert("Нет данных для выгрузки");
+    }
+  };
+
+
+  const handleExportLogsToPDF = () => {
+    if (filteredLogs.length === 0) {
+      alert("Нет данных для выгрузки");
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text("Журнал учёта водопотребления", 14, 20);
+    doc.setFontSize(11);
+    doc.text(
+      `Месяц: ${new Date(2024, monthFilter).toLocaleString('ru-RU', { month: 'long' })}, Год: ${yearFilter}`,
+             14,
+             28
+    );
+
+    const tableData = filteredLogs.map(log => ([
+      log.organisation_name,
+      log.water_body_name,
+      log.coordinates,
+      log.point_type,
+      log.start_date,
+      log.status
+    ]));
+
+    doc.autoTable({
+      startY: 35,
+      head: [["Организация", "Водный объект", "Координаты", "Тип", "Дата", "Статус"]],
+      body: tableData,
+      styles: { fontSize: 9 }
+    });
+
+    doc.save(`Журнал_${monthFilter + 1}_${yearFilter}.pdf`);
+  };
+
   const handleMonthChange = (event) => {
     setMonthFilter(parseInt(event.target.value));
   };
@@ -311,6 +490,7 @@ const AccountingPost = () => {
       // Закрываем текущий журнал
       setExpandedLogs({});
       setLogDetails((prev) => ({ ...prev, [logId]: null }));
+      setExportLogId(null);
     } else {
       // Закрываем все и открываем только выбранный
       try {
@@ -319,16 +499,20 @@ const AccountingPost = () => {
         });
         if (response && response.data) {
           setLogDetails({ [logId]: response.data });
+          setExportLogId(logId);
         } else {
           setLogDetails({ [logId]: null });
+          setExportLogId(null);
         }
       } catch (error) {
         console.error("Ошибка загрузки деталей журнала", error);
         setLogDetails({ [logId]: null });
+        setExportLogId(null);
       }
       setExpandedLogs({ [logId]: true });
     }
   };
+
 
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
 
@@ -368,69 +552,69 @@ const AccountingPost = () => {
     });
   };
 
-const handleSaveNewPoint = async () => {
-  // 1. Собираем data_point
-  const data_point = {
-    organisation_id: formData.organisation_id,
-    water_body_id: formData.water_body_id,
-    latitude_longitude: formData.latitude_longitude,
-    point_type: formData.point_type,
-    // переназначаем существующий счётчик в то, что ждёт бэкенд
-    meter_id: formData.existing_meter_id || null,
-  };
-
-  // 2. Собираем data_meter
-  let data_meter;
-  if (formData.existing_meter_id) {
-    // только id, чтобы бэкенд понял, что счётчик уже есть
-    data_meter = { id: formData.existing_meter_id };
-  } else {
-    // создаём новый прибор
-    data_meter = {
-      brand_id: newMeterData.brand_id,
-      serial_number: newMeterData.serial_number,
-      verification_date: isoToRu(newMeterData.verification_date),
-      verification_interval: newMeterData.verification_interval,
-      next_verification_date: isoToRu(newMeterData.next_verification_date),
+  const handleSaveNewPoint = async () => {
+    // 1. Собираем data_point
+    const data_point = {
+      organisation_id: formData.organisation_id,
+      water_body_id: formData.water_body_id,
+      latitude_longitude: formData.latitude_longitude,
+      point_type: formData.point_type,
+      // переназначаем существующий счётчик в то, что ждёт бэкенд
+      meter_id: formData.existing_meter_id || null,
     };
-  }
 
-  // 3. Собираем data_permission
-  const data_permission = {
-    permission_number: permissionData.permission_number,
-    registration_date: isoToRu(permissionData.registration_date),
-    expiration_date: isoToRu(permissionData.expiration_date),
-    permission_type: permissionData.permission_type,
-    allowed_volume_org: permissionData.allowed_volume_org,
-    allowed_volume_pop: permissionData.allowed_volume_pop,
-    method_type: permissionData.method_type,
-  };
-
-  // 4. Формируем общий payload
-  const payload = { data_point, data_meter, data_permission };
-
-  try {
-    const result = await sendFormData("create_water_point", payload);
-    // result: { status, msg, data? }
-    console.log(result);
-    if (result === "успешно") {
-      alert("Пункт учета успешно создан");
-      // тут можно сбросить форму, перезагрузить список и т.п.
-    } else if (result === "VALIDATION_ERROR") {
-      alert("Ошибка валидации: " + result.msg);
-    } else if (result === "CHOICE_WARNING") {
-      console.warn("Найдено несколько приборов:", result.data);
-      // тут можно например вывести модалку с выбором из result.data
+    // 2. Собираем data_meter
+    let data_meter;
+    if (formData.existing_meter_id) {
+      // только id, чтобы бэкенд понял, что счётчик уже есть
+      data_meter = { id: formData.existing_meter_id };
     } else {
-      alert("Не удалось создать: " + result.msg);
+      // создаём новый прибор
+      data_meter = {
+        brand_id: newMeterData.brand_id,
+        serial_number: newMeterData.serial_number,
+        verification_date: isoToRu(newMeterData.verification_date),
+        verification_interval: newMeterData.verification_interval,
+        next_verification_date: isoToRu(newMeterData.next_verification_date),
+      };
     }
-  } catch (e) {
-    console.error(e);
-    alert("Сетевая ошибка при отправке данных");
-  } finally {
-    setShowAddModal(false);
-  }
-};
+
+    // 3. Собираем data_permission
+    const data_permission = {
+      permission_number: permissionData.permission_number,
+      registration_date: isoToRu(permissionData.registration_date),
+      expiration_date: isoToRu(permissionData.expiration_date),
+      permission_type: permissionData.permission_type,
+      allowed_volume_org: permissionData.allowed_volume_org,
+      allowed_volume_pop: permissionData.allowed_volume_pop,
+      method_type: permissionData.method_type,
+    };
+
+    // 4. Формируем общий payload
+    const payload = { data_point, data_meter, data_permission };
+
+    try {
+      const result = await sendFormData("create_water_point", payload);
+      // result: { status, msg, data? }
+      console.log(result);
+      if (result === "успешно") {
+        alert("Пункт учета успешно создан");
+        // тут можно сбросить форму, перезагрузить список и т.п.
+      } else if (result === "VALIDATION_ERROR") {
+        alert("Ошибка валидации: " + result.msg);
+      } else if (result === "CHOICE_WARNING") {
+        console.warn("Найдено несколько приборов:", result.data);
+        // тут можно например вывести модалку с выбором из result.data
+      } else {
+        alert("Не удалось создать: " + result.msg);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Сетевая ошибка при отправке данных");
+    } finally {
+      setShowAddModal(false);
+    }
+  };
 
 
   const handlePermissionChange = (e) => {
@@ -448,11 +632,71 @@ const handleSaveNewPoint = async () => {
     { value: "other_population", label: "Другое население" },
   ];
 
+  const handleHeaderChange = (e) => {
+    const { name, value } = e.target;
+    setHeaderData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreateLog = async () => {
+    if (!headerData.point_id) {
+      alert("Пожалуйста, выберите водопункт.");
+      return;
+    }
+    if (!headerData.month) {
+      alert("Пожалуйста, выберите месяц.");
+      return;
+    }
+    try {
+      const payload = {
+        point_id: headerData.point_id,
+        exploitation_org_id: orgInfo.id,
+        month: headerData.month,
+        log_status: headerData.log_status,
+        start_date: headerData.start_date,
+      };
+      const result = await sendFormData(
+        "create_water_consumption_header",
+        payload
+      );
+      if (result.status === "SUCCESS") {
+        alert("Журнал учета успешно создан.");
+        setShowAddLogModal(false);
+        // Перезагрузим список журналов:
+        const response = await fetchStructDataWithFilters("logs_for_AP", {
+          role: userInfo.role,
+          org_id: orgInfo?.id,
+        });
+        if (response && response.data) {
+          const enrichedLogs = response.data.map((log) => {
+            const waterBody = log.point_id?.water_body_id;
+            const org = log.point_id?.organisation_id;
+            return {
+              id: log.id,
+              water_body_name:
+              waterBody?.code_obj_id?.code_value || "Без названия",
+              organisation_name: org?.organisation_name || "Неизвестно",
+              coordinates: log.point_id?.latitude_longitude || "-",
+              point_type: log.point_id?.point_type || "-",
+              start_date: log.start_date || "-",
+              status: log.log_status || "Неизвестно",
+            };
+          });
+          setAllLogs(enrichedLogs);
+          setFilteredLogs(enrichedLogs);
+        }
+      } else {
+        alert("Ошибка при создании журнала: " + result.msg);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Сетевая или системная ошибка при создании журнала.");
+    }
+  };
 
 
   return (
     <div className="accounting-container">
-    <h2 align="center">Журнал учета водопотребления</h2>
+    <h2 align="center">Журналы учета водопотребления и пункты учета</h2>
 
     {/* Модальное окно для добавления */}
     {showAddModal && (
@@ -475,13 +719,32 @@ const handleSaveNewPoint = async () => {
       />
       </div>
       <div className="label-modal">
-      <label >Координаты (широта, долгота):</label>
-      <input
-      type="text"
-      name="latitude_longitude"
-      value={formData.latitude_longitude}
+      <label>Координаты (широта, долгота):</label>
+      <InputMask
+      mask="99°99′99″ с.ш., 99°99′99″ в.д."
+      value={formData.latitude_longitude || "00°00′00″ с.ш., 00°00′00″ в.д."}
       onChange={handleFormChange}
-      />
+      >
+      {(inputProps) => (
+        <input
+        {...inputProps}
+        type="text"
+        name="latitude_longitude"
+        placeholder="55°45′30″ с.ш., 37°36′20″ в.д."
+        className="coordinate-input"
+        style={{
+          background: "#181818",
+          color: "#fff",
+          border: "1px solid #333",
+          borderRadius: "6px",
+          padding: "8px 12px",
+          fontFamily: "inherit",
+          fontSize: "1rem"
+        }}
+        />
+      )}
+      </InputMask>
+
       </div>
       <div className="label-modal">
       <label> Тип пункта:</label>
@@ -575,14 +838,14 @@ const handleSaveNewPoint = async () => {
       onChange={handlePermissionChange}
       />
       </div>
-<div className="label-modal">
-  <label>Тип разрешения:</label>
-  <ForeignKeySelect
-    field={{ field: 'permission_type', isEnum: true, enumType: 'PermissionType' }}
-    value={permissionData.permission_type}
-    onChange={handlePermissionChange}
-  />
-</div>
+      <div className="label-modal">
+      <label>Тип разрешения:</label>
+      <ForeignKeySelect
+      field={{ field: 'permission_type', isEnum: true, enumType: 'PermissionType' }}
+      value={permissionData.permission_type}
+      onChange={handlePermissionChange}
+      />
+      </div>
 
       <div className="label-modal">
       <label>Разрешённый объём (организации):</label>
@@ -605,27 +868,27 @@ const handleSaveNewPoint = async () => {
       />
       </div>
 
-<div className="label-modal">
-<label>Выберете метод:</label>
-<ForeignKeySelect
-field={{ field: 'method_type', isEnum: true, enumType: 'RatesType' }}
-value={permissionData.method_type}
-onChange={handlePermissionChange}
-/>
-</div>
+      <div className="label-modal">
+      <label>Выберете метод:</label>
+      <ForeignKeySelect
+      field={{ field: 'method_type', isEnum: true, enumType: 'RatesType' }}
+      value={permissionData.method_type}
+      onChange={handlePermissionChange}
+      />
+      </div>
 
 
       <div className="label-modal" style={{marginTop: 10, color: "#888", fontStyle: "italic"}}>
-          <FileUpload
-            label="Скан разрешения"
-            accept="application/pdf"
-            icon="📄"
-            entityType="permission"
-            entityId={permissionData.permission_number}
-            fileType={"PERMISSION_SCAN"}
-            preview={true}
-            onUpload={uploadFileToBackend}
-          />
+      <FileUpload
+      label="Скан разрешения"
+      accept="application/pdf"
+      icon="📄"
+      entityType="permission"
+      entityId={permissionData.permission_number}
+      fileType={"PERMISSION_SCAN"}
+      preview={true}
+      onUpload={uploadFileToBackend}
+      />
       </div>
       </div>
 
@@ -638,6 +901,89 @@ onChange={handlePermissionChange}
 
       </div>
     )}
+    {/* ------------------------------------------------------------ */}
+    {/* Новый блок: кнопка и модалка «Создать журнал учета» */}
+    <div className="header-section">
+    <button
+    className="custom-button"
+    onClick={() => setShowAddLogModal(true)}
+    >
+    Создать журнал учета
+    </button>
+    </div>
+
+    {showAddLogModal && (
+      <div className="modal-overlay">
+      <div className="modal-content">
+      <h3>Создать новый журнал учета</h3>
+
+      <div className="label-modal">
+      <label>Водопункт:</label>
+      <ForeignKeySelect
+      field={{
+        field: "point_id",
+        foreignKey: true,
+          referenceTable: "water_point",
+      }}
+      value={headerData.point_id}
+      onChange={handleHeaderChange}
+      />
+      </div>
+
+      <div className="label-modal">
+      <label>Месяц:</label>
+      <select
+      name="month"
+      value={headerData.month}
+      onChange={handleHeaderChange}
+      >
+      <option value="" disabled>
+      — выберите месяц —
+      </option>
+      {monthsEnum.map((item) => (
+        <option key={item.value} value={item.value}>
+        {item.label.charAt(0).toUpperCase() +
+          item.label.slice(1)}
+          </option>
+      ))}
+      </select>
+      </div>
+
+      <div className="label-modal">
+      <label>Дата открытия:</label>
+      <input
+      type="date"
+      name="start_date"
+      value={headerData.start_date}
+      onChange={handleHeaderChange}
+      />
+      </div>
+
+      <div className="label-modal">
+      <label>Статус:</label>
+      <input
+      type="text"
+      value="in_progress"
+      disabled
+      style={{ backgroundColor: "#f3f3f3" }}
+      />
+      </div>
+
+      <div className="modal-actions">
+      <button className="add-button" onClick={handleCreateLog}>
+      Сохранить журнал
+      </button>
+      <button
+      className="delete-button"
+      onClick={() => setShowAddLogModal(false)}
+      >
+      Отмена
+      </button>
+      </div>
+      </div>
+      </div>
+    )}
+    {/* ------------------------------------------------------------ */}
 
 
     {isLoading ? (
@@ -698,6 +1044,16 @@ onChange={handlePermissionChange}
       {userInfo.role === "UserRoles.EMPLOYEE" && (
         <button className="custom-button" onClick={()=> setShowAddModal(true) }>Создать журнал учета</button>
       )}
+
+      </div>
+
+
+      <div className="filter-block">
+      {userInfo.role === "UserRoles.EMPLOYEE" && (
+        <button className="custom-button" onClick={handleExportLogsToExcel}>
+        Выгрузить журнал в Excel
+        </button>
+      )}
       </div>
       </div>
 
@@ -734,7 +1090,7 @@ onChange={handlePermissionChange}
           <td>{log.coordinates}</td>
           <td>{translate(log.point_type)}</td>
           <td>{log.start_date}</td>
-         <td className={getStatusClass(log.status)}>{translate(log.status)}</td>
+          <td className={getStatusClass(log.status)}>{translate(log.status)}</td>
           {userInfo.role === "UserRoles.EMPLOYEE" && (
             <td>
             <button className="custom-button" onClick={() => handleExpandLog(log.id)}>

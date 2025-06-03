@@ -293,6 +293,8 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
             return process_water_consumption_single(form_data)
         case "water_consumption_many":
             pass
+        case "create_water_consumption_header":
+            return process_create_water_consumption_header(form_data)
         case "payment_calculation":
             pass
         case "f31":

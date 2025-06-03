@@ -2,10 +2,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 25px;
+  padding: 10px;
   font-family: Arial, sans-serif;
   font-size: 1.4rem;
-  zoom: 1.25;
+  zoom: 1.15;
 
 }
 
@@ -67,4 +67,20 @@
   background-color: #c5303f;
   color:white;
   font-weight: bold;
+}
+
+.upcoef-container{
+  background-color: #f9f9f9;
+  padding: 1.4vh 1vw;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 641px;
+}
+
+.rates-container{
+  background-color: #f9f9f9;
+  padding: 1.4vh 2vw;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 641px;
 }

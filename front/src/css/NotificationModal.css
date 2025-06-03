@@ -12,8 +12,8 @@
 }
 
 .modal-content {
-    background: #222; /* темный минимализм */
-    color: #eee;
+    background: #f9f9f9; /* темный минимализм */
+    color: black;
     padding: 20px;
     border-radius: 6px;
     max-width: 500px;
@@ -28,7 +28,7 @@
     right: 15px;
     background: transparent;
     border: none;
-    color: #eee;
+    color: black;
     font-size: 24px;
     cursor: pointer;
 }
@@ -38,6 +38,7 @@
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
+    color: black;
 }
 
 .water-report-table th,
@@ -45,9 +46,10 @@
     border: 1px solid #ccc;
     padding: 6px 10px;
     text-align: center;
+    color: black;
 }
 
 .water-report-table th {
-    background-color: #222;
-    color: #eee;
+    background-color: #f9f9f9;
+    color: black;
 }

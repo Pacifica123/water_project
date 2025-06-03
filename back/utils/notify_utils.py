@@ -1,14 +1,28 @@
 from db.models import Notification
 from db.crudcore import create_record_entity
 from utils.backend_utils import OperationResult, OperationStatus
+from datetime import datetime
+
+import json
 
 
 def create_and_send_notification(username: str, message: str) -> OperationResult:
+    notif_type = "Общее"
+    print(message)
+    try:
+        data = json.loads(message)
+        if isinstance(data, dict) and 'type' in data:
+            notif_type = data['type']
+    except (json.JSONDecodeError, TypeError):
+        pass
+
     notif = {
         'username': username,
         'message': message,
-        'delivered': False
+        'delivered': False,
+        'delivered_at': datetime.utcnow()
     }
+
     if not create_record_entity(Notification, notif):
         return OperationResult(
             status=OperationStatus.DATABASE_ERROR,

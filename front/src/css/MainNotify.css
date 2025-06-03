@@ -102,13 +102,13 @@
 
 .large-notify {
     padding: 20px;
-    max-width: 1200px;
+    max-width: 100%;
     margin: 0 auto;
     background-color: #f9f9f9;
-    zoom: 1.5;
-    max-height: 700px;
-    height: 504px;
-    width: 964px;
+    zoom: 1.2;
+    width: 1200px;
+    overflow: auto;
+    box-sizing: border-box;
 }
 
 .notify-date-selectors {

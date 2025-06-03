@@ -32,7 +32,7 @@ def send_notification(username: str, message: str) -> OperationResult:
             first_notif = next(iter(sorted(notif_list, key=lambda n: n.created_at)), None)
 
             if first_notif:
-                first_notif.delivered = True
+                # first_notif.delivered = True
                 first_notif.delivered_at = datetime.utcnow()
                 from db.crudcore import update_record
                 return update_record(
@@ -52,6 +52,8 @@ def send_notification(username: str, message: str) -> OperationResult:
             OperationStatus.CONNECTION_ERROR,
             msg="Проблема с socketio"
         )
+
+
 def send_pending_notifications(username) -> OperationResult:
     print(f"send_pending_notifications : username={username}")
     from db.crudcore import get_all_by_conditions

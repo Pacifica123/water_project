@@ -19,6 +19,11 @@ class RatesType(PyEnum):
     OTHER_POPULATION = "other_population"
 
 
+class UpCoefType(PyEnum):
+    OTHER_METHOD = "other_method"
+    OUT_PERMISSION = "out_permission"
+
+
 class PermissionType(PyEnum):
     WATER_WITHDRAWAL = "water_withdrawal"
     DISCHARGE = "discharge"
@@ -151,7 +156,14 @@ class Notification(Base):
         }
 
     def get_type_display(self):
-        # если у тебя нет отдельного поля type, можно вернуть "Общее" или логику по message
+        try:
+            import json
+            data = json.loads(self.message)
+            # Предположим, что тип хранится в ключе 'type'
+            if isinstance(data, dict) and 'type' in data:
+                return data['type']
+        except (json.JSONDecodeError, TypeError):
+            print(f"не удалось получить тип для Notification")
         return "Общее"
 
 
@@ -752,3 +764,10 @@ class Rates(Base):
     value: Mapped[float] = mapped_column(Float, nullable=False)
     rate_type: Mapped[RatesType] = mapped_column(SQLAEnum(RatesType), nullable=False)
 
+
+class UpCoef(Base):
+    __tablename__ = "up_coef"
+
+    coeftype: Mapped[UpCoefType] = mapped_column(SQLAEnum(UpCoefType), nullable=False)
+    start_date: Mapped[Date] = mapped_column(Date, nullable=False)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
