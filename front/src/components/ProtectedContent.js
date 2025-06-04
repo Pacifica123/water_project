@@ -88,12 +88,15 @@ function ProtectedContent({ onLogout }) {
     <div className="app">
     <Header userInfo={userInfo} onLogout={onLogout} orgInfo={orgInfo}  toggleSidebar={toggleSidebar}/>
     <div className="main-layout">
-    <Sidebar
-    setActiveSection={setActiveSection}
-    allowedSections={allowedSections}
-    activeSection={activeSection}
-    isVisible={isSidebarVisible}
-    />
+    {userInfo.role !== "UserRoles.ADMIN" && (
+      <Sidebar
+      setActiveSection={setActiveSection}
+      allowedSections={allowedSections}
+      activeSection={activeSection}
+      isVisible={isSidebarVisible}
+      />
+    )}
+
     <main className="main-content">{renderContent()}</main>
     </div>
     <Footer setActiveSection={setActiveSection} />
@@ -129,7 +132,7 @@ function getAllowedSections(role) {
 function Header({ userInfo, onLogout, orgInfo, toggleSidebar }) {
   return (
     <header className="header">
-    <button className="sidebar-toggle"  onClick={toggleSidebar}>☰</button>
+    <button className="sidebar-toggle" style={{ visibility: userInfo.role === "UserRoles.ADMIN" ? "hidden" : "visible" }}  onClick={toggleSidebar}>☰</button>
     <h1>Личный кабинет ({orgInfo.organisation_name || 'Без организации'})</h1>
     <div className="header-right">
     <span className="visibel">{userInfo.last_name} {userInfo.first_name} {userInfo.middle_name}</span>

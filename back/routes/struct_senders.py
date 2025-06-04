@@ -151,12 +151,34 @@ def parse_f31(
 
     # 9. Определение latitude_longitude из первой строки данных
     # в first_data: [ ..., lat_deg, lat_min, lat_sec, lon_deg, lon_min, lon_sec, ... ]
-    lat_deg, lat_min, lat_sec = first_data[5], first_data[6], first_data[7]
-    lon_deg, lon_min, lon_sec = first_data[8], first_data[9], first_data[10]
-    lat_str = f"{int(lat_deg)}°{int(lat_min)}′{int(lat_sec)}″ с.ш."
-    lon_str = f"{int(lon_deg)}°{int(lon_min)}′{int(lon_sec)}″ в.д."
+    # lat_deg, lat_min, lat_sec = first_data[5], first_data[6], first_data[7]
+    # lon_deg, lon_min, lon_sec = first_data[8], first_data[9], first_data[10]
+    # lat_str = f"{int(lat_deg)}°{int(lat_min)}′{int(lat_sec)}″ с.ш."
+    # lon_str = f"{int(lon_deg)}°{int(lon_min)}′{int(lon_sec)}″ в.д."
+    # latlon = f"{lat_str}, {lon_str}"
+    # print(f"[parse_f31] latitude_longitude={latlon}")
+
+    def to_int(x):
+        return int(float(str(x).replace(',', '.')))
+    def to_float(x):
+        return float(str(x).replace(',', '.'))
+
+    lat_deg = to_int(first_data[5])
+    lat_min = to_int(first_data[6])
+    lat_sec = to_float(first_data[7])
+    lon_deg = to_int(first_data[8])
+    lon_min = to_int(first_data[9])
+    lon_sec = to_float(first_data[10])
+
+    # Округляем секунды по математическим правилам
+    lat_sec_rounded = round(lat_sec)
+    lon_sec_rounded = round(lon_sec)
+
+    # Форматируем минуты и секунды с ведущим нулём
+    lat_str = f"{lat_deg}°{lat_min:02d}′{lat_sec_rounded:02d}″ с.ш."
+    lon_str = f"{lon_deg}°{lon_min:02d}′{lon_sec_rounded:02d}″ в.д."
     latlon = f"{lat_str}, {lon_str}"
-    print(f"[parse_f31] latitude_longitude={latlon}")
+    print(f"[parse_f32] latitude_longitude={latlon}")
 
     # 10. Поиск water_point по organisation_id, water_object_ref_id, latitude_longitude
     wp = get_all_by_conditions(WaterPoint, [
@@ -277,6 +299,376 @@ def parse_f31(
                            msg=f"Обработано {len(saved_ids)} записей",
                            data=saved_ids)
 
+
+def parse_f32(
+    excel_data: List[List[Any]],
+    replace_duplicates: bool = False
+) -> OperationResult:
+    print("[parse_f32] Начало обработки формы 3.2")
+
+    # 1. Проверка формы
+    if not excel_data or not isinstance(excel_data[0], list) \
+       or not str(excel_data[0][0]).startswith(
+        "Сведения, полученные в результате учета объема сброса"
+    ):
+        print("[parse_f32] Форма 3.2 не найдена")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="Не найдена форма 3.2 в переданном файле"
+        )
+    print("[parse_f32] Форма найдена")
+
+    # 2. Квартал/год → Month
+    try:
+        quarter = int(excel_data[1][6])
+        year = int(excel_data[1][9])
+        print(f"[parse_f32] quarter={quarter}, year={year}")
+        month_map = {1: Month.MARCH, 2: Month.JUNE, 3: Month.SEPTEMBER, 4: Month.DECEMBER}
+        form_month = month_map[quarter]
+    except Exception as e:
+        print(f"[parse_f32] Ошибка квартал/год: {e}")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="Неверный формат квартала или года"
+        )
+
+    # 3. Поиск по лейблу
+    def find_row(substr: str) -> Optional[int]:
+        for i, row in enumerate(excel_data):
+            if isinstance(row, list):
+                for cell in row:
+                    if isinstance(cell, str) and substr.lower() in cell.lower():
+                        print(f"[parse_f32] Метка '{substr}' найдена в строке {i}")
+                        return i
+        print(f"[parse_f32] Метка '{substr}' не найдена")
+        return None
+
+    # 4. Разбор шапки
+    headers = {
+        'org_name':    'Наименование - для юридического лица',
+        'inn':         'ИНН',
+        'pool':        'Бассейновый округ',
+        'region':      'Наименование субъекта Российской Федерации',
+        'meter_brand': 'Марка прибора водоучета',
+        'verif':       'Дата последней поверки'
+    }
+    parsed: Dict[str, Any] = {}
+    for key, lbl in headers.items():
+        idx = find_row(lbl)
+        if idx is None:
+            return OperationResult(
+                OperationStatus.VALIDATION_ERROR,
+                msg=f"Не найдена метка '{lbl}'"
+            )
+        row = excel_data[idx]
+        try:
+            val = next(c for c in row[4:] if c not in (None, ""))
+            print(f"[parse_f32] {lbl} = {val}")
+        except StopIteration:
+            print(f"[parse_f32] Пустое значение для '{lbl}'")
+            return OperationResult(
+                OperationStatus.VALIDATION_ERROR,
+                msg=f"Пустое значение для '{lbl}'"
+            )
+        parsed[key] = val
+
+    # Преобразование типов шапки
+    try:
+        # org_inn = int(parsed['inn'])
+        org_inn = parsed['inn']
+        meter_brand = str(parsed['meter_brand'])
+        verif_raw = parsed['verif']
+        if isinstance(verif_raw, (int, float)):
+            verif_date = datetime.date(1899, 12, 30) + datetime.timedelta(days=int(verif_raw))
+            verif_interval = None
+        else:
+            p = str(verif_raw).split('-')
+            verif_date = datetime.datetime.strptime(p[0].strip(), "%m/%d/%Y").date()
+            verif_interval = int(p[1].split()[0])
+        print(f"[parse_f32] org_inn={org_inn}, meter={meter_brand}, verif={verif_date}/{verif_interval}")
+    except Exception as e:
+        print(f"[parse_f32] Ошибка типов шапки: {e}")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="Неверный формат данных шапки"
+        )
+
+    # 5. Поиск организации
+    of = get_all_by_conditions(Organisations, [{'inn': str(org_inn)}])
+    if of.status != OperationStatus.SUCCESS or len(of.data) != 1:
+        print(f"[parse_f32] Организация не найдена или неоднозначна: {of}")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="Организация не найдена или неоднозначна"
+        )
+    organisation_id = of.data[0].id
+    print(f"[parse_f32] organisation_id={organisation_id}")
+
+    # 6. Разбор блока разрешений
+    perm_row = find_row('Реквизиты документа')
+    if perm_row is None or perm_row + 1 >= len(excel_data):
+        print("[parse_f32] Блок разрешений не найден")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="Не найден блок Реквизиты документа"
+        )
+    vals = excel_data[perm_row + 1]
+    try:
+        perm_number = next(c for c in vals[4:] if isinstance(c, str) and c.strip())
+        def parse_date_cell(x):
+            if isinstance(x, (int, float)):
+                return datetime.date(1899, 12, 30) + datetime.timedelta(days=int(x))
+            return datetime.datetime.strptime(str(x), "%m/%d/%Y").date()
+        perm_reg_date = parse_date_cell(vals[15])
+        perm_end_date = parse_date_cell(vals[17])
+        print(f"[parse_f32] perm_number={perm_number}, reg={perm_reg_date}, end={perm_end_date}")
+    except Exception as e:
+        print(f"[parse_f32] Ошибка разрешений: {e}")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="Неверный формат блока разрешений"
+        )
+
+    # 7. Поиск water_object_ref по Code из табличной части
+    k0 = find_row('Наименование водного объекта')
+    k1 = find_row('вида водного объекта')
+    k2 = find_row('град.')
+    if k0 is None or k1 is None or k2 is None:
+        print("[parse_f32] Заголовки таблицы не найдены")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="Шапка таблицы не распознана"
+        )
+    data_start = max(k0, k1, k2) + 2
+    first_data = next(r for r in excel_data[data_start:] if any(c not in (None, "") for c in r))
+    code_col = next(i for i, c in enumerate(excel_data[k0]) if isinstance(c, str) and 'коды' in c.lower())
+    water_code = first_data[code_col + 1]
+    print(f"[parse_f32] water_object_code={water_code}")
+    code_rec = get_all_by_conditions(Codes, [
+        {'code_type': CodeType.WATER_OBJ_CODE},
+        {'code_symbol': str(water_code)}
+    ])
+    if code_rec.status != OperationStatus.SUCCESS or len(code_rec.data) != 1:
+        print(f"[parse_f32] Код объекта не найден в Codes: {code_rec}")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="Код водного объекта не найден"
+        )
+    code_id = code_rec.data[0].id
+    wor = get_all_by_conditions(WaterObjectRef, [{'code_obj_id': code_id}])
+    if wor.status != OperationStatus.SUCCESS or len(wor.data) != 1:
+        print(f"[parse_f32] WaterObjectRef не найден: {wor}")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="WaterObjectRef не найден"
+        )
+    water_object_ref_id = wor.data[0].id
+    print(f"[parse_f32] water_object_ref_id={water_object_ref_id}")
+
+    # 8. Парсинг координат
+    def to_int(x):
+        return int(float(str(x).replace(',', '.')))
+    def to_float(x):
+        return float(str(x).replace(',', '.'))
+
+    lat_deg = to_int(first_data[5])
+    lat_min = to_int(first_data[6])
+    lat_sec = to_float(first_data[7])
+    lon_deg = to_int(first_data[8])
+    lon_min = to_int(first_data[9])
+    lon_sec = to_float(first_data[10])
+
+    # Округляем секунды по математическим правилам
+    lat_sec_rounded = round(lat_sec)
+    lon_sec_rounded = round(lon_sec)
+
+    # Форматируем минуты и секунды с ведущим нулём
+    lat_str = f"{lat_deg}°{lat_min:02d}′{lat_sec_rounded:02d}″ с.ш."
+    lon_str = f"{lon_deg}°{lon_min:02d}′{lon_sec_rounded:02d}″ в.д."
+    latlon = f"{lat_str}, {lon_str}"
+    print(f"[parse_f32] latitude_longitude={latlon}")
+
+
+
+    wp = get_all_by_conditions(WaterPoint, [
+        {'organisation_id': organisation_id},
+        {'water_body_id': water_object_ref_id},
+        {'latitude_longitude': latlon}
+    ])
+    if wp.status != OperationStatus.SUCCESS or len(wp.data) != 1:
+        print(f"[parse_f32] WaterPoint не найден или неоднозначен: {wp}")
+        return OperationResult(
+            OperationStatus.VALIDATION_ERROR,
+            msg="WaterPoint не найден или неоднозначен"
+        )
+    point_id = wp.data[0].id
+    print(f"[parse_f32] point_id={point_id}")
+
+    # 9. Определение индексов колонок табличной части
+    # cat_col: код категории
+    try:
+        cat_col = next(i for i, c in enumerate(excel_data[k1]) if isinstance(c, str) and 'категории качества' in c.lower())
+
+        # total
+        total_col = next(i for i, c in enumerate(excel_data[k1]) if isinstance(c, str) and 'всего' in c.lower())
+        # without_cleaning
+        without_cleaning_col = next(i for i, c in enumerate(excel_data[k2]) if isinstance(c, str) and 'без очистки' in c.lower())
+        # not_suff_cleaned
+        not_suff_cleaned_col = next(i for i, c in enumerate(excel_data[k2]) if isinstance(c, str) and 'недоста' in c.lower())
+        # standard_without_cleaning
+        standard_without_cleaning_col = next(i for i, c in enumerate(excel_data[k1]) if isinstance(c, str) and 'норма' in c.lower())
+        # standard_biological
+        standard_biological_col = next(i for i, c in enumerate(excel_data[k2]) if isinstance(c, str) and 'биологи' in c.lower())
+        # standard_physico_chemical
+        standard_physico_chemical_col = next(i for i, c in enumerate(excel_data[k2]) if isinstance(c, str) and 'физико-хими' in c.lower())
+        # standard_mechanical
+        standard_mechanical_col = next(i for i, c in enumerate(excel_data[k2]) if isinstance(c, str) and 'механи' in c.lower())
+        # other (если есть)
+        other_col = None
+        for i, c in enumerate(excel_data[k2]):
+            if isinstance(c, str) and 'проч' in c.lower():
+                other_col = i
+                break
+    except Exception as e:
+        print(f"{e}")
+    print(f"[parse_f32] cat_col={cat_col}, total_col={total_col}, without_cleaning_col={without_cleaning_col}, not_suff_cleaned_col={not_suff_cleaned_col}")
+    print(f"[parse_f32] standard_without_cleaning_col={standard_without_cleaning_col}, standard_biological_col={standard_biological_col}, standard_physico_chemical_col={standard_physico_chemical_col}, standard_mechanical_col={standard_mechanical_col}, other_col={other_col}")
+
+    # 10. Мэппинг кодов → CategoryQualityDischarge
+    code_map32 = {
+        'СК': 'SK', 'СД': 'SD', 'ШР': 'SHR', 'КР': 'KR', 'КД': 'KD',
+        'ЛВ': 'LV', 'ТН': 'TN', 'ТР': 'TR', 'ТП': 'TP',
+        'РВ': 'RV', 'БЛ': 'BL', 'РС': 'RS'
+    }
+
+    records: List[Any] = []
+    def to_float_or_none(x):
+        if x in (None, ""):
+            return None
+        try:
+            return float(str(x).replace(',', '.'))
+        except Exception:
+            raise ValueError(f"Нечисловое значение: {x}")
+
+    def safe_to_float(row: List[Any], idx: Optional[int]) -> Optional[float]:
+        if idx is None or idx >= len(row):
+            return None
+        return to_float_or_none(row[idx])
+
+
+    for idx, row in enumerate(excel_data[data_start:], start=data_start):
+        if not any(c not in (None, "") for c in row):
+            continue
+
+        raw_code = row[cat_col]
+        if raw_code in (None, ""):
+            print(f"[parse_f32] Пустой код категории на строке {idx}, пропускаем")
+            continue
+        if raw_code not in code_map32:
+            print(f"[parse_f32] Неизвестный код качества сброса {raw_code} на строке {idx}")
+            return OperationResult(
+                OperationStatus.VALIDATION_ERROR,
+                msg=f"Неизвестный код качества сброса {raw_code}"
+            )
+        cq = CategoryQualityDischarge[code_map32[raw_code]]
+        print(f"[parse_f32] Строка {idx}, код качества сброса={raw_code}")
+
+        try:
+            total_val                    = safe_to_float(row, total_col)
+            without_cleaning_val         = safe_to_float(row, without_cleaning_col)
+            not_suff_cleaned_val         = safe_to_float(row, not_suff_cleaned_col)
+            standard_without_cleaning_val= safe_to_float(row, standard_without_cleaning_col)
+            standard_biological_val      = safe_to_float(row, standard_biological_col)
+            standard_physico_chemical_val= safe_to_float(row, standard_physico_chemical_col)
+            standard_mechanical_val      = safe_to_float(row, standard_mechanical_col)
+            other_val                    = safe_to_float(row, other_col)
+        except ValueError as e:
+            print(f"[parse_f32] {e} на строке {idx}")
+            return OperationResult(
+                OperationStatus.VALIDATION_ERROR,
+                msg=str(e)
+            )
+
+        rec = WCLfor32(
+            point_id                    = int(point_id),
+            month                       = form_month,
+            category_quality            = cq,
+            total                       = total_val,
+            without_cleaning            = without_cleaning_val,
+            not_suff_cleaned            = not_suff_cleaned_val,
+            standard_without_cleaning   = standard_without_cleaning_val,
+            standard_biological         = standard_biological_val,
+            standard_physico_chemical   = standard_physico_chemical_val,
+            standard_mechanical         = standard_mechanical_val,
+            other                       = other_val,
+            signed_by                   = None
+        )
+        records.append(rec)
+    print(f"[parse_f32] Подготовлено записей: {len(records)}")
+
+    # 11. Поиск и запись подписи
+    signed = None
+    for row in excel_data[data_start + 1:]:
+        if not any(c not in (None, "") for c in row):
+            continue
+        for c in row:
+            if isinstance(c, str) and len(c.strip()) > 10:
+                signed = c.strip()
+                print(f"[parse_f32] signed_by={signed}")
+                break
+        if signed:
+            break
+
+    for r in records:
+        r.signed_by = signed
+
+    # 12. Сохранение и дубликаты
+    saved_ids: List[int] = []
+    for rec in records:
+        ex = get_all_by_conditions(WCLfor32, [
+            {'point_id':        rec.point_id},
+            {'month':           rec.month},
+            {'category_quality': rec.category_quality}
+        ])
+        if ex.status == OperationStatus.SUCCESS and ex.data:
+            if not replace_duplicates:
+                print(f"[parse_f32] Дубликат для month={rec.month}, category={rec.category_quality}")
+                return OperationResult(OperationStatus.DATA_DUPLICATE_ERROR, msg="Дубликат найден")
+            old = ex.data[0]
+            print(f"[parse_f32] Перезапись ID={old.id}")
+            old.total                     = rec.total
+            old.without_cleaning          = rec.without_cleaning
+            old.not_suff_cleaned          = rec.not_suff_cleaned
+            old.standard_without_cleaning = rec.standard_without_cleaning
+            old.standard_biological       = rec.standard_biological
+            old.standard_physico_chemical = rec.standard_physico_chemical
+            old.standard_mechanical       = rec.standard_mechanical
+            old.other                     = rec.other
+            old.signed_by                 = rec.signed_by
+            if not create_record_entity(old.__class__, old.__dict__):
+                print("[parse_f32] Ошибка обновления")
+                return OperationResult(OperationStatus.DATABASE_ERROR, msg="Ошибка обновления")
+            create_record_entity(History, {
+                'table_name': 'wcl_32',
+                'record_id':  old.id,
+                'comment':    'parse_f32 overwrite'
+            })
+            saved_ids.append(old.id)
+        else:
+            rec_dict = {k: v for k, v in rec.__dict__.items() if k != '_sa_instance_state'}
+            if not create_record_entity(WCLfor32, rec_dict):
+                print("[parse_f32] Ошибка создания")
+                return OperationResult(OperationStatus.DATABASE_ERROR, msg="Ошибка сохранения")
+            nid = get_last_record_id(WCLfor32)
+            print(f"[parse_f32] Создана запись ID={nid}")
+            saved_ids.append(nid)
+
+    print(f"[parse_f32] Завершено, сохранено={len(saved_ids)}")
+    return OperationResult(
+        OperationStatus.SUCCESS,
+        msg=f"Обработано {len(saved_ids)} записей",
+        data=saved_ids
+    )
 
 
 def create_full_waterpoint(

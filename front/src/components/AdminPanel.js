@@ -17,6 +17,7 @@ import InputMask from "react-input-mask";
 
 const AdminPanel = () => {
   // Основные состояния
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [tableList, setTableList] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
   const [tableRecords, setTableRecords] = useState([]);
@@ -38,7 +39,7 @@ const AdminPanel = () => {
     "Локации и объекты":["water_area_ref","water_object_ref","water_pool_ref","water_point","sampling_location"],
     "Журналы и записи":["water_consumption_log","record_wcl","wcl_category","wcl_31","wcl_32"],
     "Все об веществах":["concentrates","substances_ref","chemical_analysis_protocol","standarts_ref"],
-    "Другое":["codes","file_records", "notifications"],
+    "Другое":["codes","file_records"],
     // Добавляй категории по необходимости
   };
 
@@ -64,6 +65,20 @@ const AdminPanel = () => {
     };
     getTableList();
   }, []);
+
+  const handleSort = (key) => {
+    setSortConfig((prevConfig) => {
+      if (prevConfig.key === key) {
+        return {
+          key,
+          direction: prevConfig.direction === "asc" ? "desc" : "asc",
+        };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+
 
   // При выборе таблицы получаем её записи и схему модели (если есть)
   const handleSelectTable = async (modelName) => {
@@ -312,8 +327,33 @@ const AdminPanel = () => {
     return priorityKeys.find((key) => obj.hasOwnProperty(key));
   };
 
+  const sortedRecords = React.useMemo(() => {
+    if (!sortConfig.key) return tableRecords;
+
+    const sorted = [...tableRecords].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      if (aValue === null || aValue === undefined) return 1;
+      if (bValue === null || bValue === undefined) return -1;
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return aValue - bValue;
+      }
+
+      return aValue.toString().localeCompare(bValue.toString(), "ru", {
+        numeric: true,
+        sensitivity: "base",
+      });
+    });
+
+    return sortConfig.direction === "asc" ? sorted : sorted.reverse();
+  }, [tableRecords, sortConfig]);
+
+
   // Рендер списка записей выбранной таблицы с CRUD-кнопками
   const renderTableRecords = () => (
+
     <div>
     <div className="content-container-admin">
     <button
@@ -344,20 +384,24 @@ const AdminPanel = () => {
       <table className="data-table-admin">
       <thead>
       <tr>
-      {Object.keys(tableRecords[0]).map((key, index) => (
-        (!["created_by", "updated_by", "deleted_by", "created_at", "updated_at", "deleted_at"].includes(key) || showTechnicalFields) && (
-          <th key={index}>{translate(key)}</th>
+      {Object.keys(tableRecords[0]).map((key, index) =>
+        (!["created_by", "updated_by", "is_deleted", "deleted_by", "created_at", "updated_at", "deleted_at"].includes(key) || showTechnicalFields) && (
+          <th key={index} onClick={() => handleSort(key)} style={{ cursor: "pointer" }}>
+          {translate(key)}
+          {sortConfig.key === key ? (sortConfig.direction === "asc" ? " ▲" : " ▼") : ""}
+          </th>
         )
-      ))}
+      )}
       <th>Действия</th>
       </tr>
       </thead>
+
       <tbody>
-      {tableRecords.map((record) => {
+      {sortedRecords.map((record) => {
         return (
           <tr key={record.id}>
           {Object.keys(record).map((key, idx) => {
-            if (!["created_by", "updated_by", "deleted_by", "created_at", "updated_at", "deleted_at"].includes(key) || showTechnicalFields) {
+            if (!["created_by", "updated_by","is_deleted" , "deleted_by", "created_at", "updated_at", "deleted_at"].includes(key) || showTechnicalFields) {
               const fieldSchema = modelSchema?.data?.find((f) => f.field === key);
               return (
                 <td key={idx}>
@@ -436,7 +480,7 @@ const AdminPanel = () => {
       )
       .map((field, index) => (
         <div key={index} style={{ marginBottom: "10px" }}>
-        <label style={{ display: "block", marginBottom: "5px" }}>
+        <label style={{ display: "block", marginBottom: "5px"}}>
         {translate(field.field)}:
         </label>
         {/* Если поле связано с внешним ключом или имеет опции, отрисовываем ForeignKeySelect */}

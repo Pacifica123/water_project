@@ -115,7 +115,7 @@ const EditableWaterReport = () => {
   const handleExcelUpload = async (file) => {
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data, { type: "array" });
-    const sheet = workbook.Sheets[workbook.SheetNames[1]];
+    const sheet = workbook.Sheets[workbook.SheetNames[2]];
     const parsedData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
     console.log(parsedData);
     setExcelData(parsedData);
@@ -127,7 +127,9 @@ const EditableWaterReport = () => {
     setSubmitting(true);
     setResultMsg("");
     try {
-      const resp = await sendFormData("f31", excelData);
+      // TODO : передовать f31 либо f32 в зависимости от того какая страница выбрана в SheetNames[i]
+      // где i = 1 это форма 3.1 и i = 2 соответственно форма 3.2
+      const resp = await sendFormData("f32", excelData);
       if (resp.status === "success") {
         setResultMsg(`Успех: ${resp.message || "Форма отправлена"}`);
       } else {
