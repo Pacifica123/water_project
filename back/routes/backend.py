@@ -119,7 +119,7 @@ def get_single_with_mf(tablename: str, filters: dict) -> OperationResult:
     result = get_all_record_from(tablename)
     if result.status != OperationStatus.SUCCESS:
         return result
-
+    print_operation_result(result)
     # 2. Фильтрация на уровне ORM-моделей (до конвертации!)
     filtered_records = [
         record for record in result.data
@@ -132,7 +132,7 @@ def get_single_with_mf(tablename: str, filters: dict) -> OperationResult:
     print(f"Отфильтрованное : {filtered_records}")
 
     # 3. Конвертация в словарь только отфильтрованных данных
-    filtered_data = [convert_to_dict(record) for record in filtered_records]
+    filtered_data = filter_records(result.data, filters)
 
     if not filtered_data:
         return OperationResult(

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "../css/Water.css";
 import "../css/AccountingPost.css";
+import { useNotification } from "./NotificationContext.js";
 
 import {
   fetchSingleTableData,
@@ -42,9 +43,28 @@ const ForeignKeySelect = ({ field, value, onChange }) => {
             setOptions(field.options);
           } else if (field.referenceTable) {
             // fallback: запросим все записи связанной таблицы
+            let filters = {}
+
+            if (field.referenceTable === "water_point"){
+              const userInfo = JSON.parse(localStorage.getItem("user"));
+              const orgData = localStorage.getItem("org");
+              let orgInfo = {};
+
+              if (orgData) {
+                try {
+                  orgInfo = JSON.parse(orgData);
+                  console.log(orgInfo);
+                } catch (error) {
+                  console.error("Ошибка парсинга org:", error);
+                  orgInfo = {};
+                }
+              }
+              filters = {"organisation_id.id": orgInfo.id}
+            }
+
             const records = await fetchSingleTableDataWithFilters(
               field.referenceTable,
-              {}  // можно сюда передать начальные фильтры
+              filters
             );
             if (!isMounted.current) return;
             // API возвращает массив или { data: [...] }
@@ -113,6 +133,7 @@ const ForeignKeySelect = ({ field, value, onChange }) => {
 
 
 const AccountingPost = () => {
+  const {showSuccess, showError} = useNotification();
   const [filteredLogs, setFilteredLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -354,7 +375,7 @@ const AccountingPost = () => {
         link.remove();
       } catch (err) {
         console.error("Ошибка экспорта:", err);
-        alert("Не удалось выгрузить Excel");
+        showError("Не удалось выгрузить Excel");
       }
     } else if (filteredLogs.length > 0) {
       // Если не открыт конкретный журнал — выгружаем отфильтрованный список
@@ -394,17 +415,17 @@ const AccountingPost = () => {
         link.remove();
       } catch (err) {
         console.error("Ошибка экспорта:", err);
-        alert("Не удалось выгрузить Excel");
+        showError("Не удалось выгрузить Excel");
       }
     } else {
-      alert("Нет данных для выгрузки");
+      showError("Нет данных для выгрузки");
     }
   };
 
 
   const handleExportLogsToPDF = () => {
     if (filteredLogs.length === 0) {
-      alert("Нет данных для выгрузки");
+      showError("Нет данных для выгрузки");
       return;
     }
 
@@ -598,19 +619,19 @@ const AccountingPost = () => {
       // result: { status, msg, data? }
       console.log(result);
       if (result === "успешно") {
-        alert("Пункт учета успешно создан");
+        showSuccess("Пункт учета успешно создан");
         // тут можно сбросить форму, перезагрузить список и т.п.
       } else if (result === "VALIDATION_ERROR") {
-        alert("Ошибка валидации: " + result.msg);
+        showError("Ошибка валидации: " + result.msg);
       } else if (result === "CHOICE_WARNING") {
         console.warn("Найдено несколько приборов:", result.data);
         // тут можно например вывести модалку с выбором из result.data
       } else {
-        alert("Не удалось создать: " + result.msg);
+        showError("Не удалось создать: " + result.msg);
       }
     } catch (e) {
       console.error(e);
-      alert("Сетевая ошибка при отправке данных");
+      showError("Сетевая ошибка при отправке данных");
     } finally {
       setShowAddModal(false);
     }
@@ -639,11 +660,11 @@ const AccountingPost = () => {
 
   const handleCreateLog = async () => {
     if (!headerData.point_id) {
-      alert("Пожалуйста, выберите водопункт.");
+      showError("Пожалуйста, выберите водопункт.");
       return;
     }
     if (!headerData.month) {
-      alert("Пожалуйста, выберите месяц.");
+      showError("Пожалуйста, выберите месяц.");
       return;
     }
     try {
@@ -658,8 +679,8 @@ const AccountingPost = () => {
         "create_water_consumption_header",
         payload
       );
-      if (result.status === "SUCCESS") {
-        alert("Журнал учета успешно создан.");
+      if (result.status === "SUCCESS" || result === "успешно") {
+        showSuccess("Журнал учета успешно создан.");
         setShowAddLogModal(false);
         // Перезагрузим список журналов:
         const response = await fetchStructDataWithFilters("logs_for_AP", {
@@ -685,11 +706,12 @@ const AccountingPost = () => {
           setFilteredLogs(enrichedLogs);
         }
       } else {
-        alert("Ошибка при создании журнала: " + result.msg);
+        console.error("Ошибка создание журнала", result)
+        showError("Ошибка при создании журнала: " + (result.msg || JSON.stringify(result) || "Неизвестная ошибка"));
       }
     } catch (e) {
       console.error(e);
-      alert("Сетевая или системная ошибка при создании журнала.");
+      showError("Сетевая или системная ошибка при создании журнала.");
     }
   };
 
@@ -733,8 +755,6 @@ const AccountingPost = () => {
         placeholder="55°45′30″ с.ш., 37°36′20″ в.д."
         className="coordinate-input"
         style={{
-          background: "#181818",
-          color: "#fff",
           border: "1px solid #333",
           borderRadius: "6px",
           padding: "8px 12px",
@@ -902,15 +922,7 @@ const AccountingPost = () => {
       </div>
     )}
     {/* ------------------------------------------------------------ */}
-    {/* Новый блок: кнопка и модалка «Создать журнал учета» */}
-    <div className="header-section">
-    <button
-    className="custom-button"
-    onClick={() => setShowAddLogModal(true)}
-    >
-    Создать журнал учета
-    </button>
-    </div>
+
 
     {showAddLogModal && (
       <div className="modal-overlay">
@@ -1042,7 +1054,12 @@ const AccountingPost = () => {
 
       )}
       {userInfo.role === "UserRoles.EMPLOYEE" && (
-        <button className="custom-button" onClick={()=> setShowAddModal(true) }>Создать журнал учета</button>
+        <button
+        className="custom-button"
+        onClick={() => setShowAddLogModal(true)}
+        >
+        Создать журнал учета
+        </button>
       )}
 
       </div>

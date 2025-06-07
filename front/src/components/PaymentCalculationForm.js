@@ -1,47 +1,63 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { fetchSingleTableData, fetchStructDataWithFilters } from "../api/fetch_records";
 import "../css/Water.css";
 
 const PaymentCalculationForm = () => {
-   const [openSection,setOpenSection] = useState(null);
-  // ........... Фетчим ставки ..............
+  const [openSection, setOpenSection] = useState(null);
 
-  const [ratesData, setRatesData] = useState({}); // Состояние для хранения ставок из БД
+  // ======== 1) ФЕТЧИМ СТАВКИ (Rates) ========
+  const [ratesData, setRatesData] = useState({});
 
   useEffect(() => {
     const fetchRates = async () => {
       try {
         const rates = await fetchSingleTableData("rates");
         const currentDate = new Date().toISOString().split("T")[0];
-        console.log("Текущая дата - ", currentDate);
-        // Фильтруем ставки, выбирая последние актуальные перед текущей датой
+        // Оставляем для каждого rate_type последнюю действующую на сегодняшний день
         const filteredRates = rates.reduce((acc, rate) => {
           const rateDate = new Date(rate.start_date).toISOString().split("T")[0];
-          console.log("Дата ставки - ", rateDate);
           if (rateDate <= currentDate) {
-            if (!acc[rate.rate_type] || new Date(acc[rate.rate_type].start_date) < new Date(rate.start_date)) {
+            if (
+              !acc[rate.rate_type] ||
+              new Date(acc[rate.rate_type].start_date) < new Date(rate.start_date)
+            ) {
               acc[rate.rate_type] = rate;
             }
           }
           return acc;
         }, {});
-
         setRatesData(filteredRates);
       } catch (error) {
         console.error("Ошибка при получении ставок:", error);
       }
     };
-
     fetchRates();
   }, []);
 
   const updateRates = (filteredRates) => {
     setRows((prevRows) => {
-      console.log("[updateRates]:", filteredRates)
       const updatedRates = prevRows.rates.map((rate) => {
-        if (rate.id === "2.1") return { ...rate, establishedVolume: filteredRates.POPULATION?.value || 0, actualVolume: filteredRates.POPULATION?.value || 0, withinLimitsVolume: filteredRates.POPULATION?.value || 0, exceededVolume: filteredRates.POPULATION?.value || 0 };
-        if (rate.id === "2.2") return { ...rate, establishedVolume: filteredRates.ORG?.value || 0, actualVolume: filteredRates.ORG?.value || 0, withinLimitsVolume: filteredRates.ORG?.value || 0, exceededVolume: filteredRates.ORG?.value || 0 };
+        if (rate.id === "2.1") {
+          const val = filteredRates.POPULATION?.value || 0;
+          return {
+            ...rate,
+            establishedVolume: val,
+            actualVolume: val,
+            withinLimitsVolume: val,
+            exceededVolume: val,
+          };
+        }
+        if (rate.id === "2.2") {
+          const val = filteredRates.ORG?.value || 0;
+          return {
+            ...rate,
+            establishedVolume: val,
+            actualVolume: val,
+            withinLimitsVolume: val,
+            exceededVolume: val,
+          };
+        }
+        // Для id === "2.3" (коэффициент) оставляем значение из initialRows (по умолчанию 1)
         return rate;
       });
       return { ...prevRows, rates: updatedRates };
@@ -54,70 +70,49 @@ const PaymentCalculationForm = () => {
     }
   }, [ratesData]);
 
-  // ........... Фетчим разрешения ..............
-  const [permisionPointLink, setPPL] = useState({});
+  // ======== 2) ФЕТЧИМ РАЗРЕШЕНИЯ (Permissions) ========
+  const [permissionPointLink, setPPL] = useState({});
   const orgData = JSON.parse(localStorage.getItem("org"));
   const orgId = orgData?.id;
+
   useEffect(() => {
     const fetchPermissions = async () => {
-
-      const data = await fetchStructDataWithFilters("permisionpointlink", {
-        organisation_id: orgId
-      });
-
-      if (data) {
-        console.log("[Результаты для setPPL]: ", data);
-        setPPL(data); // сохраняем результат
+      try {
+        const data = await fetchStructDataWithFilters("permisionpointlink", {
+          organisation_id: orgId,
+        });
+        if (data) {
+          setPPL(data);
+        }
+      } catch (err) {
+        console.error("Ошибка при получении разрешений:", err);
       }
     };
-
-    fetchPermissions();
+    if (orgId) {
+      fetchPermissions();
+    }
   }, [orgId]);
 
-  const permissionOptions = permisionPointLink?.data || [];
-  console.log("permissionOptions = ", permissionOptions);
-  const [selectedPermission, setSelectedPermissionId] = useState(null);
+  const permissionOptions = permissionPointLink?.data || [];
 
-  const updateValuePermission = (filteredPermission) => {
-    setRows((prevRows) => {
-      console.log("[updateValuePermission]:", filteredPermission);
-      const updateValuePermission = prevRows.parameters.map((rate) => {
-        if (rate.id === "1.1.1") return {
-          ...rate,
-          establishedVolume: filteredPermission.POPULATION?.value || 0,
-          actualVolume: filteredPermission.POPULATION?.value || 0,
-          withinLimitsVolume: filteredPermission.POPULATION?.value || 0,
-           exceededVolume: filteredPermission.POPULATION?.value || 0
-        };
-        if (rate.id === "1.1.2") return {
-          ...rate,
-          establishedVolume: filteredPermission.ORG?.value || 0,
-          actualVolume: filteredPermission.ORG?.value || 0,
-          withinLimitsVolume: filteredPermission.ORG?.value || 0,
-          exceededVolume: filteredPermission.ORG?.value || 0
-        };
-        return rate;
-      });
-      return { ...prevRows, parameters: updateValuePermission };
+  // ======== 3) ГРУППИРУЕМ РАЗРЕШЕНИЯ В ПАРЫ ========
+  const permissionPairs = useMemo(() => {
+    const grouped = {};
+    permissionOptions.forEach((item) => {
+      const key = `${item.permission_id.permission_number}_${item.permission_id.registration_date}`;
+      if (!grouped[key]) grouped[key] = {};
+      grouped[key][item.permission_id.method_type] = item;
     });
-  };
+    return Object.values(grouped).filter((pair) => pair.POPULATION && pair.ORG);
+  }, [permissionOptions]);
 
-  useEffect(() => {
-    if (selectedPermission) {
-      const permission = selectedPermission.permission_id;
+  const [selectedPermissionIdx, setSelectedPermissionIdx] = useState(null);
+  const selectedPermission =
+  selectedPermissionIdx !== null
+  ? permissionPairs[selectedPermissionIdx]
+  : null;
 
-      const newRates = {
-        POPULATION: { value: parseFloat(permission.allowed_volume_pop || 0) },
-            ORG: { value: parseFloat(permission.allowed_volume_org || 0) }
-      };
-
-      updateValuePermission(newRates); // подставляем объёмы в ставки
-    }
-  }, [selectedPermission]);
-
-
-  // .......................................
-
+  // ======== 4) ИНИЦИАЛИЗАЦИЯ ROWS ========
   const initialRows = {
     parameters: [
       {
@@ -128,30 +123,27 @@ const PaymentCalculationForm = () => {
         actualVolume: 0,
         withinLimitsVolume: 0,
         exceededVolume: 0,
-        totalPayment: ""
       },
       {
         id: "1.1.1",
         indicator:
         "Забор (изъятие) водных ресурсов из поверхностного водного объекта (Qн.)",
         unit: "тыс.м3",
-        establishedVolume: 0, // будет меткой (из БД) если потребуется
+        establishedVolume: 0,
         actualVolume: 0,
         withinLimitsVolume: 0,
         exceededVolume: 0,
-        totalPayment: ""
       },
       {
         id: "1.1.2",
         indicator:
         "Забор (изъятие) водных ресурсов из поверхностного водного объекта (Qп.)",
         unit: "тыс.м3",
-        establishedVolume: 0, // будет меткой (из БД) если потребуется
+        establishedVolume: 0,
         actualVolume: 0,
         withinLimitsVolume: 0,
         exceededVolume: 0,
-        totalPayment: ""
-      }
+      },
     ],
     rates: [
       {
@@ -162,7 +154,6 @@ const PaymentCalculationForm = () => {
         actualVolume: 0,
         withinLimitsVolume: 0,
         exceededVolume: 0,
-        totalPayment: ""
       },
       {
         id: "2.2",
@@ -172,7 +163,6 @@ const PaymentCalculationForm = () => {
         actualVolume: 0,
         withinLimitsVolume: 0,
         exceededVolume: 0,
-        totalPayment: ""
       },
       {
         id: "2.3",
@@ -182,8 +172,7 @@ const PaymentCalculationForm = () => {
         actualVolume: 1,
         withinLimitsVolume: 1,
         exceededVolume: 1,
-        totalPayment: ""
-      }
+      },
     ],
     payment: [
       {
@@ -191,46 +180,155 @@ const PaymentCalculationForm = () => {
         indicator:
         "За забор (изъятие) водных ресурсов (п.3.2 + п.3.3)",
         unit: "руб",
-        establishedVolume: "",
-        actualVolume: "",
-        withinLimitsVolume: "",
-        exceededVolume: "",
-        totalPayment: ""
+        establishedVolume: 0,
+        actualVolume: 0,
+        withinLimitsVolume: 0,
+        exceededVolume: 0,
+        totalPayment: 0,
       },
       {
         id: "3.2",
         indicator:
         "За забор (изъятие) водных ресурсов для населения",
         unit: "руб",
-        establishedVolume: "",
-        actualVolume: "",
-        withinLimitsVolume: "",
-        exceededVolume: "",
-        totalPayment: ""
+        establishedVolume: 0,
+        actualVolume: 0,
+        withinLimitsVolume: 0,
+        exceededVolume: 0,
+        totalPayment: 0,
       },
       {
         id: "3.3",
         indicator:
         "За забор (изъятие) водных ресурсов для предприятий",
         unit: "руб",
-        establishedVolume: "",
-        actualVolume: "",
-        withinLimitsVolume: "",
-        exceededVolume: "",
-        totalPayment: ""
-      }
-    ]
+        establishedVolume: 0,
+        actualVolume: 0,
+        withinLimitsVolume: 0,
+        exceededVolume: 0,
+        totalPayment: 0,
+      },
+    ],
   };
 
   const [rows, setRows] = useState(initialRows);
 
-  // Обработчик изменения пользовательского ввода
+  // ======== 5) ОБНОВЛЯЕМ “УСТАНОВЛЕННЫЕ” ОБЪЁМЫ (по 1.1.1 и 1.1.2) ========
+  useEffect(() => {
+    if (!selectedPermission) return;
+
+    const parsedAllowed = {
+      POPULATION: {
+        value: parseFloat(selectedPermission.POPULATION.permission_id.allowed_volume || 0),
+      },
+      ORG: {
+        value: parseFloat(selectedPermission.ORG.permission_id.allowed_volume || 0),
+      },
+    };
+
+    setRows((prevRows) => {
+      const updatedParams = prevRows.parameters.map((row) => {
+        if (row.id === "1.1.1") {
+          return {
+            ...row,
+            establishedVolume: parsedAllowed.POPULATION.value,
+          };
+        }
+        if (row.id === "1.1.2") {
+          return {
+            ...row,
+            establishedVolume: parsedAllowed.ORG.value,
+          };
+        }
+        if (row.id === "1.1") {
+          // Для “1.1” = сумма 1.1.1 + 1.1.2
+          return {
+            ...row,
+            establishedVolume:
+            parsedAllowed.POPULATION.value + parsedAllowed.ORG.value,
+          };
+        }
+        return row;
+      });
+      return { ...prevRows, parameters: updatedParams };
+    });
+  }, [selectedPermission]);
+
+  // ======== 6) ФЕТЧ И ОБНОВЛЕНИЕ “ФАКТИЧЕСКИХ” ОБЪЁМОВ ========
+  useEffect(() => {
+    if (!selectedPermission) return;
+
+    const permId = selectedPermission.ORG.permission_id.id;
+    const fetchActualVolumes = async () => {
+      try {
+        const data = await fetchStructDataWithFilters("water_report_form", {
+          permission_id: permId,
+        });
+
+        // Ожидаем массив вида [{ type: "POPULATION", value: 123 }, { type: "ORG", value: 456 }, ...]
+        let parsed = { POPULATION: { value: 0 }, ORG: { value: 0 } };
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((item) => {
+            const key = item.type;
+            const val = parseFloat(item.value || 0);
+            if (key === "POPULATION" || key === "ORG") {
+              parsed[key] = { value: val };
+            }
+          });
+        }
+
+        setRows((prevRows) => {
+          const updatedParams = prevRows.parameters.map((row) => {
+            if (row.id === "1.1.1") {
+              return {
+                ...row,
+                actualVolume: parsed.POPULATION.value,
+              };
+            }
+            if (row.id === "1.1.2") {
+              return {
+                ...row,
+                actualVolume: parsed.ORG.value,
+              };
+            }
+            if (row.id === "1.1") {
+              const sumActual = parsed.POPULATION.value + parsed.ORG.value;
+              return {
+                ...row,
+                actualVolume: sumActual,
+              };
+            }
+            return row;
+          });
+          return { ...prevRows, parameters: updatedParams };
+        });
+      } catch (err) {
+        console.error("Ошибка при получении фактических объёмов:", err);
+        setRows((prevRows) => {
+          const zeroed = prevRows.parameters.map((row) => {
+            if (row.id === "1.1.1" || row.id === "1.1.2") {
+              return { ...row, actualVolume: 0 };
+            }
+            if (row.id === "1.1") {
+              return { ...row, actualVolume: 0 };
+            }
+            return row;
+          });
+          return { ...prevRows, parameters: zeroed };
+        });
+      }
+    };
+
+    fetchActualVolumes();
+  }, [selectedPermission]);
+
+  // ======== 7) ОБНОВЛЕНИЕ ПОЛЕЙ С НАДЗОРОМ (Rates) — без изменений ========
+
+  // ======== 8) ХЭНДЛЕР ИЗМЕНЕНИЯ ПОЛЕЙ ========
   const handleChange = (section, id, field, value) => {
     setRows((prevRows) => {
       const updatedSection = prevRows[section].map((row) => {
-        // Для редактируемых полей (исключаем строки-шапки и суммирующие строки)
         if (row.id === id) {
-          // Если поле не является числом, оставляем 0
           const newValue = parseFloat(value) || 0;
           return { ...row, [field]: newValue };
         }
@@ -240,222 +338,318 @@ const PaymentCalculationForm = () => {
     });
   };
 
-  // Функция для вычисления значений в таблице "parameters"
+  // ======== 9) ВЫЧИСЛЕНИЕ “PARAMETERS” ========
   const computeParameters = () => {
     return rows.parameters.map((row) => {
-      // Строки-шапки: id "1" – вывод заглушки/метки
-      if (row.id === "1") {
-        return { ...row, actualVolume: "", withinLimitsVolume: "", exceededVolume: "", totalPayment: "" };
-      }
-      // Строка-сумма: id "1.1" суммирует строки 1.1.1 и 1.1.2
       if (row.id === "1.1") {
-        const child1 = rows.parameters.find((r) => r.id === "1.1.1") || {};
-        const child2 = rows.parameters.find((r) => r.id === "1.1.2") || {};
+        const estSum = rows.parameters
+        .filter((r) => r.id === "1.1.1" || r.id === "1.1.2")
+        .reduce((sum, r) => sum + (r.establishedVolume || 0), 0);
+        const actSum = rows.parameters
+        .filter((r) => r.id === "1.1.1" || r.id === "1.1.2")
+        .reduce((sum, r) => sum + (r.actualVolume || 0), 0);
+        const within = Math.min(estSum, actSum);
+        const exceeded = actSum > estSum ? actSum - estSum : 0;
         return {
           ...row,
-          establishedVolume:
-          (child1.establishedVolume || 0) + (child2.establishedVolume || 0),
-          actualVolume:
-          (child1.actualVolume || 0) + (child2.actualVolume || 0),
-          withinLimitsVolume:
-          (child1.withinLimitsVolume || 0) + (child2.withinLimitsVolume || 0),
-          exceededVolume:
-          (child1.exceededVolume || 0) + (child2.exceededVolume || 0),
-          totalPayment: ""
+          establishedVolume: estSum,
+          actualVolume: actSum,
+          withinLimitsVolume: within,
+          exceededVolume: exceeded,
         };
       }
-      // Для строк 1.1.1 и 1.1.2 – считаем «в пределах установленных» и «превышение»
       if (row.id === "1.1.1" || row.id === "1.1.2") {
-        const established = row.establishedVolume || 0;
-        const actual = row.actualVolume || 0;
-        const within = Math.min(established, actual);
-        const exceeded = actual > established ? actual - established : 0;
-        return { ...row, withinLimitsVolume: within, exceededVolume: exceeded, totalPayment: "" };
+        const est = row.establishedVolume || 0;
+        const act = row.actualVolume || 0;
+        const within = Math.min(est, act);
+        const exceeded = act > est ? act - est : 0;
+        return { ...row, withinLimitsVolume: within, exceededVolume: exceeded };
       }
       return row;
     });
   };
 
-  // Функция для вычисления значений в таблице "payment"
+  const computedParameters = computeParameters();
+
+  // ======== 10) ВЫЧИСЛЕНИЕ “PAYMENT” (ПОЛЬЗУЕМСЯ computedParameters) ========
   const computePayment = () => {
-    const param11 = rows.parameters.find((r) => r.id === "1.1.1") || {};
-    const param12 = rows.parameters.find((r) => r.id === "1.1.2") || {};
+    // Сначала получим коэффициент из строки 2.3
+    const coefRow = rows.rates.find((r) => r.id === "2.3");
+    const coef = coefRow ? coefRow.establishedVolume || 1 : 1;
+
+    // Берём уже вычисленные дочерние параметры из computedParameters
+    const param11 = computedParameters.find((r) => r.id === "1.1.1") || {};
+    const param12 = computedParameters.find((r) => r.id === "1.1.2") || {};
     const rate21 = rows.rates.find((r) => r.id === "2.1") || {};
     const rate22 = rows.rates.find((r) => r.id === "2.2") || {};
 
-    // Используем фактические объёмы из параметров
-    const val32 =
-    (param11.actualVolume || 0) * (rate21.establishedVolume || 0);
-    const val33 =
-    (param12.actualVolume || 0) * (rate22.establishedVolume || 0);
-    const val31 = val32 + val33;
+    // Функция, считающая “рублёвые” колонки по одной строке (параметр + ставка)
+    const calcRow = (paramRow, rateRow) => {
+      const est_rub = (paramRow.establishedVolume || 0) * (rateRow.establishedVolume || 0);
+      const act_rub = (paramRow.actualVolume || 0) * (rateRow.establishedVolume || 0);
+      const within_rub = (paramRow.withinLimitsVolume || 0) * (rateRow.establishedVolume || 0);
+      const exceeded_rub =
+      (paramRow.exceededVolume || 0) * (rateRow.establishedVolume || 0) * coef;
+      const total = within_rub + exceeded_rub;
+      return {
+        establishedVolume: +est_rub.toFixed(2),
+        actualVolume: +act_rub.toFixed(2),
+        withinLimitsVolume: +within_rub.toFixed(2),
+        exceededVolume: +exceeded_rub.toFixed(2),
+        totalPayment: +total.toFixed(2),
+      };
+    };
+
+    // 3.2 (население)
+    const row32_vals = calcRow(param11, rate21);
+    // 3.3 (предприятия)
+    const row33_vals = calcRow(param12, rate22);
+    // Суммируем для 3.1
+    const sumEst = (row32_vals.establishedVolume || 0) + (row33_vals.establishedVolume || 0);
+    const sumAct = (row32_vals.actualVolume || 0) + (row33_vals.actualVolume || 0);
+    const sumWithin =
+    (row32_vals.withinLimitsVolume || 0) + (row33_vals.withinLimitsVolume || 0);
+    const sumExceeded =
+    (row32_vals.exceededVolume || 0) + (row33_vals.exceededVolume || 0);
+    const sumTotal = (row32_vals.totalPayment || 0) + (row33_vals.totalPayment || 0);
 
     return rows.payment.map((row) => {
-      // Строка-шапка: id "3" – вывод пустых ячеек
-      if (row.id === "3") {
-        return { ...row, totalPayment: "" };
-      }
       if (row.id === "3.2") {
-        return { ...row, totalPayment: val32.toFixed(2) };
+        return {
+          ...row,
+          ...row32_vals,
+        };
       }
       if (row.id === "3.3") {
-        return { ...row, totalPayment: val33.toFixed(2) };
+        return {
+          ...row,
+          ...row33_vals,
+        };
       }
       if (row.id === "3.1") {
-        return { ...row, totalPayment: val31.toFixed(2) };
+        return {
+          ...row,
+          establishedVolume: +sumEst.toFixed(2),
+                            actualVolume: +sumAct.toFixed(2),
+                            withinLimitsVolume: +sumWithin.toFixed(2),
+                            exceededVolume: +sumExceeded.toFixed(2),
+                            totalPayment: +sumTotal.toFixed(2),
+        };
       }
       return row;
     });
   };
 
-  // Функция определяет, редактируется ли конкретное поле
-  // Для таблицы "parameters": шапки (id "1") и суммирующей строки (id "1.1") – только метки,
-  // а также столбец "establishedVolume" – всегда метка (подгружается из БД)
+  const computedPayment = computePayment();
+
+  // ======== 11) ПРОВЕРКА, КОГДА ЯЧЕЙКА РЕДАКТИРУЕМА ========
   const isEditable = (section, row, field) => {
     if (section === "parameters") {
-      if (row.id === "1" || row.id === "1.1") return false;
+      if (row.id === "1.1") return false;
       if (field === "establishedVolume") return false;
-      if ((row.id === "1.1.1" || row.id === "1.1.2") && (field === "exceededVolume" || field === "withinLimitsVolume" || field === "totalPayment")) return false;
-      return true;
+      if (
+        (row.id === "1.1.1" || row.id === "1.1.2") &&
+        (field === "withinLimitsVolume" || field === "exceededVolume")
+      )
+        return false;
+        if (field === "actualVolume" && (row.id === "1.1.1" || row.id === "1.1.2"))
+          return true;
+      return false;
     }
-    else if (section === "payment") {
-      // Для секции "payment" можно добавить дополнительные условия,
-      // если они необходимы. Например, для определенных id строк.
+    if (section === "rates") {
+      return false;
+    }
+    if (section === "payment") {
       return false;
     }
     return false;
   };
 
-  const computedParameters = computeParameters();
-  const computedPayment = computePayment();
-
-  // Универсальная функция рендеринга секции таблицы
-  const renderTableSection = (title, sectionKey, showTotalPayment=true) => {
+  // ======== 12) РЕНДЕР “ПАРАМЕТРОВ” И “СТАВОК” ========
+  const renderParametersOrRates = (title, sectionKey) => {
     const sectionRows =
-      sectionKey === "parameters"
-        ? computedParameters
-        : sectionKey === "payment"
-        ? computedPayment
-        : rows[sectionKey];
-  
+    sectionKey === "parameters" ? computedParameters : rows[sectionKey];
+
     return (
       <>
-        <h3 align="center">{title}</h3>
-        <table className="payment-table">
-          <thead>
-            <tr>
-              <th>№ п/п</th>
-              <th>Показатель</th>
-              <th>Ед. изм.</th>
-              <th>Установленные объемы ВП в квартал</th>
-              <th>Фактические объемы ВП в квартал</th>
-              <th>Фактические объемы ВП в пределах установленных объемов</th>
-              <th>Превышение установленных объемов ВП в квартале</th>
-              {showTotalPayment &&<th>Итого оплата за квартал, руб</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {sectionRows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.id}</td>
-                <td>{["1", "2", "3"].includes(row.id) ? "" : row.indicator}</td>
-                <td>{["1", "2", "3"].includes(row.id) ? "" : row.unit}</td>
-                {["establishedVolume", "actualVolume", "withinLimitsVolume", "exceededVolume"].map(
-                  (field) => (
-                    <td key={field}>
-                      {isEditable(sectionKey, row, field) ? (
-                        <input
-                          type="number"
-                          value={row[field]}
-                          onChange={(e) =>
-                            handleChange(sectionKey, row.id, field, e.target.value)
-                          }
-                        />
-                      ) : row[field] === 0 || row[field] === "0.00" || row[field] === 0.0
-                        ? ""
-                        : row[field]}
-                    </td>
-                  )
-                )}
-                {showTotalPayment && (
-                <td>
-                  {sectionKey === "payment" ||
-                  row.id === "1" ||
-                  row.id === "2"
-                    ? row.totalPayment
-                    : isEditable(sectionKey, row, "totalPayment") ? (
-                      <input
-                        type="number"
-                        value={row.totalPayment}
-                        onChange={(e) =>
-                          handleChange(sectionKey, row.id, "totalPayment", e.target.value)
-                        }
-                      />
-                    ) : row.totalPayment}
-                </td>
-  )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <h3 align="center">{title}</h3>
+      <table className="payment-table">
+      <thead>
+      <tr>
+      <th>№ п/п</th>
+      <th>Показатель</th>
+      <th>Ед. изм.</th>
+      <th>Установленные объемы ВП в квартал</th>
+      <th>Фактические объемы ВП в квартал</th>
+      <th>В пределах установленных объемов</th>
+      <th>Превышение</th>
+      </tr>
+      </thead>
+      <tbody>
+      {sectionRows.map((row) => (
+        <tr key={row.id}>
+        <td>{row.id}</td>
+        <td>{["1.1"].includes(row.id) ? "" : row.indicator}</td>
+        <td>{["1.1"].includes(row.id) ? "" : row.unit}</td>
+        {[
+          "establishedVolume",
+          "actualVolume",
+          "withinLimitsVolume",
+          "exceededVolume",
+        ].map((field) => (
+          <td key={field}>
+          {isEditable(sectionKey, row, field) ? (
+            <input
+            type="number"
+            value={row[field]}
+            onChange={(e) =>
+              handleChange(sectionKey, row.id, field, e.target.value)
+            }
+            />
+          ) : row[field] === 0 || row[field] === "0.00" ? (
+            ""
+          ) : (
+            row[field]
+          )}
+          </td>
+        ))}
+        </tr>
+      ))}
+      </tbody>
+      </table>
       </>
     );
   };
+
+  // ======== 13) РЕНДЕР “ПЛАТЫ” С КОРРЕКЦИЕЙ для computedPayment ========
+  const renderPayment = () => {
+    return (
+      <>
+      <h3 align="center">3. Размер платы</h3>
+      <table className="payment-table">
+      <thead>
+      <tr>
+      <th>№ п/п</th>
+      <th>Показатель</th>
+      <th>Ед. изм.</th>
+      <th>Установленные объемы (руб)</th>
+      <th>Фактические объемы (руб)</th>
+      <th>В пределах установленных (руб)</th>
+      <th>Превышение (руб)</th>
+      <th>Итого оплата за квартал, руб</th>
+      </tr>
+      </thead>
+      <tbody>
+      {computedPayment.map((row) => {
+        // Явно приводим к числу, чтобы toFixed не падал
+        const est = Number(row.establishedVolume) || 0;
+        const act = Number(row.actualVolume) || 0;
+        const within = Number(row.withinLimitsVolume) || 0;
+        const exceeded = Number(row.exceededVolume) || 0;
+        const total = Number(row.totalPayment) || 0;
+
+        console.log("Показатели оплаты:", {
+          est,
+          act,
+          within,
+          exceeded,
+          total,
+        });
+
+        return (
+          <tr key={row.id}>
+          <td>{row.id}</td>
+          <td>{row.indicator}</td>
+          <td>{row.unit}</td>
+          <td>{est === 0 ? "" : est.toFixed(2)}</td>
+          <td>{act === 0 ? "" : act.toFixed(2)}</td>
+          <td>{within === 0 ? "" : within.toFixed(2)}</td>
+          <td>{exceeded === 0 ? "" : exceeded.toFixed(2)}</td>
+          <td>{total === 0 ? "" : total.toFixed(2)}</td>
+          </tr>
+        );
+      })}
+      </tbody>
+      </table>
+      </>
+    );
+  };
+
+  // ======== 14) JSX РАЗМЕТКА КОМПОНЕНТА ========
   return (
     <div className="payment-container">
     <h2 align="center">Расчет суммы оплаты</h2>
     <div className="form-step">
-
-
-    <div>
-      <label htmlFor="permission-select">Выберите разрешение:</label>
-      {permisionPointLink?.data?.length > 0 && (
-        <select
-        onChange={(e) => {
-          const selectedId = parseInt(e.target.value);
-          const permission = permisionPointLink.data.find(p => p.id === selectedId);
-          setSelectedPermissionId(permission);
-        }}
-        >
-        <option value="">Выберите разрешение</option>
-        {permisionPointLink.data.map((p) => (
-          <option key={p.id} value={p.id}>
-          {p.permission_id?.permission_number} — {p.permission_id?.permission_type}
-          </option>
-        ))}
-        </select>
-      )}
-
+    {/* Селектор разрешений */}
+    <div style={{ marginBottom: "16px" }}>
+    <label htmlFor="permission-select">
+    Выберите разрешение:&nbsp;
+    </label>
+    {permissionOptions.length > 0 && (
+      <select
+      id="permission-select"
+      onChange={(e) =>
+        setSelectedPermissionIdx(
+          e.target.value !== "" ? parseInt(e.target.value, 10) : null
+        )
+      }
+      value={selectedPermissionIdx !== null ? selectedPermissionIdx : ""}
+      >
+      <option value="">Выберите разрешение</option>
+      {permissionPairs.map((pair, idx) => (
+        <option key={idx} value={idx}>
+        {pair.ORG.permission_id.permission_number} —{" "}
+        {pair.ORG.permission_id.permission_type} (c{" "}
+        {pair.ORG.permission_id.registration_date})
+        </option>
+      ))}
+      </select>
+    )}
     </div>
+
+    {/* Кнопки-сворачивалки */}
     <div className="toggle-buttons-container">
-  <button
+    <button
     className="toggle-button"
-    onClick={() => setOpenSection(openSection === "parameters" ? null : "parameters")}
-  >
+    onClick={() =>
+      setOpenSection(
+        openSection === "parameters" ? null : "parameters"
+      )
+    }
+    >
     {openSection === "parameters" ? "Скрыть" : "Показать"} 1. Параметры
-  </button>
-  <button
+    </button>
+    <button
     className="toggle-button"
-    onClick={() => setOpenSection(openSection === "rates" ? null : "rates")}
-  >
+    onClick={() =>
+      setOpenSection(openSection === "rates" ? null : "rates")
+    }
+    >
     {openSection === "rates" ? "Скрыть" : "Показать"} 2. Ставки
-  </button>
-  <button
+    </button>
+    <button
     className="toggle-button"
-    onClick={() => setOpenSection(openSection === "payment" ? null : "payment")}
-  >
+    onClick={() =>
+      setOpenSection(openSection === "payment" ? null : "payment")
+    }
+    >
     {openSection === "payment" ? "Скрыть" : "Показать"} 3. Плата
-  </button>
-</div>
+    </button>
+    </div>
 
-{/* Отображаем только один активный раздел ниже */}
-<div className="section-wrapper">
-  {openSection === "parameters" && renderTableSection("1. Параметры водопользования", "parameters",false)}
-  {openSection === "rates" && renderTableSection("2. Ставки платы", "rates",false)}
-  {openSection === "payment" && renderTableSection("3. Размер платы", "payment",true)}
-</div>
-    </div>
-    </div>
+    {/* Контент секций */}
+    <div className="section-wrapper">
+    {openSection === "parameters" &&
+      renderParametersOrRates(
+        "1. Параметры водопользования",
+        "parameters"
+      )}
+      {openSection === "rates" &&
+        renderParametersOrRates("2. Ставки платы", "rates")}
+        {openSection === "payment" && renderPayment()}
+        </div>
+        </div>
+        </div>
   );
 };
 

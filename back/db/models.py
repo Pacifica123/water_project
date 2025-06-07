@@ -449,7 +449,7 @@ class Permissions(Base):
             'permission_number': self.permission_number,
             'registration_date': self.registration_date,
             'permission_type': self.permission_type,
-            'allowed_volume': self.allowed_volume_org,
+            'allowed_volume': self.allowed_volume,
             'method_type': self.method_type,
         }
 

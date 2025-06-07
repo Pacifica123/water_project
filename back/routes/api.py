@@ -225,7 +225,6 @@ def rest_edit_reference():
         return jsonify({"error": str(e)}), 500
 
 
-
 @api.route('/api/get_single_with_mf', methods=['GET'], strict_slashes=False)
 @token_required
 def rest_get_single_with_mf():
@@ -233,7 +232,12 @@ def rest_get_single_with_mf():
     if not selected_reference:
         return jsonify({"error": "Не выбран справочник"}), 400
     # Собираем фильтры, исключая 'reference_select'
-    filters = {k: v for k, v in request.args.items() if k != 'reference_select'}
+    filters = {
+        k: try_convert_to_number(v)
+        for k, v in request.args.items()
+        if k != 'reference_select'
+    }
+
     print("Выбранные фильтры:", filters)
     try:
         result = get_single_with_mf(selected_reference, filters)

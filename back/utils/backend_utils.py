@@ -488,3 +488,41 @@ def convert_date(date_str: str, mode: str) -> str:
             raise ValueError("Ожидается формат даты 'DD.MM.YY' для режима 'to_postgres'")
     else:
         raise ValueError("Неверный режим. Используйте 'to_frontend' или 'to_postgres'.")
+
+
+def try_convert_to_number(value):
+    try:
+        int_value = int(value)
+        if str(int_value) == value:
+            return int_value
+    except ValueError:
+        pass
+    try:
+        return float(value)
+    except ValueError:
+        pass
+    return value
+
+
+def get_by_path(data, path):
+    keys = path.split('.')
+    for key in keys:
+        if isinstance(data, dict):
+            data = data.get(key)
+        else:
+            return None
+    return data
+
+
+def filter_records(records, filters):
+    filtered = []
+    for record in records:
+        match = True
+        for k, v in filters.items():
+            val = get_by_path(record, k)
+            if val != v:
+                match = False
+                break
+        if match:
+            filtered.append(record)
+    return filtered

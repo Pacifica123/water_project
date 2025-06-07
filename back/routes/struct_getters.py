@@ -629,12 +629,6 @@ def waterlogs_by_mf(filters: dict) -> OperationResult:
 #         OperationStatus.SUCCESS,
 #         data=converted_links)
 def permisionpointlink_by_mf(filters: dict) -> OperationResult:
-    """
-    Функция для получения связок разрешений точек забора/сброса по фильтрам.
-
-    :param filters: ожидается organisation_id.
-    :return: OperationResult с отфильтрованными данными.
-    """
     organisation_id = filters.get('organisation_id')
     if organisation_id is None:
         return OperationResult(
@@ -655,11 +649,8 @@ def permisionpointlink_by_mf(filters: dict) -> OperationResult:
     if water_points_result.status != OperationStatus.SUCCESS:
         return water_points_result
 
-    # Фильтруем точки по organisation_id и собираем их id в множество для быстрого поиска
     water_point_ids = {wp.id for wp in water_points_result.data if wp.organisation_id == organisation_id}
-    print(water_point_ids)
     if not water_point_ids:
-        # Если нет точек для данной организации, возвращаем пустой результат
         return OperationResult(OperationStatus.SUCCESS, data=[], msg="Точек нет")
 
     # Получаем все связи разрешений
@@ -667,22 +658,25 @@ def permisionpointlink_by_mf(filters: dict) -> OperationResult:
     if point_permission_links_result.status != OperationStatus.SUCCESS:
         return point_permission_links_result
 
-    # Фильтруем связи, оставляя только те, которые относятся к выбранным точкам
     filtered_links = [link for link in point_permission_links_result.data if link.point_id in water_point_ids]
 
-    # Заменяем внешние ключи (FK)
-    from utils.db_utils import replace_fks
-    replaced_result = replace_fks(
-        OperationResult(OperationStatus.SUCCESS, data=filtered_links),
-        'point_permission_link'
-    )
-    if replaced_result.status != OperationStatus.SUCCESS:
-        return replaced_result
+    # Получаем все разрешения разом
+    permissions_result = get_all_from_table(Permissions)
+    if permissions_result.status != OperationStatus.SUCCESS:
+        return permissions_result
+    permissions_dict = {p.id: p for p in permissions_result.data}
 
-    # Конвертируем объекты в словари
-    converted_links = [convert_to_dict(link) for link in replaced_result.data]
+    # Подменяем permission_id на словарь (а не на объект!)
+    for link in filtered_links:
+        perm_obj = permissions_dict.get(link.permission_id)
+        if perm_obj:
+            link.permission_id = perm_obj.to_dict()
+
+    # Конвертируем объекты в словари (PointPermissionLink)
+    converted_links = [convert_to_dict(link) for link in filtered_links]
 
     return OperationResult(OperationStatus.SUCCESS, data=converted_links)
+
 
 
 def get_enum_options(enum_type: str) -> OperationResult:
