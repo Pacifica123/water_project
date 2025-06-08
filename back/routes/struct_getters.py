@@ -11,6 +11,185 @@ import sys
 import pprint
 
 
+def get_rates_and_coefs(filters: Dict[str, Any]) -> OperationResult:
+    try:
+        print(f"=== get_rates_and_coefs filters: {filters}")
+
+        # Проверяем обязательный булев флаг
+        is_other = filters.get("is_other_method")
+        if is_other is None:
+            return OperationResult(
+                status=OperationStatus.VALIDATION_ERROR,
+                msg="Не задан обязательный фильтр: is_other_method"
+            )
+        # Приводим к булю, если пришла строка
+        if isinstance(is_other, str):
+            is_other = is_other.lower() in ("1", "true", "yes", "y", "t")
+
+        today = date.today()
+
+        result: Dict[str, Any] = {}
+
+        # 1) Всегда берем последний OUT_PERMISSION
+        resp = get_all_by_conditions(UpCoef, [{"coeftype": UpCoefType.OUT_PERMISSION}])
+        if resp.status != OperationStatus.SUCCESS:
+            print(f"Error fetching OUT_PERMISSION: {resp.msg}")
+            return resp
+
+        out_permissions = [r for r in resp.data if r.start_date <= today]
+        if not out_permissions:
+            return OperationResult(
+                status=OperationStatus.VALIDATION_ERROR,
+                msg="Нет актуального коэффициента с coeftype=OUT_PERMISSION"
+            )
+
+        latest_out = max(out_permissions, key=lambda r: r.start_date)
+        result["out_permission"] = {
+            "coeftype": latest_out.coeftype.value,
+            "start_date": latest_out.start_date.isoformat(),
+            "value": float(latest_out.value),
+        }
+
+        # 2) Если is_other_method == True — добавить OTHER_METHOD
+        if is_other:
+            resp2 = get_all_by_conditions(UpCoef, [{"coeftype": UpCoefType.OTHER_METHOD}])
+            if resp2.status != OperationStatus.SUCCESS:
+                print(f"Error fetching OTHER_METHOD: {resp2.msg}")
+                return resp2
+
+            others = [r for r in resp2.data if r.start_date <= today]
+            if not others:
+                return OperationResult(
+                    status=OperationStatus.VALIDATION_ERROR,
+                    msg="Нет актуального коэффициента с coeftype=OTHER_METHOD"
+                )
+
+            latest_other = max(others, key=lambda r: r.start_date)
+            result["other_method"] = {
+                "coeftype": latest_other.coeftype.value,
+                "start_date": latest_other.start_date.isoformat(),
+                "value": float(latest_other.value),
+            }
+
+            rate_types = [RatesType.ORG, RatesType.POPULATION]
+        else:
+            # 3) Иначе — берем два Rates: ORG и POPULATION
+            rate_types = [RatesType.ORG, RatesType.POPULATION]
+
+        # 4) Для каждого нужного RatesType — последний по start_date ≤ today
+        rates_block: Dict[str, Any] = {}
+        for rt in rate_types:
+            resp_r = get_all_by_conditions(Rates, [{"rate_type": rt}])
+            if resp_r.status != OperationStatus.SUCCESS:
+                print(f"Error fetching Rates[{rt}]: {resp_r.msg}")
+                return resp_r
+
+            valid = [r for r in resp_r.data if r.start_date <= today]
+            if not valid:
+                return OperationResult(
+                    status=OperationStatus.VALIDATION_ERROR,
+                    msg=f"Нет актуального Rates с rate_type={rt.value}"
+                )
+
+            latest_rate = max(valid, key=lambda r: r.start_date)
+            rates_block[rt.value] = {
+                "rate_type": latest_rate.rate_type.value,
+                "start_date": latest_rate.start_date.isoformat(),
+                "value": float(latest_rate.value),
+            }
+
+        result["rates"] = rates_block
+
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            data=result
+        )
+
+    except Exception as e:
+        print(f"Unexpected error in get_rates_and_coefs: {e}")
+        return OperationResult(
+            status=OperationStatus.UNDEFINE_ERROR,
+            msg=str(e)
+        )
+
+
+def get_water_report_form_for_payment(filters: dict) -> OperationResult:
+    try:
+        print(f"=== get_water_report_form_for_payment filters: {filters}")
+
+        permission_id = filters.get("permission_id")
+        year = filters.get("year")
+        quarter = filters.get("quarter")
+
+
+        if not (permission_id and year and quarter):
+            return OperationResult(
+                status=OperationStatus.VALIDATION_ERROR,
+                msg="Не заданы обязательные фильтры: permission_id, year, quarter"
+            )
+
+        quarter_map = {
+            1: [Month.JANUARY, Month.FEBRUARY, Month.MARCH],
+            2: [Month.APRIL, Month.MAY, Month.JUNE],
+            3: [Month.JULY, Month.AUGUST, Month.SEPTEMBER],
+            4: [Month.OCTOBER, Month.NOVEMBER, Month.DECEMBER],
+        }
+        try:
+            q = int(quarter)
+            months = quarter_map[q]
+        except (ValueError, KeyError):
+            return OperationResult(
+                status=OperationStatus.VALIDATION_ERROR,
+                msg=f"Неверный квартал: {quarter}"
+            )
+
+        conds = [{"permission_id": int(permission_id)}]
+        link_res = get_all_by_conditions(PointPermissionLink, conds)
+        point_ids = []
+        if link_res.status == OperationStatus.SUCCESS:
+            point_ids = [link.point_id for link in link_res.data]
+        print(f"Linked point_ids: {point_ids}")
+
+        # Initialize sums
+        sum_actual = 0.0
+        sum_population = 0.0
+
+        # Iterate over points and months
+        for pid in point_ids:
+            for m in months:
+                rec_conds = [
+                    {"water_point_id": pid},
+                    {"month": m}
+                ]
+                res = get_all_by_conditions(WaterConsumptionLogByCategories, rec_conds)
+                if res.status == OperationStatus.SUCCESS:
+                    pprint.pprint(res.data)
+                    for rec in res.data:
+                        if rec.category == ConsumersCategories.ACTUAL:
+                            sum_actual += float(rec.value)
+                        elif rec.category == ConsumersCategories.POPULATION:
+                            sum_population += float(rec.value)
+                # print_operation_result(res)
+        # Round results
+        sum_actual = round(sum_actual, 2)
+        sum_population = round(sum_population, 2)
+
+        # Debug output
+        print(f"Calculated ACTUAL: {sum_actual}, POPULATION: {sum_population}")
+
+        # Prepare response
+        result = [
+            {"type": ConsumersCategories.ACTUAL, "value": sum_actual},
+            {"type": ConsumersCategories.POPULATION, "value": sum_population},
+        ]
+
+        return OperationResult(OperationStatus.SUCCESS, data=result)
+
+    except Exception as e:
+        return OperationResult(OperationStatus.UNDEFINE_ERROR, msg=str(e))
+
+
+
 def get_struct32(filters: dict) -> OperationResult:
     """
     Формирует структуру для Form32:

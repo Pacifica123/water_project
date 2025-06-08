@@ -55,25 +55,12 @@
 
 .accounting-container {
   background-color: #f9f9f9;
-  padding: 30px;
-  border-radius: 8px;
+  padding: 2vh 2vw;
+  border-radius: 4vh;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   width: fit-content;
-}
-
-.data-table-accountingPost {
-  width: max-content;
-  border-collapse: collapse;
-  margin-inline: auto;
-  margin-bottom: auto;
-  font-size: x-large;
-}
-
-.data-table-accountingPost th{
-  width: auto;
-  border-collapse: collapse;
-  margin-inline: auto;
-  margin-bottom: auto;
+  margin-bottom: 10px;
+  margin-top: 10px;
 }
 
 .table-grid {
@@ -85,6 +72,12 @@
   max-width: 1000px;
   margin: 0 auto;
   justify-content: center;
+}
+
+.full-width-button {
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
 }
 
 .filters-container {

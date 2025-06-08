@@ -7,6 +7,12 @@
   --button-text: #ffffff;
   --sidebar-bg: #f5f5f5;
   --main-content-bg: #ffffff;
+  --pading_button: 1.5vh 2vw ;
+}
+
+.button {
+  margin-left: 5px;
+  margin-right: 5px;
 }
 
 .sidebar button.active-button {
@@ -67,19 +73,21 @@ td {
 
 h2 {
   color: var(--text-color);
-  font-size: 30px;
-}
-
-.water-container h2 {
-  color: var(--text-color);
-  font-size: 30px;
-  display: block;
-  margin-top: 20px;
+  font-size: 2.2rem;
 }
 
 h3{
-  font-size: x-large;
+  font-size: 1.8rem;
 }
+
+h4{
+  font-size:1.5rem;
+}
+
+.water-container h2 {
+  margin-top: 20px;
+}
+
 .organization-info-container h3{
   color: var(--text-color);
   font-size: 28px;
@@ -87,9 +95,7 @@ h3{
   margin-top: 20px;
   text-align: center;
 }
-h4{
-  font-size:22px;
-}
+
 div {
   color: var(--text-color);
 }
@@ -190,25 +196,21 @@ div {
   background-color: #e6e6e6;
 }
 
-.quarter-selector {
-  margin-bottom: 15px;
-}
+
 
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 20px;
+  /* margin-top: 20px; */
 }
 
 th, td {
   border: 1px solid #ddd;
   padding: 10px;
   text-align: center;
+  font-size:18px;
 }
 
-thead {
-  background-color: #f5f5f5;
-}
 
 input {
   width: 100%;
@@ -255,24 +257,6 @@ input {
 .input-group input:focus, .input-group select:focus {
   border-color: #007bff;
   outline: none;
-}
-
-/* Стили для таблицы */
-.water.table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 20px;
-}
-
-.water.th, td {
-  padding: 15px;
-  text-align: center;
-  border: 1px solid #ddd;
-  font-size:22px;
-}
-
-.water.thead {
-  background-color: #f8f9fa;
 }
 
 .water.button {
@@ -333,9 +317,31 @@ input {
   background-color: #007bff;
   color: white;
   cursor: pointer;
+  font-weight: bold;
   margin-bottom: 5px;
 }
 
+.custom-button:hover {
+  background-color: #0162c9;
+  color:white;
+  font-weight: bold;
+}
+
+
+.custom-button-table {
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  padding: 2vh;
+}
+
+.custom-button-table:hover {
+  background-color: #0162c9;
+  color:white;
+  font-weight: bold;
+}
 
 
 .data-table {
@@ -371,8 +377,6 @@ input {
   justify-content: center;
   margin-top: 20px; /* Отступ сверху */
 }
-
-
 
 .completed {
   background: green;
@@ -440,7 +444,6 @@ input {
   cursor: pointer;
   transition: background-color 0.2s;
   font-size: 1.3rem;
-
 }
 
 .submit-button-org:hover {
@@ -450,32 +453,49 @@ input {
 }
 
 .edit-button {
-  padding: 5px 10px;
+  padding: var(--pading_button);
   border: none;
-  border-radius: 5px;
+  border-radius: 1vw;
   background-color: #17a2b8;
   color: white;
   cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9rem;
 }
 
+.edit-button:hover {
+  background-color: #1692a5;
+  color:white;
+  font-weight: bold;
+}
+
+
 .delete-button {
-  padding: 5px 10px;
+  padding: var(--pading_button);
   border: none;
-  border-radius: 5px;
+  border-radius: 1vw;
   background-color: #dc3545;
   color: white;
   cursor: pointer;
 }
 .add-button {
-  padding: 5px 10px;
+  padding: var(--pading_button);
   border: none;
-  border-radius: 5px;
+  border-radius: 1vw;
   background-color: #28a745;
   color: white;
   cursor: pointer;
+  font-weight: bold;
+  margin-right: 10px;
+  font-size: 0.9rem;
+
 }
 
-
+.add-button:hover {
+  background-color: #228d3b;
+  color:white;
+  font-weight: bold;
+}
 
 .table-container {
   overflow-x: auto;
@@ -766,7 +786,7 @@ input {
 .data-table-result th,
 .data-table-result td {
   padding: 1vh 1vw;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
 }
 
 /* Скругление только для углов таблицы */

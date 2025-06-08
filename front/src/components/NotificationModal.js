@@ -91,13 +91,48 @@ function NotificationModal({ notification, onClose, onReact }) {
                         <p>{parsedContent.message || notification.text}</p>
                         </div>
                     );
-                case "report":
+                case "paymentcalculationform":
                     return (
                         <div>
-                        <h3>Отчетность</h3>
-                        <p>{parsedContent.message || notification.text}</p>
-                        </div>
+                        <h3>{parsedContent.header || "Расчет оплаты"}</h3>
+                        <p>{parsedContent.message}</p>
+                        <table className="water-report-table">
+                        <thead>
+                        <tr>
+                        <th>Показатель</th>
+                        <th>Установлено</th>
+                        <th>Факт</th>
+                        <th>В пределах</th>
+                        <th>Превышение</th>
+                        <th>Итого (руб)</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {Array.isArray(parsedContent.paymentData)
+                            ? parsedContent.paymentData.map((row, idx) => (
+                                <tr key={idx}>
+                                <td>{row.indicator}</td>
+                                <td>{row.establishedVolume ?? "-"}</td>
+                                <td>{row.actualVolume ?? "-"}</td>
+                                <td>{row.withinLimitsVolume ?? "-"}</td>
+                                <td>{row.exceededVolume ?? "-"}</td>
+                                <td>{row.totalPayment ?? "-"}</td>
+                                </tr>
+                            ))
+                            : <tr><td colSpan="6">Нет данных</td></tr>}
+                            </tbody>
+                            </table>
+                            <div className="action-buttons">
+                            <button className="add-button" onClick={() => handleReactionClick("approve")}>
+                            Принять
+                            </button>
+                            <button className="edit-button" onClick={() => handleReactionClick("revise")}>
+                            На доработку
+                            </button>
+                            </div>
+                            </div>
                     );
+
                 case "waterreportform":
                     return (
                         <div>

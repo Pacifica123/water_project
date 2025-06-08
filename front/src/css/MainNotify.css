@@ -20,7 +20,7 @@
 
 .notify-tabs {
     display: flex;
-    border-bottom: 1px solid #ccc;
+    /*  border-bottom: 1px solid #ccc; */
     margin-top: 12px;
 }
 
@@ -38,8 +38,8 @@
 
 .notify-table-wrapper {
     margin-top: 16px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border: 1px solid #252525;
+    border-radius: 2vh ;
     overflow-x: auto;
 }
 
@@ -77,7 +77,10 @@
 
 .show-count select {
     margin-left: 8px;
-    font-size: 14px;
+    font-size: 1.25rem;
+    border-radius: 2vh;
+    border: 1px;
+    text-align: center;
 }
 
 .pagination {
@@ -90,12 +93,14 @@
     border: 1px solid #ccc;
     background: #fff;
     cursor: pointer;
+    border-radius: 2vh;
 }
 
 .pagination .current {
     padding: 4px 8px;
     border: 1px solid #00bcd4;
     color: #00bcd4;
+    border-radius: 2vh;
 }
 
 
@@ -109,6 +114,7 @@
     width: 1200px;
     overflow: auto;
     box-sizing: border-box;
+    border-radius: 3vh;
 }
 
 .notify-date-selectors {
@@ -118,8 +124,11 @@
 }
 
 .notify-date-selectors input {
-    padding: 4px;
-    font-size: 12px;
+    padding: 0.7vh;
+    font-size: 0.85rem;
+    border-radius: 2vh;
+    border: 1px;
+    background: #e9e9ed;
 }
 
 .notify-tabs .tab {
@@ -130,4 +139,21 @@
     font-weight: bold;
     color: #fff;
     background-color: #007bff;
+    border-radius: 2vh;
+}
+
+
+.select{
+    width: 100px;
+}
+
+tr.unviewed {
+    background-color: #fffbe6; /* нежно-жёлтый *    background-color: #fffbe6; /* нежно-жёлтый */
+
+    font-weight: bold;
+}
+
+tr.viewed {
+    background-color: #f9f9f9;
+    color: #888;
 }

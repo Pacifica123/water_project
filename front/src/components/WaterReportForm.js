@@ -42,7 +42,7 @@ function WaterReportForm() {
           // Фильтруем по точке забора, году и месяцу, входящему в выбранный квартал
           const filteredRecords = allRecords.filter(
             (record) =>
-            record.water_point_id.id === parseInt(selectedWaterObject) &&
+            record.id === parseInt(selectedWaterObject) &&
             record.created_at.includes(year) && // проверка года в формате строки "2025"
             quarterMonths[quarter].includes(record.month)
           );
@@ -224,7 +224,7 @@ function WaterReportForm() {
         {waterObjects.map((obj) => (
           <option
           key={obj.id}
-          value={obj.water_body_id.id}
+          value={obj.id}
           >
           {obj.water_body_id.code_obj.code_value} - {obj.water_body_id.code_obj.code_symbol}
           </option>

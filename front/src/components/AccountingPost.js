@@ -43,28 +43,9 @@ const ForeignKeySelect = ({ field, value, onChange }) => {
             setOptions(field.options);
           } else if (field.referenceTable) {
             // fallback: запросим все записи связанной таблицы
-            let filters = {}
-
-            if (field.referenceTable === "water_point"){
-              const userInfo = JSON.parse(localStorage.getItem("user"));
-              const orgData = localStorage.getItem("org");
-              let orgInfo = {};
-
-              if (orgData) {
-                try {
-                  orgInfo = JSON.parse(orgData);
-                  console.log(orgInfo);
-                } catch (error) {
-                  console.error("Ошибка парсинга org:", error);
-                  orgInfo = {};
-                }
-              }
-              filters = {"organisation_id.id": orgInfo.id}
-            }
-
             const records = await fetchSingleTableDataWithFilters(
               field.referenceTable,
-              filters
+              {}  // можно сюда передать начальные фильтры
             );
             if (!isMounted.current) return;
             // API возвращает массив или { data: [...] }
@@ -141,6 +122,7 @@ const AccountingPost = () => {
   const [monthFilter, setMonthFilter] = useState(new Date().getMonth());
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear());
   const [exportLogId, setExportLogId] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: 'start_date', direction: 'asc' });
 
   const [statusFilters, setStatusFilters] = useState({
     in_progress: true,
@@ -150,6 +132,42 @@ const AccountingPost = () => {
     under_correction: true,
     closed: true,
   });
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
+  const getSortArrow = (key) => {
+    if (sortConfig.key !== key) return '';
+    return sortConfig.direction === 'asc' ? ' ▲' : ' ▼';
+  };
+
+  const sortedLogs = React.useMemo(() => {
+    const sortableItems = [...filteredLogs];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+
+        if (sortConfig.key === 'start_date') {
+          valA = new Date(valA);
+          valB = new Date(valB);
+        }
+
+        if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [filteredLogs, sortConfig]);
+
+
   const getStatusClass = (status) => {
     const normalized = status.toLowerCase();
     if (normalized.includes("in_progress")) return "status-in-progress";
@@ -317,9 +335,7 @@ const AccountingPost = () => {
         const logMonth = startDate.getMonth();
         const logYear = startDate.getFullYear();
 
-        const dateFilter =
-        (monthFilter === new Date().getMonth() || logMonth === monthFilter) &&
-        (yearFilter === new Date().getFullYear() || logYear === yearFilter);
+        const dateFilter =  logMonth === monthFilter && logYear === yearFilter;
 
         const status = log.status.toLowerCase();
         const statusFilter = Object.keys(statusFilters).some((key) => {
@@ -377,12 +393,12 @@ const AccountingPost = () => {
         console.error("Ошибка экспорта:", err);
         showError("Не удалось выгрузить Excel");
       }
-    } else if (filteredLogs.length > 0) {
+    } else if (sortedLogs.length > 0) {
       // Если не открыт конкретный журнал — выгружаем отфильтрованный список
       const payload = {
         status: "success",
         message: "Export water consumption logs",
-        data: filteredLogs.map(log => ({
+        data: sortedLogs.map(log => ({
           id: log.id,
           organisation: log.organisation_name,
           water_body: log.water_body_name,
@@ -439,7 +455,7 @@ const AccountingPost = () => {
              28
     );
 
-    const tableData = filteredLogs.map(log => ([
+    const tableData = sortedLogs.map(log => ([
       log.organisation_name,
       log.water_body_name,
       log.coordinates,
@@ -726,14 +742,14 @@ const AccountingPost = () => {
       <div className="modal-content">
       <div className="modal-left">
 
-      <center><label>Организация:</label>
-      <select name="organisation_id" value={formData.organisation_id} disabled>
-      <option value={orgInfo.id}>{orgInfo.organisation_name}</option>
-      </select>
+      <center><label>Организация: </label>
+      <label name="organisation_id" value={formData.organisation_id} disabled>
+      <label value={orgInfo.id}>{orgInfo.organisation_name}</label>
+      </label>
       </center>
       <hr />
       <div className="label-modal">
-      <label>Водный объект:</label>
+      <label>Водный объект: </label>
       <ForeignKeySelect
       field={{ field: 'water_body_id', foreignKey: true, options: [], referenceTable: 'water_object_ref' }}
       value={formData.water_body_id}
@@ -755,9 +771,6 @@ const AccountingPost = () => {
         placeholder="55°45′30″ с.ш., 37°36′20″ в.д."
         className="coordinate-input"
         style={{
-          border: "1px solid #333",
-          borderRadius: "6px",
-          padding: "8px 12px",
           fontFamily: "inherit",
           fontSize: "1rem"
         }}
@@ -767,7 +780,7 @@ const AccountingPost = () => {
 
       </div>
       <div className="label-modal">
-      <label> Тип пункта:</label>
+      <label> Тип пункта: </label>
       <ForeignKeySelect
       field={{ field: 'point_type', isEnum: true, enumType: 'PermissionType' }}
       value={formData.point_type}
@@ -778,7 +791,7 @@ const AccountingPost = () => {
       <div className="modal-right">
       <div className="modal-upper-right">
       <div className="label-modal">
-      <label>Выбрать существующий прибор:</label>
+      <label>Выбрать существующий прибор: </label>
       <ForeignKeySelect
       field={{ field: 'existing_meter_id', foreignKey: true, options: [], referenceTable:"meters" }}
       value={formData.existing_meter_id}
@@ -787,15 +800,15 @@ const AccountingPost = () => {
       </div>
       <hr />
 
-      <label>Ввести новый прибор:</label>
+      <h4>Ввести новый прибор</h4>
       <div className="new-meter-form">
-      <label>Марка прибора:</label>
+      <label>Марка прибора: </label>
       <ForeignKeySelect
       field={{ field: 'brand_id', foreignKey: true, options: [], referenceTable:"meters_brand_ref" }}
       value={newMeterData.brand_id}
       onChange={handleNewMeterChange}
       />
-
+      <div className="label-modal">
       <label>Серийный номер:</label>
       <input
       type="text"
@@ -803,7 +816,7 @@ const AccountingPost = () => {
       value={newMeterData.serial_number}
       onChange={handleNewMeterChange}
       />
-
+      </div>
       <label>Дата поверки:</label>
       <input
       type="date"
@@ -829,6 +842,7 @@ const AccountingPost = () => {
       />
       </div>
       </div>
+      <hr />
       <div className="permission-section">
       <h4>Разрешение на водопользование</h4>
       <div className="label-modal">
@@ -859,7 +873,7 @@ const AccountingPost = () => {
       />
       </div>
       <div className="label-modal">
-      <label>Тип разрешения:</label>
+      <label>Тип разрешения: </label>
       <ForeignKeySelect
       field={{ field: 'permission_type', isEnum: true, enumType: 'PermissionType' }}
       value={permissionData.permission_type}
@@ -889,7 +903,7 @@ const AccountingPost = () => {
       </div>
 
       <div className="label-modal">
-      <label>Выберете метод:</label>
+      <label>Выберете метод: </label>
       <ForeignKeySelect
       field={{ field: 'method_type', isEnum: true, enumType: 'RatesType' }}
       value={permissionData.method_type}
@@ -1019,10 +1033,11 @@ const AccountingPost = () => {
       <div className="filter-block">
       <label>Год: </label>
       <select value={yearFilter} onChange={handleYearChange}>
-      {[2020, 2021, 2022, 2023, 2024, 2025].map((year) => (
+      {Array.from({ length: 101 }, (_, i) => 2000 + i).map((year) => (
         <option key={year} value={year}>{year}</option>
       ))}
       </select>
+
       </div>
 
       <div className="filter-block">
@@ -1081,24 +1096,37 @@ const AccountingPost = () => {
       {filteredLogs.length === 0 ? (
         <p>Нет данных</p>
       ) : (
-        <table className="data-table-accountingPost">
+        <table className="data-table-result">
         <thead>
         <tr>
         {userInfo.role !== "UserRoles.EMPLOYEE" && (
-          <th>Организация</th>
+          <th onClick={() => handleSort("organisation_name")}>
+          Организация{getSortArrow("organisation_name")}
+          </th>
         )}
-        <th>Название водного объекта</th>
-        <th>Координаты</th>
-        <th>Тип</th>
-        <th>Дата открытия</th>
-        <th>Статус</th>
+        <th onClick={() => handleSort("water_body_name")}>
+        Название водного объекта{getSortArrow("water_body_name")}
+        </th>
+        <th onClick={() => handleSort("coordinates")}>
+        Координаты{getSortArrow("coordinates")}
+        </th>
+        <th onClick={() => handleSort("point_type")}>
+        Тип{getSortArrow("point_type")}
+        </th>
+        <th onClick={() => handleSort("start_date")}>
+        Дата открытия{getSortArrow("start_date")}
+        </th>
+        <th onClick={() => handleSort("status")}>
+        Статус{getSortArrow("status")}
+        </th>
         {userInfo.role === "UserRoles.EMPLOYEE" && (
           <th>Действия</th>
         )}
         </tr>
         </thead>
+
         <tbody>
-        {filteredLogs.map((log) => (
+        {sortedLogs.map((log) => (
           <tr key={log.id}>
           {userInfo.role !== "UserRoles.EMPLOYEE" && (
             <td>{log.organisation_name}</td>
@@ -1109,11 +1137,16 @@ const AccountingPost = () => {
           <td>{log.start_date}</td>
           <td className={getStatusClass(log.status)}>{translate(log.status)}</td>
           {userInfo.role === "UserRoles.EMPLOYEE" && (
-            <td>
-            <button className="custom-button" onClick={() => handleExpandLog(log.id)}>
+            <td style={{ padding: 0 }}>
+            <button
+            className="custom-button-table"
+            style={{ width: '100%', height: '100%', borderRadius: 0 }}
+            onClick={() => handleExpandLog(log.id)}
+            >
             {expandedLogs[log.id] ? "Скрыть журнал" : "Открыть журнал"}
             </button>
             </td>
+
           )}
           </tr>
         ))}
@@ -1126,17 +1159,17 @@ const AccountingPost = () => {
         isExpanded && logDetails[logId] ? (
           <div key={logId} className="log-details-container">
           <h3 align="center">Детали журнала (Номер журнала: {logId})</h3>
-          <p align="center">
+          <p align="center" >
           <strong >Эксплуатирующая организация:</strong>{" "}
           {logDetails[logId].exploitation_org.organisation_name}
           </p>
-          <table className="data-table-accountingPost">
+          <table className="data-table-result">
           <thead>
           <tr>
           <th>Дата измерения</th>
           <th>Дней эксплуатации</th>
           <th>Расход воды (м³/день)</th>
-          <th className="data-table-accountingPost-th">Подпись лица</th>
+          <th >Подпись лица</th>
           </tr>
           </thead>
           <tbody>

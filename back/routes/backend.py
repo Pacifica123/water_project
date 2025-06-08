@@ -255,6 +255,10 @@ def get_structs_mf(selected_template: str, filters: dict) -> OperationResult:
             return getall_coord_points(filters)
         case "get_struct31":
             return get_struct31(filters)
+        case "water_report_form_for_payment":
+            return get_water_report_form_for_payment(filters)
+        case "get_rates_and_coefs":
+            return get_rates_and_coefs(filters)
         case _:
             return OperationResult(OperationStatus.VALIDATION_ERROR, msg="не поддерживаемая структура в get_structs")
 

@@ -15,8 +15,6 @@ from datetime import date
 class RatesType(PyEnum):
     ORG = "org"
     POPULATION = "population"
-    OTHER_ORG = "other_org"
-    OTHER_POPULATION = "other_population"
 
 
 class UpCoefType(PyEnum):

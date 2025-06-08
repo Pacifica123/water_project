@@ -75,8 +75,6 @@ function CombinedRatesCoefs() {
         const typeMap = {
             "population": "Население - прибор",
             "org": "Предприятие - прибор",
-            "other_population": "Население - другой метод",
-            "other_org": "Предприятие - другой метод"
         };
         return typeMap[rateType.toLowerCase()] || rateType;
     };
@@ -202,8 +200,6 @@ function CombinedRatesCoefs() {
             <select name="rate_type" value={newRate.rate_type} onChange={handleRateChange}>
             <option value="population">Население</option>
             <option value="org">Предприятие</option>
-            <option value="other_population">Население - другой метод</option>
-            <option value="other_org">Предприятие - другой метод</option>
             </select>
             </label>
             <div className="modal-buttons">

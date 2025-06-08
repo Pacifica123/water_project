@@ -70,14 +70,17 @@ function MainNotify() {
                 } else if (msg.message) {
                     title = msg.message;
                 }
-
                 const notification = {
                     id: msg.id || Date.now() + Math.random(),
                              text: title,
                              date: msg.date || new Date().toISOString().split("T")[0],
-                             type: msg.type || "ОТЧЕТНОСТЬ",
-                             raw: msg, // сохраняем полный объект
+                             type:
+                             msg.type === "waterreportform"
+                             ? "ЗАБОР ПОВЕРХНОСТНОЙ ВОДЫ"
+                             : msg.type || "ОТЧЕТНОСТЬ",
+                             raw: msg,
                 };
+
 
                 return [...prev, notification];
             });
@@ -187,7 +190,7 @@ function MainNotify() {
             </div>
 
             <div className="notify-tabs">
-            {["ВСЕ", "РЕГИСТРАЦИЯ ОРГАНИЗАЦИИ", "ОТЧЕТНОСТЬ", "РЕЕСТРЫ"].map((tab) => (
+            {["ВСЕ", "ЗАБОР ПОВЕРХНОСТНОЙ ВОДЫ", "РАСЧЕТ ОПЛАТЫ"].map((tab) => (
                 <div
                 key={tab}
                 className={`tab ${selectedTab === tab ? "active" : ""}`}

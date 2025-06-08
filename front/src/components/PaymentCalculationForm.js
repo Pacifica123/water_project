@@ -4,65 +4,87 @@ import "../css/Water.css";
 
 const PaymentCalculationForm = () => {
   const [openSection, setOpenSection] = useState(null);
+  const [isOtherMethod, setIsOtherMethod] = useState(false);
 
   // ======== 1) ФЕТЧИМ СТАВКИ (Rates) ========
   const [ratesData, setRatesData] = useState({});
+  const [loadingRates, setLoadingRates] = useState(false);
+  const [ratesError, setRatesError] = useState(null);
 
   useEffect(() => {
     const fetchRates = async () => {
+      setLoadingRates(true);
+      setRatesError(null);
       try {
-        const rates = await fetchSingleTableData("rates");
-        const currentDate = new Date().toISOString().split("T")[0];
-        // Оставляем для каждого rate_type последнюю действующую на сегодняшний день
-        const filteredRates = rates.reduce((acc, rate) => {
-          const rateDate = new Date(rate.start_date).toISOString().split("T")[0];
-          if (rateDate <= currentDate) {
-            if (
-              !acc[rate.rate_type] ||
-              new Date(acc[rate.rate_type].start_date) < new Date(rate.start_date)
-            ) {
-              acc[rate.rate_type] = rate;
-            }
-          }
-          return acc;
-        }, {});
-        setRatesData(filteredRates);
-      } catch (error) {
-        console.error("Ошибка при получении ставок:", error);
+        console.log("Fetching get_rates_and_coefs, is_other_method =", isOtherMethod);
+        const { data } = await fetchStructDataWithFilters("get_rates_and_coefs", {
+          is_other_method: isOtherMethod,
+        });
+        console.log("Fetched ratesData:", data);
+        setRatesData(data);
+      } catch (err) {
+        console.error("Ошибка при получении ставок и коэф.:", err);
+        setRatesError(err.message || "Неизвестная ошибка при получении ставок");
+        setRatesData(null);
+      } finally {
+        setLoadingRates(false);
       }
     };
     fetchRates();
-  }, []);
+  }, [isOtherMethod]);
 
+
+  const updateQuartal = (newQ) =>{
+    setSelectedQuarter(parseInt(newQ));
+    fetchActualVolumes();
+  };
   const updateRates = (filteredRates) => {
     setRows((prevRows) => {
-      const updatedRates = prevRows.rates.map((rate) => {
-        if (rate.id === "2.1") {
-          const val = filteredRates.POPULATION?.value || 0;
+      const updated = prevRows.rates.map((rateRow) => {
+        let val;
+        // 2.1 Население или OTHER_POPULATION
+        if (rateRow.id === "2.1") {
+          // console.log(filteredRates);
+          // val = filteredRates.rates[
+          //   isOtherMethod ? "POPULATION" : "POPULATION"
+          // ]?.value || 0;
+
+          val = filteredRates.rates.population?.value || 0
+        }
+        // 2.2 Предприятия или OTHER_ORG
+        else if (rateRow.id === "2.2") {
+          val = filteredRates.rates.org?.value || 0
+        }
+        // 2.3 Повышающий коэффициент
+        else if (rateRow.id === "2.3") {
+          val = 1;
+          if (isOtherMethod===true) {val = filteredRates["other_method"]?.value}
+          else {val = 1};
+
+          let val_out = filteredRates["out_permission"]?.value || 5;
           return {
-            ...rate,
+            ...rateRow,
             establishedVolume: val,
             actualVolume: val,
             withinLimitsVolume: val,
-            exceededVolume: val,
+            exceededVolume: val_out,
           };
+        } else {
+          return rateRow;
         }
-        if (rate.id === "2.2") {
-          const val = filteredRates.ORG?.value || 0;
-          return {
-            ...rate,
-            establishedVolume: val,
-            actualVolume: val,
-            withinLimitsVolume: val,
-            exceededVolume: val,
-          };
-        }
-        // Для id === "2.3" (коэффициент) оставляем значение из initialRows (по умолчанию 1)
-        return rate;
+
+        return {
+          ...rateRow,
+          establishedVolume: val,
+          actualVolume: val,
+          withinLimitsVolume: val,
+          exceededVolume: val,
+        };
       });
-      return { ...prevRows, rates: updatedRates };
+      return { ...prevRows, rates: updated };
     });
   };
+
 
   useEffect(() => {
     if (Object.keys(ratesData).length > 0) {
@@ -74,6 +96,9 @@ const PaymentCalculationForm = () => {
   const [permissionPointLink, setPPL] = useState({});
   const orgData = JSON.parse(localStorage.getItem("org"));
   const orgId = orgData?.id;
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedQuarter, setSelectedQuarter] = useState(1);
+
 
   useEffect(() => {
     const fetchPermissions = async () => {
@@ -255,70 +280,76 @@ const PaymentCalculationForm = () => {
   }, [selectedPermission]);
 
   // ======== 6) ФЕТЧ И ОБНОВЛЕНИЕ “ФАКТИЧЕСКИХ” ОБЪЁМОВ ========
-  useEffect(() => {
+  const fetchActualVolumes = async () => {
     if (!selectedPermission) return;
-
+    console.log("В useEffect для water_report_form_for_payment заходит");
     const permId = selectedPermission.ORG.permission_id.id;
-    const fetchActualVolumes = async () => {
-      try {
-        const data = await fetchStructDataWithFilters("water_report_form", {
-          permission_id: permId,
-        });
+    console.log("[permId]:", permId);
+    try {
+      const data = await fetchStructDataWithFilters("water_report_form_for_payment", {
+        permission_id: permId,
+        year: selectedYear,
+        quarter: selectedQuarter,
+      });
+      console.log("[water_report_form_for_payment data]:", data);
+      let parsed = { POPULATION: { value: 0 }, ORG: { value: 0 }, ACTUAL: {value: 0} };
 
-        // Ожидаем массив вида [{ type: "POPULATION", value: 123 }, { type: "ORG", value: 456 }, ...]
-        let parsed = { POPULATION: { value: 0 }, ORG: { value: 0 } };
-        if (Array.isArray(data) && data.length > 0) {
-          data.forEach((item) => {
-            const key = item.type;
-            const val = parseFloat(item.value || 0);
-            if (key === "POPULATION" || key === "ORG") {
-              parsed[key] = { value: val };
-            }
-          });
-        }
+      // Достаём массив из объекта
+      const arr = Array.isArray(data.data) ? data.data : [];
 
-        setRows((prevRows) => {
-          const updatedParams = prevRows.parameters.map((row) => {
-            if (row.id === "1.1.1") {
-              return {
-                ...row,
-                actualVolume: parsed.POPULATION.value,
-              };
-            }
-            if (row.id === "1.1.2") {
-              return {
-                ...row,
-                actualVolume: parsed.ORG.value,
-              };
-            }
-            if (row.id === "1.1") {
-              const sumActual = parsed.POPULATION.value + parsed.ORG.value;
-              return {
-                ...row,
-                actualVolume: sumActual,
-              };
-            }
-            return row;
-          });
-          return { ...prevRows, parameters: updatedParams };
-        });
-      } catch (err) {
-        console.error("Ошибка при получении фактических объёмов:", err);
-        setRows((prevRows) => {
-          const zeroed = prevRows.parameters.map((row) => {
-            if (row.id === "1.1.1" || row.id === "1.1.2") {
-              return { ...row, actualVolume: 0 };
-            }
-            if (row.id === "1.1") {
-              return { ...row, actualVolume: 0 };
-            }
-            return row;
-          });
-          return { ...prevRows, parameters: zeroed };
+      if (arr.length > 0) {
+        arr.forEach((item) => {
+          const key = item.type;
+          const val = parseFloat(item.value || 0);
+          if (key === "POPULATION" || key === "ACTUAL" || key === "ORG") {
+            parsed[key] = { value: val };
+          }
         });
       }
-    };
-
+      console.log("[parsed после заполнения]:", parsed);
+      setRows((prevRows) => {
+        const updatedParams = prevRows.parameters.map((row) => {
+          if (row.id === "1.1.1") {
+            return {
+              ...row,
+              actualVolume: parsed.POPULATION.value,
+            };
+          }
+          if (row.id === "1.1.2") {
+            return {
+              ...row,
+              actualVolume: parsed.ACTUAL.value - parsed.POPULATION.value,
+            };
+          }
+          if (row.id === "1.1") {
+            const sumActual = parsed.ACTUAL.value;
+            return {
+              ...row,
+              actualVolume: sumActual,
+            };
+          }
+          console.log("[строка в setRows]:", row)
+          return row;
+        });
+        return { ...prevRows, parameters: updatedParams };
+      });
+    } catch (err) {
+      console.error("Ошибка при получении фактических объёмов:", err);
+      setRows((prevRows) => {
+        const zeroed = prevRows.parameters.map((row) => {
+          if (row.id === "1.1.1" || row.id === "1.1.2") {
+            return { ...row, actualVolume: 0 };
+          }
+          if (row.id === "1.1") {
+            return { ...row, actualVolume: 0 };
+          }
+          return row;
+        });
+        return { ...prevRows, parameters: zeroed };
+      });
+    }
+  };
+  useEffect(() => {
     fetchActualVolumes();
   }, [selectedPermission]);
 
@@ -605,7 +636,53 @@ const PaymentCalculationForm = () => {
       ))}
       </select>
     )}
+
+    <div style={{ marginBottom: "16px" }}>
+    <label>Год:&nbsp;</label>
+    <select
+    value={selectedYear}
+    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+    >
+    {Array.from({ length: 5 }, (_, i) => {
+      const year = new Date().getFullYear() - 2 + i;
+      return (
+        <option key={year} value={year}>
+        {year}
+        </option>
+      );
+    })}
+    </select>
+
+    <label style={{ marginLeft: "16px" }}>Квартал:&nbsp;</label>
+    <select
+    value={selectedQuarter}
+    onChange={(e) => updateQuartal(e.target.value)}
+    >
+    {[1, 2, 3, 4].map((q) => (
+      <option key={q} value={q}>
+      {q}
+      </option>
+    ))}
+    </select>
     </div>
+
+    </div>
+
+    {/* Селектор метода расчёта */}
+    <div style={{ margin: "16px 0" }}>
+      <label htmlFor="method-select" style={{ marginRight: 8 }}>
+        Метод расчёта:
+      </label>
+      <select
+        id="method-select"
+        value={isOtherMethod ? "other" : "instrument"}
+        onChange={(e) => setIsOtherMethod(e.target.value === "other")}
+      >
+        <option value="instrument">Приборный метод</option>
+        <option value="other">Другой метод</option>
+      </select>
+    </div>
+
 
     {/* Кнопки-сворачивалки */}
     <div className="toggle-buttons-container">
