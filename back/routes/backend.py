@@ -300,7 +300,8 @@ def form_processing_to_entity(selected_template: str, form_data: any) -> Operati
         case "create_water_consumption_header":
             return process_create_water_consumption_header(form_data)
         case "payment_calculation":
-            pass
+            print(f"payment_calculation data: {form_data}")
+            return send_payment_calculation(form_data)
         case "f31":
             filtered_data = {k: v for k, v in form_data.items() if k != 'send_form'}
             excel_data = list(filtered_data.values())

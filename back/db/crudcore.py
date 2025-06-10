@@ -380,10 +380,16 @@ def get_all_by_conditions(
             filter_conditions.append(entity.is_deleted == False)
 
         # Используем функцию all() для объединения условий по логическому И
+        print(f"filter_conditions: {filter_conditions}")
         records = session.query(entity).filter(*filter_conditions).all()
-
+        msg = "_"
+        if not records:
+            print("записей не обнаружилось")
+            msg = "записей не обнаружилось"
+            records = []
         return OperationResult(
             status=OperationStatus.SUCCESS,
+            msg=msg,
             data=records
         )
     except NoResultFound:

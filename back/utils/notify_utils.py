@@ -10,15 +10,16 @@ def create_and_send_notification(username: str, message: str) -> OperationResult
     notif_type = "Общее"
     print(message)
     try:
-        data = json.loads(message)
+        data = json.loads(str(message).replace("'", '"'))
         if isinstance(data, dict) and 'type' in data:
             notif_type = data['type']
-    except (json.JSONDecodeError, TypeError):
+    except (json.JSONDecodeError, TypeError) as e:
+        print(f"Ошибка JSONDecode или TypeError - {e}")
         pass
 
     notif = {
         'username': username,
-        'message': message,
+        'message': str(message),
         'delivered': False,
         'delivered_at': datetime.utcnow()
     }

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNotification } from "./NotificationContext.js";
 import { fetchSingleTableData, fetchStructDataWithFilters } from "../api/fetch_records";
+import { sendFormData } from "../api/add_records";
 import "../css/Water.css";
 
 const PaymentCalculationForm = () => {
@@ -606,6 +608,26 @@ const PaymentCalculationForm = () => {
     );
   };
 
+  // ОТПРАВКА
+  const [alertVisible, setAlertVisible] = useState(false);
+  const {showSuccess, showError} = useNotification();
+  const showAlert = () => {
+    setAlertVisible(true);
+    setTimeout(() => {
+      setAlertVisible(false);
+    }, 20000);
+  };
+  const handleSubmit = async () => {
+    try {
+      const response = await sendFormData("payment_calculation", {'org_id': orgId, 'quarter':selectedQuarter, 'payment': computedPayment, 'parameters': computedParameters});
+      console.log("Данные успешно отправлены", response);
+      showSuccess();
+    } catch (error) {
+      showError();
+      console.error("Ошибка при отправке данных", error.message);
+    }
+  };
+
   // ======== 14) JSX РАЗМЕТКА КОМПОНЕНТА ========
   return (
     <div className="payment-container">
@@ -726,6 +748,16 @@ const PaymentCalculationForm = () => {
         {openSection === "payment" && renderPayment()}
         </div>
         </div>
+
+        {alertVisible && (
+          <div className="custom-alert">
+          ✅ Данные успешно отправлены!
+          </div>
+        )}
+        <button className="btn btn-success" onClick={handleSubmit}>
+        Отправить
+        </button>
+
         </div>
   );
 };

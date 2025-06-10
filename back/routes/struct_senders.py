@@ -8,6 +8,35 @@ import sys
 from typing import Any, List, Optional, Dict, Tuple
 
 
+def send_payment_calculation(form_data: dict) -> OperationResult:
+    org_id = int(form_data.get('org_id'))
+    payment = form_data.get('payment')
+    parameters = form_data.get('parameters')
+    print_data_in_func(parameters, "spc : parameters")
+    print_data_in_func(payment, "spc : payment")
+    try:
+        notification_payload = {
+            "type": "paymentform",
+            "header": f"Отправлен расчет платы за {form_data['quarter']} квартал",
+            "message": "Новый расчет платы получен",
+            "quarter": form_data['quarter'],
+            # TODO : разрешение, пункт учета, прибор
+            "payment": payment,
+            "parameters": parameters
+        }
+        print("        <payload сформирован>")
+        # message = json.dumps(notification_payload, ensure_ascii=False)
+        message = serialize_to_json(notification_payload)
+        print("        <message сформирован>")
+        from utils.notify_utils import create_and_send_notification
+        return create_and_send_notification("orgadmin", message)
+    except Exception as e:
+        print("Ошибка при отправке уведомления orgadmin-у:", e)
+        return OperationResult(status=OperationStatus.VALIDATION_ERROR, msg="Не удалось отправить уведомление")
+    # return OperationResult(status=OperationStatus.SUCCESS, msg="Данные успешно сохранены")
+    ...
+
+
 def parse_f31(
     excel_data: List[List[Any]],
     replace_duplicates: bool = False
@@ -700,9 +729,11 @@ def create_full_waterpoint(
                 {"brand_id": data_meter["brand_id"]},
             ],
         )
-        if find.status == OperationStatus.SUCCESS:
+        print_operation_result(find)
+        if find.status == OperationStatus.SUCCESS and find.data and len(find.data)>0:
+            print("[Результат операции find]: ")
             meters = find.data
-            if len(meters) != 1:
+            if meters and len(meters) > 1:
                 print_data_in_func(
                     meters, "create_full_waterpoint: найдено несколько приборов"
                 )
@@ -713,7 +744,8 @@ def create_full_waterpoint(
                 )
             data_point["meter_id"] = meters[0].id
 
-        elif "Не найдено" in find.message:
+        elif "записей не обнаружилось" in find.message or "Не найдено" in find.message or (find.data and len(find.data) == 0):
+            print("Попало в ветку Не найдено")
             # 1.3. Создаём новый прибор
             try:
                 meter_payload = {
@@ -738,8 +770,9 @@ def create_full_waterpoint(
                     msg="Ошибка при создании нового прибора"
                 )
         else:
-            # 1.4. Неизвестная ошибка поиска
+            print("Неизвестная ошибка поиска")
             print_operation_result(find)
+            find.status = OperationStatus.UNDEFINE_ERROR
             return find
     else:
         exist_meter = get_record_by_id(Meters, int(data_meter.get("id")))
@@ -806,6 +839,7 @@ def create_full_waterpoint(
         if not create_record_entity(WaterPoint, waterpoint_payload):
             raise RuntimeError("Ошибка при создании нового пункта учета")
         waterpoint_id = get_last_record_id(WaterPoint)
+        print(f"[waterpoint_id]:{waterpoint_id}")
 
         # 2. Создаём разрешения (Permissions)
         permission_ids = []
@@ -855,6 +889,7 @@ def create_full_waterpoint(
             }
             create_record_entity(PointPermissionLink, link_permission_payload)
 
+        print("debug :  метка конца")
         return OperationResult(
             status=OperationStatus.SUCCESS,
             msg="Все записи таблиц успешно созданы"
