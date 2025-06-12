@@ -15,7 +15,7 @@
     background: #f9f9f9; /* темный минимализм */
     padding: 20px;
     border-radius: 6px;
-    max-width: 500px;
+    max-width: fit-content;
     width: 90%;
     position: relative;
     box-shadow: 0 0 10px #000;
@@ -68,4 +68,22 @@
 
 .action-buttons{
     margin-top: 1vh;
+}
+
+
+.payment-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.payment-table th, .payment-table td {
+    border: 1px solid #ccc;
+    padding: 6px 10px;
+    text-align: center;
+}
+
+.payment-table th {
+    background-color: #f0f0f0;
+    font-weight: bold;
 }

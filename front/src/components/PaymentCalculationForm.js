@@ -408,7 +408,10 @@ const PaymentCalculationForm = () => {
   const computePayment = () => {
     // Сначала получим коэффициент из строки 2.3
     const coefRow = rows.rates.find((r) => r.id === "2.3");
-    const coef = coefRow ? coefRow.establishedVolume || 1 : 1;
+    console.log("coefRow.exceededVolume:", coefRow.exceededVolume);
+    console.log("coefRow.establishedVolume:", coefRow.establishedVolume)
+
+    // const coef = coefRow ? coefRow.establishedVolume || 1 : 1;
 
     // Берём уже вычисленные дочерние параметры из computedParameters
     const param11 = computedParameters.find((r) => r.id === "1.1.1") || {};
@@ -418,11 +421,19 @@ const PaymentCalculationForm = () => {
 
     // Функция, считающая “рублёвые” колонки по одной строке (параметр + ставка)
     const calcRow = (paramRow, rateRow) => {
-      const est_rub = (paramRow.establishedVolume || 0) * (rateRow.establishedVolume || 0);
-      const act_rub = (paramRow.actualVolume || 0) * (rateRow.establishedVolume || 0);
-      const within_rub = (paramRow.withinLimitsVolume || 0) * (rateRow.establishedVolume || 0);
+      let coef = 1;
+      // const coefRow = rows.rates.find((r) => r.id === "2.3");
+
+      let coef_out = coefRow.exceededVolume;
+      if (isOtherMethod===true) {
+
+        coef = coefRow.establishedVolume || 1
+      }
+      const est_rub = (paramRow.establishedVolume || 0) * (rateRow.establishedVolume || 0) * coef;
+      const act_rub = (paramRow.actualVolume || 0) * (rateRow.establishedVolume || 0) * coef;
+      const within_rub = (paramRow.withinLimitsVolume || 0) * (rateRow.establishedVolume || 0) * coef;
       const exceeded_rub =
-      (paramRow.exceededVolume || 0) * (rateRow.establishedVolume || 0) * coef;
+      (paramRow.exceededVolume || 0) * (rateRow.establishedVolume || 0) * coef_out;
       const total = within_rub + exceeded_rub;
       return {
         establishedVolume: +est_rub.toFixed(2),

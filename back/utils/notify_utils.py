@@ -31,5 +31,5 @@ def create_and_send_notification(username: str, message: str) -> OperationResult
         )
 
     from routes.socket_handlers import send_notification
-    res = send_notification(username, message)
+    res = send_notification(username, str(message))
     return res

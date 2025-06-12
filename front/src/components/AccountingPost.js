@@ -123,6 +123,16 @@ const AccountingPost = () => {
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear());
   const [exportLogId, setExportLogId] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: 'start_date', direction: 'asc' });
+  const [uploadStatus, setUploadStatus] = useState({});
+  const markUploaded = (logId, type) => {
+    setUploadStatus(prev => ({
+      ...prev,
+      [logId]: {
+        ...prev[logId],
+        [type]: true
+      }
+    }));
+  };
 
   const [statusFilters, setStatusFilters] = useState({
     in_progress: true,
@@ -653,6 +663,45 @@ const AccountingPost = () => {
     }
   };
 
+  const handleNotify = async ({
+    logId,
+    pointId,
+    water_body_id,
+    exploitation_org_id,
+    month,
+    year,
+    fileTypes
+  }) => {
+    try {
+      // Если какие-то поля нужно достать из logDetails, можно:
+      const details = logDetails[logId];
+
+      const data = {
+        logId,
+        pointId,
+        water_body_id,
+        exploitation_org_id,
+        month,
+        year,
+        // передаём по API именно эти имена:
+        pdfFileType: fileTypes.includes('MONTH_CLOSURE_SCAN')
+        ? 'MONTH_CLOSURE_SCAN'
+        : undefined,
+        sigFileType: fileTypes.includes('SIGNATURE')
+        ? 'SIGNATURE'
+        : undefined,
+      };
+
+      await sendFormData('water_consumption_notify', data);
+      showSuccess('Уведомление отправлено');
+    } catch (error) {
+      console.error(error);
+      showError('Ошибка отправки уведомления');
+    }
+  };
+
+
+
 
   const handlePermissionChange = (e) => {
     const { name, value } = e.target;
@@ -905,7 +954,7 @@ const AccountingPost = () => {
       <div className="label-modal">
       <label>Выберете метод: </label>
       <ForeignKeySelect
-      field={{ field: 'method_type', isEnum: true, enumType: 'RatesType' }}
+      field={{ field: 'method_type', isEnum: true, enumType: 'UpCoefType' }}
       value={permissionData.method_type}
       onChange={handlePermissionChange}
       />
@@ -1158,86 +1207,164 @@ const AccountingPost = () => {
       {Object.entries(expandedLogs).map(([logId, isExpanded]) =>
         isExpanded && logDetails[logId] ? (
           <div key={logId} className="log-details-container">
-          <h3 align="center">Детали журнала (Номер журнала: {logId})</h3>
-          <p align="center" >
-          <strong >Эксплуатирующая организация:</strong>{" "}
-          {logDetails[logId].exploitation_org.organisation_name}
-          </p>
-          <table className="data-table-result">
-          <thead>
-          <tr>
-          <th>Дата измерения</th>
-          <th>Дней эксплуатации</th>
-          <th>Расход воды (м³/день)</th>
-          <th >Подпись лица</th>
-          </tr>
-          </thead>
-          <tbody>
-          {logDetails[logId].wcl_list.map((m) => {
-            // Преобразуем строку даты в объект Date
-            const date = new Date(m.measurement_date);
-            // Форматируем дату в нужный вид, например "дд.мм.гггг"
-            const formattedDate = date.toLocaleDateString('ru-RU', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric'
-            });
-
-            return (
-              <tr key={m.measurement_date}>
-              <td>{formattedDate}</td>
-              <td>{m.operating_time_days}</td>
-              <td>{m.water_consumption_m3_per_day}</td>
-              <td>{m.person_signature}</td>
-              </tr>
-            );
-          })}
-          </tbody>
-
-          </table>
-
-          {["in_progress", "under_correction"].some((s) =>
-            allLogs.find(log => log.id === Number(logId))?.status?.toLowerCase().includes(s)
-          ) ? (
-            <div className="log-files-upload">
-            <h4 style={{ textAlign: "center" }}>Загрузка файлов:</h4>
-            <div className="upload-row">
-            <FileUpload
-            label="PDF-скан"
-            accept="application/pdf"
-            icon="📄"
-            entityType="water_consumption_log"
-            entityId={logId}
-            fileType="MONTH_CLOSURE_SCAN"
-            preview={true}
-            onUpload={uploadFileToBackend}
-            />
-            </div>
-            <div className="upload-row">
-            <FileUpload
-            label="Sig-файл подписи"
-            accept=".sig"
-            icon="🔏"
-            entityType="water_consumption_log"
-            entityId={logId}
-            fileType="SIGNATURE"
-            preview={false}
-            onUpload={uploadFileToBackend}
-            />
-            </div>
-            </div>
-          ) : (
-            <div className="log-files-upload">
-            <h4 style={{ textAlign: "center", color: "gray" }}>Загрузка недоступна</h4>
-            <p style={{ textAlign: "center", color: "#888", fontStyle: "italic" }}>
-            Файлы можно загрузить или заменить только в статусах <b>"На доработке"</b> или <b>"В процессе"</b>
+            <h3 align="center">Детали журнала (Номер журнала: {logId})</h3>
+            <p align="center" >
+            <strong >Эксплуатирующая организация:</strong>{" "}
+            {logDetails[logId].exploitation_org.organisation_name}
             </p>
-            </div>
-          )}
+            <table className="data-table-result">
+            <thead>
+            <tr>
+            <th>Дата измерения</th>
+            <th>Дней эксплуатации</th>
+            <th>Расход воды (м³/день)</th>
+            <th >Подпись лица</th>
+            </tr>
+            </thead>
+            <tbody>
+            {logDetails[logId].wcl_list.map((m) => {
+              // Преобразуем строку даты в объект Date
+              const date = new Date(m.measurement_date);
+              // Форматируем дату в нужный вид, например "дд.мм.гггг"
+              const formattedDate = date.toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
 
-          </div>
-        ) : null
-      )}
+              return (
+                <tr key={m.measurement_date}>
+                <td>{formattedDate}</td>
+                <td>{m.operating_time_days}</td>
+                <td>{m.water_consumption_m3_per_day}</td>
+                <td>{m.person_signature}</td>
+                </tr>
+              );
+            })}
+            </tbody>
+
+            </table>
+
+            {["in_progress", "under_correction"].some((s) =>
+              allLogs.find(log => log.id === Number(logId))?.status?.toLowerCase().includes(s)
+            ) ? (
+              <div className="log-files-upload">
+              <h4 style={{ textAlign: "center" }}>Загрузка файлов:</h4>
+                <div className="upload-row">
+                  <FileUpload
+                    label="PDF-скан"
+                    accept="application/pdf"
+                    icon="📄"
+                    entityType="water_consumption_log"
+                    entityId={logId}
+                    fileType="MONTH_CLOSURE_SCAN"
+                    preview={true}
+                    onUpload={async (file) => {
+                      // Передаём file и объект с нужными полями отдельно
+                      await uploadFileToBackend(file, {
+                        entityType: 'water_consumption_log',
+                        entityId: logId,
+                        fileType: 'MONTH_CLOSURE_SCAN'
+                      });
+                      markUploaded(logId, 'pdf');
+                    }}
+                  />
+
+                </div>
+                <div className="upload-row">
+                  <FileUpload
+                    label="Sig-файл подписи"
+                    accept=".sig"
+                    icon="🔏"
+                    entityType="water_consumption_log"
+                    entityId={logId}
+                    fileType="SIGNATURE"
+                    preview={false}
+                    onUpload={async (file) => {
+                      await uploadFileToBackend(file, {
+                        entityType: 'water_consumption_log',
+                        entityId: logId,
+                        fileType: 'SIGNATURE'
+                      });
+                      markUploaded(logId, 'sig');
+                    }}
+                  />
+
+                </div>
+              </div>
+
+
+
+            ) : (
+              <div className="log-files-upload">
+              <h4 style={{ textAlign: "center", color: "gray" }}>Загрузка недоступна</h4>
+              <p style={{ textAlign: "center", color: "#888", fontStyle: "italic" }}>
+              Файлы можно загрузить или заменить только в статусах <b>"На доработке"</b> или <b>"В процессе"</b>
+              </p>
+              </div>
+            )}
+
+            {(() => {
+              const entries = logDetails[logId].wcl_list;
+              if (!entries.length) return null;
+
+              // Определяем месяц и год из первой даты
+              const d0 = new Date(entries[0].measurement_date);
+              const year = d0.getFullYear();
+              const month = d0.getMonth() + 1;
+              const daysInMonth = new Date(year, month, 0).getDate();
+
+              const allDaysFilled =
+              entries.length === daysInMonth &&
+              entries.every(
+                e =>
+                e.water_consumption_m3_per_day != null &&
+                e.person_signature?.trim() !== ""
+              );
+
+              const filesOk =
+              uploadStatus[logId]?.pdf === true &&
+              uploadStatus[logId]?.sig === true;
+              console.log("allDaysFilled: ", allDaysFilled);
+              console.log("filesOk: ", filesOk);
+              console.log("uploadStatus:", uploadStatus);
+              console.log(`uploadStatus[${logId}] =`, uploadStatus[logId]);
+
+              if (allDaysFilled && filesOk) {
+                return (
+                  <div style={{ textAlign: "center", marginTop: 20 }}>
+                  <button
+                  className="custom-button"
+                  onClick={() =>
+                    handleNotify({
+                      logId: Number(logId),
+                                 pointId: logDetails[logId].point_id,
+                                 water_body_id: logDetails[logId].water_body_id,
+                                 exploitation_org_id:
+                                 logDetails[logId].exploitation_org_id,
+                                 month,
+                                 year,
+                                 fileTypes: ["MONTH_CLOSURE_SCAN", "SIGNATURE"],
+                    })
+                  }
+                  >
+                  Отправить уведомление
+                  </button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+
+            </div>
+          ) : null
+        )}
+
+
+
+
+
       </div>
     )}
     </div>

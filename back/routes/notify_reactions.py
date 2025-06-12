@@ -19,6 +19,8 @@ def handle_notification_reaction(notification: dict) -> OperationResult:
     pprint.pprint(notification)
 
     match payload_type:
+        case 'paymentform':
+            return _handle_payment_form_reaction(notification)
         case 'waterreportform':
             return _handle_water_report_form_reaction(notification)
         # TODO: add other cases for 'registration', 'report', 'registry', etc.
@@ -26,6 +28,19 @@ def handle_notification_reaction(notification: dict) -> OperationResult:
             print(f"No reaction handler for type: {payload_type}")
             return OperationResult(status=OperationStatus.VALIDATION_ERROR,
                                    msg=f"Unsupported notification type: {payload_type}")
+
+
+def _handle_payment_form_reaction(notification: dict) -> OperationResult:
+    reaction = notification.get('reaction')
+    if reaction == 'revise':
+        print(" >> Action: mark water report for revision")
+        # TODO: implement actual revision workflow
+    elif reaction == 'approve':
+        print(" >> Action: approve water report")
+        # TODO: implement approval workflow
+    else:
+        return OperationResult(status=OperationStatus.VALIDATION_ERROR,
+                               msg=f"Unknown reaction for waterreportform: {reaction}")
 
 
 def _handle_water_report_form_reaction(notification: dict) -> OperationResult:

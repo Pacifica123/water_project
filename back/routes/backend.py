@@ -290,17 +290,17 @@ def get_structs(selected_template: str, filter_k: str, filter_v: any) -> Operati
 
 def form_processing_to_entity(selected_template: str, form_data: any) -> OperationResult:
     print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
+    print_data_in_func(form_data, f"fp2e : {selected_template}")
     match selected_template:
         case "send_quarter":
             return send_quarter(form_data)
         case "water_consumption_single":
             return process_water_consumption_single(form_data)
-        case "water_consumption_many":
-            pass
+        case "water_consumption_notify":
+            return send_water_comsumption_log_full(form_data)
         case "create_water_consumption_header":
             return process_create_water_consumption_header(form_data)
         case "payment_calculation":
-            print(f"payment_calculation data: {form_data}")
             return send_payment_calculation(form_data)
         case "f31":
             filtered_data = {k: v for k, v in form_data.items() if k != 'send_form'}

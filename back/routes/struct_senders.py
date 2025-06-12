@@ -8,6 +8,166 @@ import sys
 from typing import Any, List, Optional, Dict, Tuple
 
 
+def send_water_comsumption_log_full(form_data: dict) -> OperationResult:
+    """
+    Отправка полного журнала водопотребления.
+    form_data ожидает ключ 'logId', а также month, year, pdfFileType, sigFileType.
+    """
+    print(f" === Зашло в функцию {sys._getframe().f_code.co_name} === ")
+    pprint.pprint(form_data)
+
+    log_id = form_data.get("logId")
+    month = form_data.get("month")
+    year = form_data.get("year")
+    pdf_type = form_data.get("pdfFileType")
+    sig_type = form_data.get("sigFileType")
+
+    # 1. Достаём шапку журнала
+    res_log = get_record_by_id(WaterConsumptionLog, log_id)
+    if res_log.status != OperationStatus.SUCCESS or not res_log.data:
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg=f"Журнал {log_id} не найден"
+        )
+    log: WaterConsumptionLog = res_log.data
+
+    # 2. Достаём все записи RecordWCL
+    res_records = get_all_by_conditions(
+        RecordWCL,
+        [{"log_id": log_id}]
+    )
+    if res_records.status != OperationStatus.SUCCESS:
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg="Ошибка при чтении записей журнала"
+        )
+    records = res_records.data  # список RecordWCL
+
+    # 3. Проверяем, что записей ровно days_in_month
+    import calendar
+    days_in_month = calendar.monthrange(year, month)[1]
+    if len(records) != days_in_month:
+        return OperationResult(
+            status=OperationStatus.VALIDATION_ERROR,
+            msg=f"Найдены {len(records)} записей, ожидалось {days_in_month}"
+        )
+    # 4. Ищем файлы PDF и SIG
+    file_conditions = [
+        {"entity_type": "water_consumption_log"},
+        {"entity_id": log_id},
+        {"file_type": pdf_type},
+    ]
+    res_pdf = get_all_by_conditions(FileRecord, file_conditions)
+    file_conditions[-1] = {"file_type": sig_type}
+    res_sig = get_all_by_conditions(FileRecord, file_conditions)
+
+    if res_pdf.status != OperationStatus.SUCCESS or not res_pdf.data:
+        return OperationResult(
+            status=OperationStatus.VALIDATION_ERROR,
+            msg="PDF-файл не найден"
+        )
+    if res_sig.status != OperationStatus.SUCCESS or not res_sig.data:
+        return OperationResult(
+            status=OperationStatus.VALIDATION_ERROR,
+            msg="SIG-файл не найден"
+        )
+
+    pdf_ids = [f.id for f in res_pdf.data]
+    sig_ids = [f.id for f in res_sig.data]
+
+    # 5. Сразу ставим статус IS_DONE
+    update_record(
+        WaterConsumptionLog,
+        log_id,
+        {"log_status": log_status.IS_DONE.value}
+    )
+
+    # 6. Собираем сведения об организации и водном объекте
+    # 6.1. Пункт учёта
+    res_wp = get_record_by_id(WaterPoint, log.point_id)
+    if res_wp.status != OperationStatus.SUCCESS or not res_wp.data:
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg="Точка учёта не найдена"
+        )
+    wp: WaterPoint = res_wp.data
+
+    # 6.2. Организация
+    res_org = get_record_by_id(Organisations, wp.organisation_id)
+    if res_org.status != OperationStatus.SUCCESS or not res_org.data:
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg="Организация не найдена"
+        )
+    org: Organisations = res_org.data
+
+    # 6.3. Водный объект и его код
+    res_wref = get_record_by_id(WaterObjectRef, wp.water_body_id)
+    if res_wref.status != OperationStatus.SUCCESS or not res_wref.data:
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg="Водный объект не найден"
+        )
+    wref: WaterObjectRef = res_wref.data
+
+    res_code = get_record_by_id(Codes, wref.code_obj_id)
+    if res_code.status != OperationStatus.SUCCESS or not res_code.data:
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg="Код водного объекта не найден"
+        )
+    code: Codes = res_code.data
+    # 7. Формируем payload уведомления
+    notification_payload = {
+        "type": "waterlog_complete",
+        "header": (
+            f"Заполнен журнал водопотребления организации "
+            f"{org.organisation_name} за {month}.{year}"
+        ),
+        "organisation_name": org.organisation_name,
+        "water_object_code": f"{code.code_symbol}{code.code_value}",
+        "month": month,
+        "year": year,
+        "records": [r.to_dict() for r in records],
+        "file_ids": {
+            "pdf": pdf_ids,
+            "sig": sig_ids
+        }
+    }
+
+    # 8. Отправляем нотификацию
+    try:
+        # msg = json.dumps(notification_payload, ensure_ascii=False)
+        msg = serialize_to_json(notification_payload)
+        from utils.notify_utils import create_and_send_notification
+        create_and_send_notification("orgadmin", str(msg))
+        # 9. При успехе — ставим статус SENT
+        update_record(
+            WaterConsumptionLog,
+            log_id,
+            {"log_status": log_status.SENT}
+        )
+        return OperationResult(
+            status=OperationStatus.SUCCESS,
+            msg="Уведомление успешно отправлено"
+        )
+
+    except Exception as e:
+        print("Ошибка при отправке уведомления orgadmin-у:", e)
+        # 10. При ошибке — принудительно откатываем статус в IS_DONE
+        # (даже если update попытался ставить SENT)
+        update_record(
+            WaterConsumptionLog,
+            log_id,
+            {"log_status": log_status.IS_DONE}
+        )
+        return OperationResult(
+            status=OperationStatus.DATABASE_ERROR,
+            msg=f"Не удалось отправить уведомление: {e}"
+        )
+
+
+
 def send_payment_calculation(form_data: dict) -> OperationResult:
     org_id = int(form_data.get('org_id'))
     payment = form_data.get('payment')
@@ -784,7 +944,20 @@ def create_full_waterpoint(
             if key not in data_meter or not data_meter.get(key):
                 data_meter[key] = getattr(exist_meter.data, key, None)
 
-    # debug
+    # debugclass WaterObjectRef(Base):
+    """
+    Водный объект\n
+    -------------------------------------\n
+    Атрибуты:\n
+      \n  - code_type_id (int): тип объекта (ссылка на 'codes') \n
+      \n  - code_obj_id (int):  код объекта (ссылка на 'codes') \n
+      \n  - water_area_id (int): водохозяйственный участок (ссылка на 'water_area').
+    """
+    __tablename__ = 'water_object_ref'
+
+    code_type_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
+    code_obj_id: Mapped[int] = mapped_column(ForeignKey('codes.id'), nullable=False)
+    water_area_id: Mapped[int] = mapped_column(ForeignKey('water_area_ref.id'), nullable=False)
     date_str = data_meter.get("expiration_date")
     print(f"date raw value: {date_str!r}")
     # 2. Подготовка всех полезадок

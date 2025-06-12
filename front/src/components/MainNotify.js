@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { getSocket } from "../socket";
 import "../css/MainNotify.css";
@@ -12,74 +13,65 @@ function MainNotify() {
     const [selectedNotification, setSelectedNotification] = useState(null);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
-    // -------------------------------------------------------------------
-    //
-    //
-    // -------------------------------------------------------------------
     const triggerFetchAllNotify = async () => {
         try {
             const userStr = localStorage.getItem("user");
-            if (!userStr) {
-                console.warn("Пользователь не найден в localStorage");
-                return;
-            }
+            if (!userStr) return;
             const user = JSON.parse(userStr);
-            if (!user || !user.username) {
-                console.warn("Неверный формат user из localStorage");
-                return;
-            }
-
-            // сервер вернёт уведомления через сокет.
-            await fetch(
-                `http://127.0.0.1:5000/api/fetchallnotify?username=${user.username}`
-            );
-            // Здесь data = { or_msg: "...", status: "sent" }, его игнорируем.
-            // После этого сервер через сокет заэмитит все накопившиеся уведомления.
+            if (!user || !user.username) return;
+            await fetch(`http://127.0.0.1:5000/api/fetchallnotify?username=${user.username}`);
         } catch (e) {
             console.error("Ошибка при fetchallnotify:", e);
         }
     };
 
-    // -------------------------------------------------------------------
-    //  При монтировании: сначала подписываемся на socket.on("notification"),
-    //  а потом вызываем fetchallnotify, чтобы «вытянуть» историю.
-
-    // TODO : поправить (см скрин в ТГ)
-    // -------------------------------------------------------------------
     useEffect(() => {
         const socket = getSocket();
         if (!socket) return;
 
-        // Обработчик каждого уведомления из сокета.
         const handleNotification = (msg) => {
-            setNotifications(prev => {
-                if (prev.find(x => x.id === msg.id)) return prev;
+            console.log("Получено уведомление:", msg);
+            setNotifications((prev) => {
+                if (prev.find((x) => x.id === msg.id)) return prev;
 
                 let title = "Без заголовка";
+                let parsed = null;
 
                 if (typeof msg.text === "string") {
                     try {
-                        const parsed = JSON.parse(msg.text);
+                        const fixedText = msg.text.replace(/'/g, '"');
+                        parsed = JSON.parse(fixedText);
                         title = parsed.header || parsed.message || "Без заголовка";
                     } catch {
                         title = msg.text;
                     }
-                } else if (msg.header) {
-                    title = msg.header;
-                } else if (msg.message) {
-                    title = msg.message;
+                } else if (typeof msg.text === "object" && msg.text !== null) {
+                    parsed = msg.text;
+                    title = parsed.header || parsed.message || "Без заголовка";
                 }
+
+                // Определяем тип по parsed.type, если есть
+                let notificationType = "ОТЧЕТНОСТЬ";
+                const parsedType = parsed?.type || msg.type;
+
+                if (parsedType === "waterreportform") {
+                    notificationType = "ЗАБОР ПОВЕРХНОСТНОЙ ВОДЫ";
+                } else if (parsedType === "paymentform") {
+                    notificationType = "РАСЧЕТ ОПЛАТЫ";
+                } else if (parsedType) {
+                    notificationType = parsedType.toUpperCase();
+                }
+
                 const notification = {
                     id: msg.id || Date.now() + Math.random(),
                              text: title,
                              date: msg.date || new Date().toISOString().split("T")[0],
-                             type:
-                             msg.type === "waterreportform"
-                             ? "ЗАБОР ПОВЕРХНОСТНОЙ ВОДЫ"
-                             : msg.type || "ОТЧЕТНОСТЬ",
-                             raw: msg,
+                             type: notificationType,
+                             raw: { ...msg, parsed },
                 };
+
 
 
                 return [...prev, notification];
@@ -87,37 +79,41 @@ function MainNotify() {
         };
 
 
-        // 1) Сначала подписываемся
-        console.log("⚙️ Подписываемся на сокет, объект:", socket);
         socket.on("notification", handleNotification);
-
-        // 2) Только после подписки делаем fetch, чтобы сервер
-        //    прислал все накопившиеся уведомления
         triggerFetchAllNotify();
 
-        // 3) При размонтировании – отписываемся
         return () => {
-            console.log("🗑️ Отписываемся от сокета", socket);
             socket.off("notification", handleNotification);
         };
     }, []);
-    // -------------------------------------------------------------------
 
-    // Фильтрация, пагинация и остальные функции оставляем без изменений:
     const getNotificationTitle = (text) => {
-        try {
-            const parsed = JSON.parse(text);
-            return parsed.header || parsed.message || "Без заголовка";
-        } catch (e) {
-            return text || "Без заголовка";
+        if (!text) return "Без заголовка";
+
+        // Если это объект
+        if (typeof text === "object") {
+            return text.header || text.message || "Без заголовка";
         }
+
+        // Если это строка с одинарными кавычками — пытаемся превратить в валидный JSON
+        if (typeof text === "string") {
+            try {
+                const fixedText = text.replace(/'/g, '"');
+                const parsed = JSON.parse(fixedText);
+                return parsed.header || parsed.message || "Без заголовка";
+            } catch {
+                return text;
+            }
+        }
+
+        return "Без заголовка";
     };
 
 
 
     const addNotification = (text, type) => {
         const newNotification = {
-            id: Date.now(), // временный id
+            id: Date.now(),
             text,
             date: new Date().toISOString().split("T")[0],
             type,
@@ -125,39 +121,59 @@ function MainNotify() {
         setNotifications((prev) => [...prev, newNotification]);
     };
 
+    const handleSort = (key) => {
+        setSortConfig((prev) => {
+            if (prev.key === key) {
+                return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+            }
+            return { key, direction: "asc" };
+        });
+    };
+
+    const getSortIndicator = (key) => {
+        if (sortConfig.key !== key) return "";
+        return sortConfig.direction === "asc" ? " ▲" : " ▼";
+    };
+
     const filteredNotifications = notifications.filter((msg) => {
         const inTab = selectedTab === "ВСЕ" || msg.type === selectedTab;
         const inDateRange =
-        (!dateStart || msg.date >= dateStart) && (!dateEnd || msg.date <= dateEnd);
+        (!dateStart || msg.date >= dateStart) &&
+        (!dateEnd || msg.date <= dateEnd);
         return inTab && inDateRange;
     });
 
-    const totalPages = Math.ceil(filteredNotifications.length / itemsPerPage);
-    const paginatedNotifications = filteredNotifications.slice(
+    const sortedNotifications = [...filteredNotifications];
+    if (sortConfig.key) {
+        sortedNotifications.sort((a, b) => {
+            const aVal = a[sortConfig.key] || "";
+            const bVal = b[sortConfig.key] || "";
+            if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+            if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+            return 0;
+        });
+    }
+
+    const totalPages = Math.ceil(sortedNotifications.length / itemsPerPage);
+    const paginatedNotifications = sortedNotifications.slice(
         (currentPage - 1) * itemsPerPage,
-                                                               currentPage * itemsPerPage
+                                                             currentPage * itemsPerPage
     );
+
+
 
     const handlePageChange = (page) => {
         if (page >= 1 && page <= totalPages) setCurrentPage(page);
     };
 
         useEffect(() => {
-            setCurrentPage(1); // сбрасываем страницу при смене фильтра
+            setCurrentPage(1);
         }, [itemsPerPage, selectedTab, dateStart, dateEnd]);
 
-        // Callback для NotificationModal (approve/revise → просто перезапустить WS-поток)
         const handleReactAndReload = async (notification, reaction) => {
             try {
                 await sendNotificationReaction(notification, reaction);
-                console.log("Reaction sent:", reaction);
-
-                // Очищаем текущий стейт, чтобы при новом fetchallnotify
-                // не мешались старые уведомления в массиве
                 setNotifications([]);
-
-                // Снова «подталкиваем» сервер переключиться в режим
-                // выдачи истории через WebSocket
                 await triggerFetchAllNotify();
             } catch (err) {
                 console.error("Ошибка при отправке реакции:", err);
@@ -199,40 +215,29 @@ function MainNotify() {
                 {tab}{" "}
                 <span>
                 (
-                    {notifications.filter((n) => tab === "ВСЕ" || n.type === tab).length})
+                    {notifications.filter(
+                        (n) => tab === "ВСЕ" || n.type === tab
+                    ).length}
+                )
                 </span>
                 </div>
             ))}
-            </div>
-
-            <div className="test-buttons">
-            <button
-            onClick={() =>
-                addNotification("Регистрация организации прошла успешно", "РЕГИСТРАЦИЯ ОРГАНИЗАЦИИ")
-            }
-            >
-            Тест: Регистрация организации
-            </button>
-            <button onClick={() => addNotification("Журнал принят", "ОТЧЕТНОСТЬ")}>
-            Тест: Журнал принят
-            </button>
-            <button
-            onClick={() =>
-                addNotification("Журнал отклонен: ошибка в данных", "ОТЧЕТНОСТЬ")
-            }
-            >
-            Тест: Журнал отклонен
-            </button>
             </div>
 
             <div className="notify-table-wrapper">
             <table className="notify-table">
             <thead>
             <tr>
-            <th>#</th>
-            <th>Уведомление</th>
-            <th>Дата</th>
-            <th>Тип</th>
+            <th onClick={() => handleSort("id")}># {getSortIndicator("id")}</th>
+            <th onClick={() => handleSort("text")}>
+            Уведомление {getSortIndicator("text")}
+            </th>
+            <th onClick={() => handleSort("date")}>
+            Дата {getSortIndicator("date")}
+            </th>
+            <th onClick={() => handleSort("type")}>
+            Тип {getSortIndicator("type")}
+            </th>
             </tr>
             </thead>
             <tbody>
@@ -250,8 +255,7 @@ function MainNotify() {
                     onClick={() => setSelectedNotification(msg)}
                     >
                     <td>{(currentPage - 1) * itemsPerPage + idx + 1}</td>
-                    <td>{getNotificationTitle(msg.text)}</td>
-
+                    <td>{getNotificationTitle(msg.raw?.text)}</td>
                     <td>{msg.date}</td>
                     <td>{msg.type}</td>
                     </tr>
@@ -269,6 +273,9 @@ function MainNotify() {
             )}
             </div>
 
+
+
+
             <div className="notify-footer">
             <div className="pagination">
             <button onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
@@ -278,14 +285,14 @@ function MainNotify() {
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
             >
-            &lt;
+            &lsaquo;
             </button>
             <span className="current">{currentPage}</span>
             <button
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
             >
-            &gt;
+            &rsaquo;
             </button>
             <button
             onClick={() => handlePageChange(totalPages)}
