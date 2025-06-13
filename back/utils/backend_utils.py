@@ -13,6 +13,7 @@ import inspect
 from decimal import Decimal
 import enum
 import sys
+import pprint
 
 
 class OperationStatus:
@@ -105,7 +106,7 @@ def print_operation_result(result, func_name=None):
             for key, value in result.data.items():
                 print(f"- {key}: {value}")
         else:
-            print(result.data)
+            pprint.pprint(result.data)
 
     print()
 
@@ -338,7 +339,9 @@ def print_entity_data(entity):
 
 def print_data_in_func(data, funcname):
     if data and funcname:
-        print(f'\n\n DATA: {data} \nIN FUNCTION {funcname} \n\n')
+        print('\n\n DATA:')
+        pprint.pprint(data)
+        print(f'\nIN FUNCTION {funcname} \n\n')
     else:
         print(f'НЕВОЗМОЖНО ОТОБРАЗИТЬ None ДАННЫЕ ИЛИ НЕ ЗАДАНА ФУНКЦИЯ')
 

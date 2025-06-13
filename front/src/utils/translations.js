@@ -120,6 +120,10 @@ const translations = {
     "organization_code": "Код организации",
     "water_consumption_m3_per_day": "Расход воды м3/сут (тыс.м3)",
     "person_signature": "Подпись лица осуществляющего учет",
+    "waterreportform": "ЗАБОР ПОВЕРХНОСТНОЙ ВОДЫ",
+    "paymentform": "РАСЧЕТ ОПЛАТЫ",
+    "waterlog_complete": "ЖУРНАЛ ВОДОПОТРЕБЛЕНИЕ",
+
     // "шаблон": "шаблон",
 };
 

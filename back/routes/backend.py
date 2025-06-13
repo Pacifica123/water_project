@@ -118,8 +118,9 @@ def get_single_with_mf(tablename: str, filters: dict) -> OperationResult:
     # 1. Сначала фильтруем "сырые" записи
     result = get_all_record_from(tablename)
     if result.status != OperationStatus.SUCCESS:
+        print_operation_result(result)
         return result
-    print_operation_result(result)
+
     # 2. Фильтрация на уровне ORM-моделей (до конвертации!)
     filtered_records = [
         record for record in result.data

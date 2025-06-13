@@ -241,14 +241,13 @@ def rest_get_single_with_mf():
         if k != 'reference_select'
     }
 
-    print("Выбранные фильтры:", filters)
     try:
         result = get_single_with_mf(selected_reference, filters)
         print_operation_result(result, 'get_single_with_mf')
         if result.status != OperationStatus.SUCCESS:
             return jsonify({"error": result.message}), 500
         new_content = process_enums(result.data, True)
-
+        print("Выбранные фильтры были:", filters)
         return jsonify({
             "selected_reference": selected_reference,
             "new_content": new_content,

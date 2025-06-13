@@ -4,6 +4,7 @@ import { getSocket } from "../socket";
 import "../css/MainNotify.css";
 import NotificationModal from "./NotificationModal";
 import { sendNotificationReaction } from "../api/notify_reaction";
+import { translate } from "../utils/translations";
 
 function MainNotify() {
     const [notifications, setNotifications] = useState([]);
@@ -41,7 +42,7 @@ function MainNotify() {
 
                 if (typeof msg.text === "string") {
                     try {
-                        const fixedText = msg.text.replace(/'/g, '"');
+                        const fixedText = cleanPythonDictString(msg.text);
                         parsed = JSON.parse(fixedText);
                         title = parsed.header || parsed.message || "Без заголовка";
                     } catch {
@@ -53,22 +54,26 @@ function MainNotify() {
                 }
 
                 // Определяем тип по parsed.type, если есть
-                let notificationType = "ОТЧЕТНОСТЬ";
-                const parsedType = parsed?.type || msg.type;
+                // let notificationType = "ОТЧЕТНОСТЬ";
 
+                const parsedType = parsed?.type || msg.type;
+                let notificationType = parsedType;
+/*
                 if (parsedType === "waterreportform") {
                     notificationType = "ЗАБОР ПОВЕРХНОСТНОЙ ВОДЫ";
                 } else if (parsedType === "paymentform") {
                     notificationType = "РАСЧЕТ ОПЛАТЫ";
+                } else if (parsedType === "waterlog_complete") {
+                    notificationType = "ЖУРНАЛ ВОДОПОТРЕБЛЕНИЕ";
                 } else if (parsedType) {
                     notificationType = parsedType.toUpperCase();
-                }
+                }*/
 
                 const notification = {
                     id: msg.id || Date.now() + Math.random(),
                              text: title,
                              date: msg.date || new Date().toISOString().split("T")[0],
-                             type: notificationType,
+                             type: parsedType,
                              raw: { ...msg, parsed },
                 };
 
@@ -98,7 +103,7 @@ function MainNotify() {
         // Если это строка с одинарными кавычками — пытаемся превратить в валидный JSON
         if (typeof text === "string") {
             try {
-                const fixedText = text.replace(/'/g, '"');
+                const fixedText = cleanPythonDictString(text);
                 const parsed = JSON.parse(fixedText);
                 return parsed.header || parsed.message || "Без заголовка";
             } catch {
@@ -109,6 +114,25 @@ function MainNotify() {
         return "Без заголовка";
     };
 
+    function cleanPythonDictString(str) {
+        if (!str) return str;
+
+        // 1. Заменяем одинарные кавычки на двойные (будет много ложных замен, осторожно)
+        let res = str.replace(/'/g, '"');
+
+        // 2. Заменяем datetime.datetime(2025, 6, 2, 0, 0) на "2025-06-02T00:00:00"
+        res = res.replace(/datetime\.datetime\((\d+),\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)/g,
+                          (match, year, month, day, hour, minute) => {
+                              const pad = (num) => num.toString().padStart(2, '0');
+                              return `"${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:00"`;
+                          });
+
+        // 3. Заменяем Decimal("19.00") или Decimal('19.00') на число 19.00
+        res = res.replace(/Decimal\("(\d+\.?\d*)"\)/g, '$1');
+        res = res.replace(/Decimal\('(\d+\.?\d*)'\)/g, '$1');
+
+        return res;
+    }
 
 
     const addNotification = (text, type) => {
@@ -206,7 +230,7 @@ function MainNotify() {
             </div>
 
             <div className="notify-tabs">
-            {["ВСЕ", "ЗАБОР ПОВЕРХНОСТНОЙ ВОДЫ", "РАСЧЕТ ОПЛАТЫ"].map((tab) => (
+            {["ВСЕ", "ЗАБОР ПОВЕРХНОСТНОЙ ВОДЫ", "РАСЧЕТ ОПЛАТЫ", "ЖУРНАЛ ВОДОПОТРЕБЛЕНИЕ"].map((tab) => (
                 <div
                 key={tab}
                 className={`tab ${selectedTab === tab ? "active" : ""}`}
@@ -257,7 +281,7 @@ function MainNotify() {
                     <td>{(currentPage - 1) * itemsPerPage + idx + 1}</td>
                     <td>{getNotificationTitle(msg.raw?.text)}</td>
                     <td>{msg.date}</td>
-                    <td>{msg.type}</td>
+                    <td>{translate(msg.type)}</td>
                     </tr>
                 ))
             )}

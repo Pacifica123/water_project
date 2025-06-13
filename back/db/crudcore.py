@@ -127,7 +127,7 @@ def create_records_entities(records: List[Any]) -> OperationResult:
     """
     if not records:
         return OperationResult(
-            status=OperationStatus.INVALID_REQUEST,
+            status=OperationStatus.DATABASE_ERROR,
             msg="Список записей пуст."
         )
 

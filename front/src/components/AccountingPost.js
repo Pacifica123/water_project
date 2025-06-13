@@ -43,9 +43,15 @@ const ForeignKeySelect = ({ field, value, onChange }) => {
             setOptions(field.options);
           } else if (field.referenceTable) {
             // fallback: запросим все записи связанной таблицы
+            let filters = {}
+            if (field.referenceTable === "water_point"){
+              filters = {
+                point_type: 'water_withdrawal'
+              }
+            }
             const records = await fetchSingleTableDataWithFilters(
               field.referenceTable,
-              {}  // можно сюда передать начальные фильтры
+              filters  // можно сюда передать начальные фильтры
             );
             if (!isMounted.current) return;
             // API возвращает массив или { data: [...] }
@@ -250,37 +256,7 @@ const AccountingPost = () => {
   const permissionTypeOptions = [
     { value: "WATER_WITHDRAWAL", label: "Забор" },
     { value: "DISCHARGE", label: "Сброс" },
-    // и т.д. — значения зависят от бэкенда
   ];
-  // const handleExpandLog = async (logId) => {
-  //   if (expandedLogs[logId]) {
-  //     // Закрываем текущий журнал
-  //     setExpandedLogs({});
-  //     setLogDetails((prev) => ({ ...prev, [logId]: null }));
-  //     setExportLogId(null);
-  //   } else {
-  //     // Закрываем все и открываем только выбранный
-  //     try {
-  //       const response = await fetchStructDataWithFilters("log_details", {
-  //         log_id: logId,
-  //       });
-  //       if (response && response.data) {
-  //         setLogDetails({ [logId]: response.data });
-  //         setExportLogId(logId);
-  //       } else {
-  //         setLogDetails({ [logId]: null });
-  //         setExportLogId(null);
-  //       }
-  //     } catch (error) {
-  //       console.error("Ошибка загрузки деталей журнала", error);
-  //       setLogDetails({ [logId]: null });
-  //       setExportLogId(null);
-  //     }
-  //     setExpandedLogs({ [logId]: true });
-  //   }
-  // };
-
-
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
   let orgInfo = {};
@@ -797,182 +773,174 @@ const AccountingPost = () => {
       </label>
       </center>
       <hr />
-      <div className="label-modal">
-      <label>Водный объект: </label>
-      <ForeignKeySelect
-      field={{ field: 'water_body_id', foreignKey: true, options: [], referenceTable: 'water_object_ref' }}
-      value={formData.water_body_id}
-      onChange={handleFormChange}
-      />
-      </div>
-      <div className="label-modal">
-      <label>Координаты (широта, долгота):</label>
-      <InputMask
-      mask="99°99′99″ с.ш., 99°99′99″ в.д."
-      value={formData.latitude_longitude || "00°00′00″ с.ш., 00°00′00″ в.д."}
-      onChange={handleFormChange}
-      >
-      {(inputProps) => (
-        <input
-        {...inputProps}
-        type="text"
-        name="latitude_longitude"
-        placeholder="55°45′30″ с.ш., 37°36′20″ в.д."
-        className="coordinate-input"
-        style={{
-          fontFamily: "inherit",
-          fontSize: "1rem"
-        }}
+        <div className="label-modal">
+        <label>Водный объект: </label>
+        <ForeignKeySelect
+        field={{ field: 'water_body_id', foreignKey: true, options: [], referenceTable: 'water_object_ref' }}
+        value={formData.water_body_id}
+        onChange={handleFormChange}
         />
-      )}
-      </InputMask>
+        </div>
+        <div className="label-modal">
+        <label>Координаты (широта, долгота):</label>
+        <InputMask
+        mask="99°99′99″ с.ш., 99°99′99″ в.д."
+        value={formData.latitude_longitude || "00°00′00″ с.ш., 00°00′00″ в.д."}
+        onChange={handleFormChange}
+        >
+        {(inputProps) => (
+          <input
+          {...inputProps}
+          type="text"
+          name="latitude_longitude"
+          placeholder="55°45′30″ с.ш., 37°36′20″ в.д."
+          className="coordinate-input"
+          style={{
+            fontFamily: "inherit",
+            fontSize: "1rem"
+          }}
+          />
+        )}
+        </InputMask>
 
-      </div>
-      <div className="label-modal">
-      <label> Тип пункта: </label>
-      <ForeignKeySelect
-      field={{ field: 'point_type', isEnum: true, enumType: 'PermissionType' }}
-      value={formData.point_type}
-      onChange={handleFormChange}
-      />
-      </div>
-      </div>
-      <div className="modal-right">
-      <div className="modal-upper-right">
-      <div className="label-modal">
-      <label>Выбрать существующий прибор: </label>
-      <ForeignKeySelect
-      field={{ field: 'existing_meter_id', foreignKey: true, options: [], referenceTable:"meters" }}
-      value={formData.existing_meter_id}
-      onChange={handleFormChange}
-      />
-      </div>
+        </div>
+        <div className="label-modal">
+        <label> Тип пункта: </label>
+        <ForeignKeySelect
+        field={{ field: 'point_type', isEnum: true, enumType: 'PermissionType' }}
+        value={formData.point_type}
+        onChange={handleFormChange}
+        />
+        </div>
+        </div>
+        <div className="modal-right">
+        <div className="modal-upper-right">
+        <div className="label-modal">
+        <label>Выбрать существующий прибор: </label>
+        <ForeignKeySelect
+        field={{ field: 'existing_meter_id', foreignKey: true, options: [], referenceTable:"meters" }}
+        value={formData.existing_meter_id}
+        onChange={handleFormChange}
+        />
+        </div>
       <hr />
 
       <h4>Ввести новый прибор</h4>
       <div className="new-meter-form">
-      <label>Марка прибора: </label>
-      <ForeignKeySelect
-      field={{ field: 'brand_id', foreignKey: true, options: [], referenceTable:"meters_brand_ref" }}
-      value={newMeterData.brand_id}
-      onChange={handleNewMeterChange}
-      />
-      <div className="label-modal">
-      <label>Серийный номер:</label>
-      <input
-      type="text"
-      name="serial_number"
-      value={newMeterData.serial_number}
-      onChange={handleNewMeterChange}
-      />
-      </div>
-      <label>Дата поверки:</label>
-      <input
-      type="date"
-      name="verification_date"
-      value={newMeterData.verification_date}
-      onChange={handleNewMeterChange}
-      />
+          <label>Марка прибора: </label>
+          <ForeignKeySelect
+          field={{ field: 'brand_id', foreignKey: true, options: [], referenceTable:"meters_brand_ref" }}
+          value={newMeterData.brand_id}
+          onChange={handleNewMeterChange}
+          />
+          <div className="label-modal">
+          <label>Серийный номер:</label>
+          <input
+          type="text"
+          name="serial_number"
+          value={newMeterData.serial_number}
+          onChange={handleNewMeterChange}
+          />
+          </div>
+          <label>Дата поверки:</label>
+          <input
+          type="date"
+          name="verification_date"
+          value={newMeterData.verification_date}
+          onChange={handleNewMeterChange}
+          />
 
-      <label>Интервал поверки (лет):</label>
-      <input
-      type="number"
-      name="verification_interval"
-      value={newMeterData.verification_interval}
-      onChange={handleNewMeterChange}
-      />
+          <label>Интервал поверки (лет):</label>
+          <input
+          type="number"
+          name="verification_interval"
+          value={newMeterData.verification_interval}
+          onChange={handleNewMeterChange}
+          />
 
-      <label>Следующая поверка:</label>
-      <input
-      type="date"
-      name="next_verification_date"
-      value={newMeterData.next_verification_date}
-      readOnly
-      />
-      </div>
+          <label>Следующая поверка:</label>
+          <input
+          type="date"
+          name="next_verification_date"
+          value={newMeterData.next_verification_date}
+          readOnly
+          />
+          </div>
       </div>
       <hr />
       <div className="permission-section">
-      <h4>Разрешение на водопользование</h4>
-      <div className="label-modal">
-      <label>Номер разрешения:</label>
-      <input
-      type="text"
-      name="permission_number"
-      value={permissionData.permission_number}
-      onChange={handlePermissionChange}
-      />
-      </div>
-      <div className="label-modal">
-      <label>Дата регистрации:</label>
-      <input
-      type="date"
-      name="registration_date"
-      value={permissionData.registration_date}
-      onChange={handlePermissionChange}
-      />
-      </div>
-      <div className="label-modal">
-      <label>Дата окончания:</label>
-      <input
-      type="date"
-      name="expiration_date"
-      value={permissionData.expiration_date}
-      onChange={handlePermissionChange}
-      />
-      </div>
-      <div className="label-modal">
-      <label>Тип разрешения: </label>
-      <ForeignKeySelect
-      field={{ field: 'permission_type', isEnum: true, enumType: 'PermissionType' }}
-      value={permissionData.permission_type}
-      onChange={handlePermissionChange}
-      />
-      </div>
+        <h4>Разрешение на водопользование</h4>
+        <div className="label-modal">
+            <label>Номер разрешения:</label>
+            <input
+            type="text"
+            name="permission_number"
+            value={permissionData.permission_number}
+            onChange={handlePermissionChange}
+            />
+        </div>
+        <div className="label-modal">
+            <label>Дата регистрации:</label>
+            <input
+            type="date"
+            name="registration_date"
+            value={permissionData.registration_date}
+            onChange={handlePermissionChange}
+            />
+        </div>
+        <div className="label-modal">
+            <label>Дата окончания:</label>
+            <input
+            type="date"
+            name="expiration_date"
+            value={permissionData.expiration_date}
+            onChange={handlePermissionChange}
+            />
+        </div>
+        <div className="label-modal">
+            <label>Тип разрешения: </label>
+            <ForeignKeySelect
+            field={{ field: 'permission_type', isEnum: true, enumType: 'PermissionType' }}
+            value={permissionData.permission_type}
+            onChange={handlePermissionChange}
+            />
+        </div>
 
-      <div className="label-modal">
-      <label>Разрешённый объём (организации):</label>
-      <input
-      type="number"
-      name="allowed_volume_org"
-      value={permissionData.allowed_volume_org}
-      onChange={handlePermissionChange}
-      step="0.01"
-      />
-      </div>
-      <div className="label-modal">
-      <label>Разрешённый объём (население):</label>
-      <input
-      type="number"
-      name="allowed_volume_pop"
-      value={permissionData.allowed_volume_pop}
-      onChange={handlePermissionChange}
-      step="0.01"
-      />
-      </div>
-
-      <div className="label-modal">
-      <label>Выберете метод: </label>
-      <ForeignKeySelect
-      field={{ field: 'method_type', isEnum: true, enumType: 'UpCoefType' }}
-      value={permissionData.method_type}
-      onChange={handlePermissionChange}
-      />
-      </div>
+        <div className="label-modal">
+            <label>Разрешённый объём (организации):</label>
+            <input
+            type="number"
+            name="allowed_volume_org"
+            value={permissionData.allowed_volume_org}
+            onChange={handlePermissionChange}
+            step="0.01"
+            />
+        </div>
+        <div className="label-modal">
+            <label>Разрешённый объём (население):</label>
+            <input
+            type="number"
+            name="allowed_volume_pop"
+            value={permissionData.allowed_volume_pop}
+            onChange={handlePermissionChange}
+            step="0.01"
+            />
+        </div>
 
 
-      <div className="label-modal" style={{marginTop: 10, color: "#888", fontStyle: "italic"}}>
-      <FileUpload
-      label="Скан разрешения"
-      accept="application/pdf"
-      icon="📄"
-      entityType="permission"
-      entityId={permissionData.permission_number}
-      fileType={"PERMISSION_SCAN"}
-      preview={true}
-      onUpload={uploadFileToBackend}
-      />
-      </div>
+
+        <div className="label-modal" style={{marginTop: 10, color: "#888", fontStyle: "italic"}}>
+            <FileUpload
+            label="Скан разрешения"
+            accept="application/pdf"
+            icon="📄"
+            entityType="permission"
+            entityId={permissionData.permission_number}
+            fileType={"PERMISSION_SCAN"}
+            preview={true}
+            onUpload={uploadFileToBackend}
+            />
+        </div>
       </div>
 
       <div className="modal-actions">

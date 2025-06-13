@@ -408,10 +408,7 @@ const PaymentCalculationForm = () => {
   const computePayment = () => {
     // Сначала получим коэффициент из строки 2.3
     const coefRow = rows.rates.find((r) => r.id === "2.3");
-    console.log("coefRow.exceededVolume:", coefRow.exceededVolume);
-    console.log("coefRow.establishedVolume:", coefRow.establishedVolume)
-
-    // const coef = coefRow ? coefRow.establishedVolume || 1 : 1;
+    const coef = coefRow ? coefRow.establishedVolume || 1 : 1;
 
     // Берём уже вычисленные дочерние параметры из computedParameters
     const param11 = computedParameters.find((r) => r.id === "1.1.1") || {};
@@ -421,19 +418,11 @@ const PaymentCalculationForm = () => {
 
     // Функция, считающая “рублёвые” колонки по одной строке (параметр + ставка)
     const calcRow = (paramRow, rateRow) => {
-      let coef = 1;
-      // const coefRow = rows.rates.find((r) => r.id === "2.3");
-
-      let coef_out = coefRow.exceededVolume;
-      if (isOtherMethod===true) {
-
-        coef = coefRow.establishedVolume || 1
-      }
-      const est_rub = (paramRow.establishedVolume || 0) * (rateRow.establishedVolume || 0) * coef;
-      const act_rub = (paramRow.actualVolume || 0) * (rateRow.establishedVolume || 0) * coef;
-      const within_rub = (paramRow.withinLimitsVolume || 0) * (rateRow.establishedVolume || 0) * coef;
+      const est_rub = (paramRow.establishedVolume || 0) * (rateRow.establishedVolume || 0);
+      const act_rub = (paramRow.actualVolume || 0) * (rateRow.establishedVolume || 0);
+      const within_rub = (paramRow.withinLimitsVolume || 0) * (rateRow.establishedVolume || 0);
       const exceeded_rub =
-      (paramRow.exceededVolume || 0) * (rateRow.establishedVolume || 0) * coef_out;
+      (paramRow.exceededVolume || 0) * (rateRow.establishedVolume || 0) * coef;
       const total = within_rub + exceeded_rub;
       return {
         establishedVolume: +est_rub.toFixed(2),
@@ -628,6 +617,9 @@ const PaymentCalculationForm = () => {
       setAlertVisible(false);
     }, 20000);
   };
+
+
+
   const handleSubmit = async () => {
     try {
       const response = await sendFormData("payment_calculation", {'org_id': orgId, 'quarter':selectedQuarter, 'payment': computedPayment, 'parameters': computedParameters});
@@ -638,6 +630,75 @@ const PaymentCalculationForm = () => {
       console.error("Ошибка при отправке данных", error.message);
     }
   };
+  const handleExportToExcel = async () => {
+    const payload = {
+      status: "success",
+      message: `Расчет платы — ${selectedYear} год, ${selectedQuarter} квартал`,
+      data: [
+        // 🟦 Раздел 1
+        { "Раздел": "1. Параметры водопользования" },
+        ...computedParameters.map(p => ({
+          "ID": p.id,
+          "Показатель": p.indicator,
+          "Ед. изм.": p.unit,
+          "Установлено": p.establishedVolume,
+          "Факт": p.actualVolume,
+          "В пределах": p.withinLimitsVolume,
+          "Превышение": p.exceededVolume,
+        })),
+        {},
+
+        // 🟨 Раздел 2
+        { "Раздел": "2. Ставки платы" },
+        ...rows.rates.map(p => ({
+          "ID": p.id,
+          "Показатель": p.indicator,
+          "Ед. изм.": p.unit,
+          "Ставка": p.establishedVolume,
+        })),
+        {},
+
+        // 🟥 Раздел 3
+        { "Раздел": "3. Плата за водопользование" },
+        ...computedPayment.map(p => ({
+          "ID": p.id,
+          "Показатель": p.indicator,
+          "Ед. изм.": p.unit,
+          "Установлено": p.establishedVolume,
+          "Факт": p.actualVolume,
+          "В пределах": p.withinLimitsVolume,
+          "Превышение": p.exceededVolume,
+          "Итого": p.totalPayment
+        }))
+      ]
+    };
+
+
+    try {
+      const response = await fetch("http://127.0.0.1:5000/api/json_to_excel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          tokenJWTAuthorization: localStorage.getItem("token") || ""
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) throw new Error("Ошибка при создании Excel");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Расчет_платы_${selectedYear}_Q${selectedQuarter}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error("Ошибка экспорта:", err);
+      showError("Не удалось выгрузить Excel");
+    }
+  };
 
   // ======== 14) JSX РАЗМЕТКА КОМПОНЕНТА ========
   return (
@@ -645,7 +706,8 @@ const PaymentCalculationForm = () => {
     <h2 align="center">Расчет суммы оплаты</h2>
     <div className="form-step">
     {/* Селектор разрешений */}
-    <div style={{ marginBottom: "16px" }}>
+    <div className="filters-container">
+    <div className="filter-block">
     <label htmlFor="permission-select">
     Выберите разрешение:&nbsp;
     </label>
@@ -669,8 +731,19 @@ const PaymentCalculationForm = () => {
       ))}
       </select>
     )}
-
-    <div style={{ marginBottom: "16px" }}>
+    <label htmlFor="method-select" style={{ marginRight: 8 }}>
+    Метод расчёта:
+    </label>
+    <select
+    id="method-select"
+    value={isOtherMethod ? "other" : "instrument"}
+    onChange={(e) => setIsOtherMethod(e.target.value === "other")}
+    >
+    <option value="instrument">Приборный метод</option>
+    <option value="other">Другой метод</option>
+    </select>
+    </div>
+    <div className="filter-block">
     <label>Год:&nbsp;</label>
     <select
     value={selectedYear}
@@ -698,22 +771,15 @@ const PaymentCalculationForm = () => {
     ))}
     </select>
     </div>
-
+    <div className="filter-block">
+    <button
+    className="btn btn-secondary"
+    style={{ marginLeft: "10px" }}
+    onClick={handleExportToExcel}
+    >
+    Выгрузить в Excel
+    </button>
     </div>
-
-    {/* Селектор метода расчёта */}
-    <div style={{ margin: "16px 0" }}>
-      <label htmlFor="method-select" style={{ marginRight: 8 }}>
-        Метод расчёта:
-      </label>
-      <select
-        id="method-select"
-        value={isOtherMethod ? "other" : "instrument"}
-        onChange={(e) => setIsOtherMethod(e.target.value === "other")}
-      >
-        <option value="instrument">Приборный метод</option>
-        <option value="other">Другой метод</option>
-      </select>
     </div>
 
 
