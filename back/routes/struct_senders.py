@@ -170,6 +170,25 @@ def send_water_comsumption_log_full(form_data: dict) -> OperationResult:
 
 def send_payment_calculation(form_data: dict) -> OperationResult:
     org_id = int(form_data.get('org_id'))
+    org = get_record_by_id(Organisations, org_id)
+    if org.status != OperationStatus.SUCCESS:
+        print("Организации уже не существует О_О")
+        print_operation_result(org)
+        return org
+    permission_v = form_data.get("permission")
+    if not permission_v:
+        print("нет selectedPermission")
+        return OperationResult(status=OperationStatus.VALIDATION_ERROR, msg="нет selectedPermission")
+    print(f"Как выгляит permission_v: {permission_v}")
+    permission_number = permission_v.get("ORG").get("permission_id").get("permission_number")
+    point_id = int(permission_v.get("ORG").get("point_id"))
+    wp = get_record_by_id(WaterPoint, point_id)
+    if wp.status != OperationStatus.SUCCESS:
+        print("if wp.status != OperationStatus.SUCCESS")
+        return wp
+    wo = get_record_by_id(WaterObjectRef, wp.data.water_body_id).data
+    code_wo = get_record_by_id(Codes, wo.code_obj_id).data
+    meter = get_record_by_id(Meters, wp.data.meter_id).data
     payment = form_data.get('payment')
     parameters = form_data.get('parameters')
     print_data_in_func(parameters, "spc : parameters")
@@ -177,10 +196,12 @@ def send_payment_calculation(form_data: dict) -> OperationResult:
     try:
         notification_payload = {
             "type": "paymentform",
-            "header": f"Отправлен расчет платы за {form_data['quarter']} квартал",
-            "message": "Новый расчет платы получен",
+            "header": f"Отправлен расчет платы от организации {org.data.organisation_name} за {form_data['quarter']} квартал",
+            "message": f"Новый расчет платы получен\nНомер договора:{permission_number}\nПрибор:{meter.serial_number}\nВодный объект:{code_wo.code_symbol+code_wo.code_value}",
             "quarter": form_data['quarter'],
-            # TODO : разрешение, пункт учета, прибор
+            "permission_number": permission_number,
+            "water_object_name": code_wo.code_symbol+code_wo.code_value,
+            "meter_serial_number": meter.serial_number,
             "payment": payment,
             "parameters": parameters
         }
@@ -1144,8 +1165,16 @@ def send_quarter(form_data: any):
     water_point_id = form_data["waterPointId"]
     pprint.pprint(form_data)
     quarter = form_data["quarter"]
+    year = int(form_data["year"])
     report_data = form_data["data"]
-
+    if not form_data["org_id"]:
+        print(f"[org_id]: {form_data["org_id"]}")
+    org_id = int(form_data["org_id"])
+    org = get_record_by_id(Organisations, org_id)
+    if org.status != OperationStatus.SUCCESS:
+        print("Организации уже не существует О_О")
+        print_operation_result(org)
+        return org
     month_mapping = {
         1: [Month.JANUARY, Month.FEBRUARY, Month.MARCH],
         2: [Month.APRIL, Month.MAY, Month.JUNE],
@@ -1170,6 +1199,7 @@ def send_quarter(form_data: any):
                 "category": category_mapping[category_key],
                 "month": month,
                 "value": value,
+                "year": year,
                 "water_point_id": water_point_id
             }
             if not create_record_entity(WaterConsumptionLogByCategories, entry):
@@ -1181,11 +1211,14 @@ def send_quarter(form_data: any):
     try:
         notification_payload = {
             "type": "waterreportform",
-            "header": f"Отправлен квартальный отчет за {form_data['quarter']} квартал",
+            "header": f"Отправлен квартальный отчет организации {org.data.organisation_name} за {form_data['quarter']} квартал {year} года",
             "message": "Новый квартальный отчет получен",
             "quarter": form_data['quarter'],
             "waterPointId": form_data['waterPointId'],
             "reportData": form_data['data'],
+            "org_id": org_id,
+            "orgname": org.data.organisation_name,
+            "year": year
         }
 
         message = json.dumps(notification_payload, ensure_ascii=False)

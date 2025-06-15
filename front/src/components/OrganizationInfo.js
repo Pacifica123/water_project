@@ -188,7 +188,7 @@ function OrganizationInfo() {
             </div>
         )}
 
-        <div className="organization-info-container">
+        <div className={role === "ORG_ADMIN" ? "no-container-style" : "organization-info-container"}>
         <div className="organization-info">
         <h2 align="center">Информация об организации</h2>
         {role === "EMPLOYEE" ? (

@@ -2,7 +2,7 @@
   display: flex;
   justify-content: center;
   gap: 15px;
-flex-wrap: wrap;
+  flex-wrap: wrap;
   margin-bottom: 20px;
   position: relative;
 }
@@ -40,7 +40,7 @@ flex-wrap: wrap;
 
 .step-container {
   display: flex;
-  
+
   align-items: center;
   gap: 10px;
   position: relative;
@@ -109,6 +109,9 @@ flex-wrap: wrap;
   cursor: pointer;
 }
 
+.submit-button-water:hover {
+  background-color: #1f8336;
+}
 
 @media (max-width: 768px) {
   .step {
@@ -137,7 +140,7 @@ flex-wrap: wrap;
   flex-wrap: wrap;
   position: sticky;
   top: 0;
-  
+
   padding: 10px;
   z-index: 100;
   border-bottom: 1px solid #ccc;
@@ -152,7 +155,7 @@ flex-wrap: wrap;
   cursor: pointer;
   font-weight: 500;
   white-space: nowrap;
-  font-size: 1rem;
+  font-size: 1.1rem;
 }
 
 .toggle-button:hover {

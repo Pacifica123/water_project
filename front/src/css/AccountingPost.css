@@ -58,7 +58,7 @@
   padding: 2vh 2vw;
   border-radius: 4vh;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: fit-content;
+  width: 150vh;
   margin-bottom: 10px;
   margin-top: 10px;
 }
@@ -94,10 +94,11 @@
   flex-direction: column;
   background-color: #f9f9f9;
   padding: 15px;
-  border-radius: 10px;
+  border-radius: var(--border-radius-bacground);
   box-shadow: 0 0 6px rgba(0,0,0,0.1);
   min-width: 180px;
   position: relative;
+  font-size: 1.4rem;
 }
 
 .filter-block label {

@@ -14,9 +14,11 @@ def handle_notification_reaction(notification: dict) -> OperationResult:
     Dispatcher for notification reactions.
     """
     # Determine notification type
-    payload_type = notification.get('type') or notification.get('type\_display') or 'general'
+    raw = notification.get('raw')
+
+    payload_type = raw.get('type') or 'general'
     print(f" === In handle_notification_reaction: type = {payload_type} ===")
-    pprint.pprint(notification)
+    pprint.pprint(raw)
 
     match payload_type:
         case 'paymentform':
@@ -34,9 +36,13 @@ def _handle_payment_form_reaction(notification: dict) -> OperationResult:
     reaction = notification.get('reaction')
     if reaction == 'revise':
         print(" >> Action: mark water report for revision")
+        return OperationResult(status=OperationStatus.NOT_REALIZED,
+                        msg=f"Пока не реализовано")
         # TODO: implement actual revision workflow
     elif reaction == 'approve':
         print(" >> Action: approve water report")
+        return OperationResult(status=OperationStatus.NOT_REALIZED,
+                               msg=f"Пока не реализовано")
         # TODO: implement approval workflow
     else:
         return OperationResult(status=OperationStatus.VALIDATION_ERROR,

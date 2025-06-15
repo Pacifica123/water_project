@@ -622,7 +622,7 @@ const PaymentCalculationForm = () => {
 
   const handleSubmit = async () => {
     try {
-      const response = await sendFormData("payment_calculation", {'org_id': orgId, 'quarter':selectedQuarter, 'payment': computedPayment, 'parameters': computedParameters});
+      const response = await sendFormData("payment_calculation", {'org_id': orgId, 'quarter':selectedQuarter, 'payment': computedPayment, 'parameters': computedParameters, 'permission': selectedPermission});
       console.log("Данные успешно отправлены", response);
       showSuccess();
     } catch (error) {

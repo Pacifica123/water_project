@@ -683,6 +683,7 @@ class WaterConsumptionLogByCategories(Base):
 
     category: Mapped[ConsumersCategories] = mapped_column(SQLAEnum(ConsumersCategories), nullable=False)
     month: Mapped[Month] = mapped_column(SQLAEnum(Month), nullable=False)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
     water_point_id: Mapped[int] = mapped_column(ForeignKey("water_point.id"), nullable=False)
 
@@ -690,6 +691,7 @@ class WaterConsumptionLogByCategories(Base):
         return {
             'id': self.id,
             'category': self.category,
+            'year': self.year,
             'month': self.month,
             'value': self.value
         }

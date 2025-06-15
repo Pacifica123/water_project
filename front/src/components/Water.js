@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from "react";
 import "../css/Water.css";
 import { useNotification } from "./NotificationContext";
-
-import {fetchStructDataWithFilters} from "../api/fetch_records"
-import {sendFormData} from "../api/add_records"
-import {translate} from "../utils/translations"
+import { fetchStructDataWithFilters } from "../api/fetch_records";
+import { sendFormData } from "../api/add_records";
+import { translate } from "../utils/translations";
 
 const Water = () => {
-
-  const {showSuccess, showError,askConfirmation} = useNotification();
+  const { showSuccess, showError, askConfirmation } = useNotification();
   const [availableLogs, setAvailableLogs] = useState([]);
   const [selectedLog, setSelectedLog] = useState(null);
+  const [dateAlreadyExists, setDateAlreadyExists] = useState(false);
 
   const orgData = localStorage.getItem("org");
   let orgInfo = {};
@@ -20,12 +19,8 @@ const Water = () => {
       orgInfo = JSON.parse(orgData);
     } catch (error) {
       console.error("Ошибка парсинга org:", error);
-      orgInfo = {};
     }
   }
-
-
-
 
   const waterPoints = {
     "Пункт 1": "54°20′0″N 37°30′0″E",
@@ -34,37 +29,36 @@ const Water = () => {
 
   const [Orgs, setObjects] = useState([]);
   const [Points, setObjectsPoints] = useState([]);
-  // const [Meters, setMeters] = useState([]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const resp = await fetchStructDataWithFilters("organisations_familiar", {"org_id": orgInfo.id});
-        console.log(resp);
-        const [orgs, points] = await Promise.all([
-          resp?.data.orgs, resp?.data.points
-          // fetchSingleTableData("meters")
-        ]);
-        setObjects(orgs || []);
-        setObjectsPoints(points || []);
-        // setMeters(meters || [])
+        const resp = await fetchStructDataWithFilters("organisations_familiar", { org_id: orgInfo.id });
+        setObjects(resp?.data.orgs || []);
+        setObjectsPoints(resp?.data.points || []);
       } catch (error) {
         console.error("Ошибка загрузки данных", error);
         setObjects([]);
         setObjectsPoints([]);
-        // setMeters([])
       }
     };
     loadData();
-  }, []);
+  }, [orgInfo.id]);
 
+  const formatLocalDate = (date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   const [formData, setFormData] = useState({
     organisationName: orgInfo.organisation_name || "",
     waterOrg: "",
     controlPoint: "",
+    latitude_longitude: "",
     coordinates: "",
-    device: "", //Удаляем device
+    device: "",
     waterSource: "",
     measurementDate: "",
     deviceNumber: "",
@@ -80,28 +74,37 @@ const Water = () => {
 
   const [activeSection, setActiveSection] = useState(1);
   const [manualNavigation, setManualNavigation] = useState(false);
-
   const [selectedPoint, setSelectedPoint] = useState(null);
+
+  const checkDateAlreadyFilled = async (pointId, date) => {
+    try {
+      const resp = await fetchStructDataWithFilters("water_consumption_single_filtered", {
+        point_id: pointId,
+        date
+      });
+      return (resp?.data?.length ?? 0) > 0;
+    } catch (error) {
+      console.error("Ошибка при проверке даты:", error);
+      return false;
+    }
+  };
+
   const handleChange = async (e) => {
     const { name, value } = e.target;
     let val = value;
 
-    // Обработка отрицательных значений и ограничение для workingTime
-    if ((name === "waterUsage" || name === "workingTime")) {
+    if (name === "waterUsage" || name === "workingTime") {
       let parsed = parseFloat(val);
-      if (isNaN(parsed) || parsed < 0) {
-        val = "0";
-      } else if (name === "workingTime" && parsed > 24) {
-        val = "24";
-      } else {
-        val = parsed.toString();
-      }
+      if (isNaN(parsed) || parsed < 0) val = "0";
+      else if (name === "workingTime" && parsed > 24) val = "24";
+      else val = parsed.toString();
     }
 
     let updatedFormData = { ...formData, [name]: val };
 
     if (name === "controlPoint") {
       const selected = Points.find((point) => point.latitude_longitude === val);
+      setSelectedPoint(selected);
 
       let logsForPoint = [];
 
@@ -110,8 +113,9 @@ const Water = () => {
           org_id: orgInfo.id,
           role: localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")).role : ""
         });
+
         if (resp?.data) {
-          const allowedStatuses = ["IN_PROGRESS","UNDER_CORRECTION"];
+          const allowedStatuses = ["IN_PROGRESS", "UNDER_CORRECTION"];
           logsForPoint = resp.data.filter(log =>
           log.point_id?.latitude_longitude === val && allowedStatuses.includes(log.log_status)
           );
@@ -128,7 +132,6 @@ const Water = () => {
         return;
       }
 
-      // Если журнал только один — сразу устанавливаем
       if (logsForPoint.length === 1) {
         const journal = logsForPoint[0];
         setSelectedLog(journal);
@@ -138,21 +141,30 @@ const Water = () => {
         const maxDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
         const safeDay = Math.min(today.getDate(), maxDay);
         const autoDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), safeDay);
-        const formattedDate = autoDate.toISOString().split("T")[0];
+        const formattedDate = formatLocalDate(autoDate);
+
         updatedFormData.measurementDate = formattedDate;
+
+        const exists = await checkDateAlreadyFilled(val, formattedDate);
+        setDateAlreadyExists(exists);
       }
 
-      setSelectedPoint(selected);
       updatedFormData.latitude_longitude = val;
-      updatedFormData.coordinates = waterPoints[val] ||  "";
+      updatedFormData.coordinates = waterPoints[val] || "";
       updatedFormData.deviceNumber = selected?.meter_id?.brand?.brand_name && selected?.meter_id?.serial_number
       ? `${selected.meter_id.brand.brand_name} - ${selected.meter_id.serial_number}`
       : "";
       updatedFormData.waterSource = selected?.water_body_id?.code_obj?.code_symbol || "";
     }
 
-    if (name === "deviceNumber") {
-      updatedFormData.deviceNumber = val;
+    if (name === "measurementDate" || name === "controlPoint") {
+      const controlPointValue = name === "controlPoint" ? val : formData.controlPoint;
+      const dateValue = name === "measurementDate" ? val : formData.measurementDate;
+
+      if (controlPointValue && dateValue) {
+        const exists = await checkDateAlreadyFilled(controlPointValue, dateValue);
+        setDateAlreadyExists(exists);
+      }
     }
 
     setFormData(updatedFormData);
@@ -161,14 +173,12 @@ const Water = () => {
 
   const checkCompletion = (data) => {
     let newCompletedSteps = { ...completedSteps };
-
     newCompletedSteps.section1_2 = data.waterOrg.trim() !== "" && data.controlPoint.trim() !== "";
     newCompletedSteps.section4 = data.measurementDate.trim() !== "" && data.workingTime.trim() !== "" && data.waterUsage.trim() !== "" && data.personSignature.trim() !== "";
-
     setCompletedSteps(newCompletedSteps);
 
-    if (!manualNavigation) {
-      if (newCompletedSteps.section1_2 && activeSection === 1) setActiveSection(2);
+    if (!manualNavigation && newCompletedSteps.section1_2 && activeSection === 1) {
+      setActiveSection(2);
     }
   };
 
@@ -179,30 +189,37 @@ const Water = () => {
 
   const handleSubmit = async () => {
     if (!formData.deviceNumber) {
-      alert("Выберите прибор учета!");
+      showError("❌ Выберите прибор учета!");
       return;
     }
-    const confirmed = await askConfirmation("Вы уверены, что хотитеть отправить данные?");
-    if(!confirmed) return;
+
+    if (dateAlreadyExists) {
+      showError(`🚫 Запись с датой ${formData.measurementDate} уже существует в журнале.`);
+      return;
+    }
+
+    const confirmed = await askConfirmation("Вы уверены, что хотите отправить данные?");
+    if (!confirmed) return;
+
     const data = {
       measurement_date: formData.measurementDate,
       operating_time_days: formData.workingTime,
       water_consumption_m3_per_day: formData.waterUsage,
-      meter_readings: formData.deviceNumber, // Передаем deviceNumber
-      water_point_id: formData.controlPoint, // ID пункта учета воды
+      meter_readings: formData.deviceNumber,
+      water_point_id: formData.controlPoint,
       person_signature: formData.personSignature
     };
 
-    console.log("Отправка данных:", data);
-
     try {
-      const response = await sendFormData("water_consumption_single", data);
-      showSuccess();
-      console.log("ttt", response)
+      await sendFormData("water_consumption_single", data);
+      showSuccess("✅ Данные успешно отправлены!");
+
+      // Очистка формы
       setFormData({
         organisationName: orgInfo.organisation_name || "",
         waterOrg: "",
         controlPoint: "",
+        latitude_longitude: "",
         coordinates: "",
         device: "",
         waterSource: "",
@@ -212,19 +229,23 @@ const Water = () => {
         waterUsage: "",
         personSignature: ""
       });
+
+      setDateAlreadyExists(false);
+      setActiveSection(1);
+      setManualNavigation(false);
+      setSelectedLog(null);
+      setAvailableLogs([]);
+      setSelectedPoint(null);
     } catch (error) {
       console.error("Ошибка отправки данных:", error);
-      showError();
+      showError("❌ Ошибка при отправке данных. Попробуйте позже.");
     }
   };
 
   return (
     <div className="water-container">
-
     <div className="form-container">
-    <center>
-    <h2>Журнал учета водопотребления</h2>
-    </center>
+    <center><h2>Журнал учета водопотребления</h2></center>
     <div className="steps">
     {[1, 2].map((step) => (
       <div
@@ -236,9 +257,9 @@ const Water = () => {
       </div>
     ))}
     </div>
+
     {activeSection === 1 && (
       <div className="form-step">
-      {/* Объединяем поля из секций 1 и 2 */}
       <div className="input-group">
       <label>Наименование организации: {formData.organisationName || "Без организации"}</label>
       </div>
@@ -255,7 +276,6 @@ const Water = () => {
       </select>
       </label>
       </div>
-
       <div className="input-group">
       <label>
       Наименование пункта учета:
@@ -270,7 +290,7 @@ const Water = () => {
       </label>
       </div>
       <div className="input-group">
-      <label>Координаты пункта: {formData.latitude_longitude}</label>
+      <label>Координаты пункта: {formData.coordinates}</label>
       </div>
       </div>
     )}
@@ -283,7 +303,7 @@ const Water = () => {
         Выберите журнал:
         <select
         value={selectedLog?.id || ""}
-        onChange={(e) => {
+        onChange={async (e) => {
           const journal = availableLogs.find(log => log.id.toString() === e.target.value);
           setSelectedLog(journal);
           if (journal?.start_date) {
@@ -292,12 +312,16 @@ const Water = () => {
             const maxDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
             const safeDay = Math.min(today.getDate(), maxDay);
             const autoDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), safeDay);
-            const formattedDate = autoDate.toISOString().split("T")[0];
-
+            const formattedDate = formatLocalDate(autoDate);
             setFormData(prev => ({
               ...prev,
               measurementDate: formattedDate
             }));
+
+            if (formData.controlPoint) {
+              const exists = await checkDateAlreadyFilled(formData.controlPoint, formattedDate);
+              setDateAlreadyExists(exists);
+            }
           }
         }}
         >
@@ -315,8 +339,9 @@ const Water = () => {
         </label>
         </div>
       )}
+
       <h2>Данные измерений</h2>
-      {/* Поменяли местами поля "Измерительный прибор" и "Дата измерения" */}
+
       <div className="input-group">
       <label>
       Измерительный прибор №:
@@ -331,32 +356,60 @@ const Water = () => {
       <div className="input-group">
       <label>
       Дата измерения:
-      <input type="date" name="measurementDate" value={formData.measurementDate} onChange={handleChange} />
+      <input
+      type="date"
+      name="measurementDate"
+      value={formData.measurementDate}
+      max={formatLocalDate(new Date())}
+      onChange={handleChange}
+      />
       </label>
       </div>
       <div className="input-group">
       <label>
       Время работы (сут.):
-      <input type="number" pattern="[0-9]*"  min="0" max="24" name="workingTime" value={formData.workingTime || 0} onChange={handleChange} />
+      <input
+      type="number"
+      min="0"
+      max="24"
+      name="workingTime"
+      value={formData.workingTime || ""}
+      onChange={handleChange}
+      />
       </label>
       </div>
       <div className="input-group">
       <label>
       Расход воды (м³/сут.):
-      <input type="number" pattern="[0-9]*" min="0" name="waterUsage" value={formData.waterUsage || 0} onChange={handleChange} />
+      <input
+      type="number"
+      min="0"
+      name="waterUsage"
+      value={formData.waterUsage || ""}
+      onChange={handleChange}
+      />
       </label>
       </div>
-      {/* Добавлено поле ФИО */}
       <div className="input-group">
       <label>
       ФИО осуществляющего учет:
-      <input type="text" name="personSignature" value={formData.personSignature} onChange={handleChange} />
+      <input
+      type="text"
+      name="personSignature"
+      value={formData.personSignature}
+      onChange={handleChange}
+      />
       </label>
       </div>
-      <div  style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
-      <button className="submit-button-water"
-      onClick={handleSubmit}
-      >
+
+      {dateAlreadyExists && (
+        <div style={{ color: "red", marginBottom: "10px", textAlign: "center" }}>
+        🚫 Запись за выбранную дату уже существует. Повторная отправка невозможна.
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
+      <button className="submit-button-water" onClick={handleSubmit} disabled={dateAlreadyExists}>
       Отправить
       </button>
       </div>

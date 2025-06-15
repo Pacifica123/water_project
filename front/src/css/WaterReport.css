@@ -89,15 +89,12 @@
 }
 
 .content-container_waterReropt {
-  padding:
-  inherit;
+  padding:inherit;
   padding-right: inherit;
   padding-left: inherit;
   background-color: #f9f9f9;
-  border:
-  1px solid #ddd;
-  border-radius:
-  10px;
+  border:1px solid #ddd;
+  border-radius:  var(  --border-radius-bacground);
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
   padding-left: 70px;
   padding-right: 100px;
@@ -111,7 +108,7 @@
   justify-content: center;
   align-items: center;
   height: 65vh; /* Высота на весь экран */
-  padding: 2vw;
+  padding: 1.5vw;
   font-family: Arial, sans-serif;
   font-size: 1.4rem;
 }
@@ -124,4 +121,11 @@
   .selector-row {
     width: 100%;
   }
+}
+.status-cell {
+  background-color: #4caf50; /* зелёный как пример */
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 1vh;
 }

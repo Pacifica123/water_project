@@ -598,7 +598,7 @@ def notification_reaction():
 
     # Debug logging
     print(f" --> notification_reaction called with reaction: {reaction}")
-    pprint.pprint(payload)
+    # pprint.pprint(payload)
 
     # Delegate to handler
     try:

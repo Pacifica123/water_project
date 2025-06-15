@@ -8,6 +8,8 @@
   --sidebar-bg: #f5f5f5;
   --main-content-bg: #ffffff;
   --pading_button: 1.5vh 2vw ;
+  --border-radius-bacground: 3vh;
+  --border-radius-button: 2vh;
 }
 
 .button {
@@ -223,13 +225,15 @@ input {
   display: flex;
   justify-content: center;
   align-items: center;
+  margin-bottom: 10px;
+  margin-top: 10px;
 }
 
 /* Контейнер формы */
 .form-container {
   background-color: white;
   padding: 30px;
-  border-radius: 8px;
+  border-radius: var(  --border-radius-bacground);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 
 }
@@ -277,9 +281,6 @@ input {
   background-color: #ccc;
   cursor: not-allowed;
 }
-
-/* Стиль для справки забора поверхности воды */
-
 
 .content-container {
   background-color: #f9f9f9; /* Светлый фон */
@@ -478,6 +479,7 @@ input {
   color: white;
   cursor: pointer;
 }
+
 .add-button {
   padding: var(--pading_button);
   border: none;
@@ -488,7 +490,6 @@ input {
   font-weight: bold;
   margin-right: 10px;
   font-size: 0.9rem;
-
 }
 
 .add-button:hover {
@@ -679,7 +680,7 @@ input {
 .payment-container{
   background-color: #f9f9f9;
   padding: 10px 15px;
-  border-radius: 8px;
+  border-radius:  var(  --border-radius-bacground);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 1300px;
@@ -723,7 +724,7 @@ input {
   margin-top: 20px;
   padding: 10px 20px;
   border: none;
-  border-radius: 8px;
+  border-radius:  var(  --border-radius-button);;
   cursor: pointer;
   font-size: 22px;
   transition: background-color 0.2s ease;
@@ -769,8 +770,6 @@ input {
   font-size: large;
 }
 
-
-
 .data-table-result {
   width: fit-content;
   max-width: max-content;
@@ -810,12 +809,11 @@ input {
   background-color: #b9b9b9;
 }
 
-
 /* Контейнер формы */
 .form-UsePage {
-  background-color: white;
-  padding: 30px;
-  border-radius: 8px;
+  background-color: #f9f9f9;
+  padding: 0 16px 5px 16px;
+  border-radius: 4vh;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   margin: 1vh 1vh;
 }

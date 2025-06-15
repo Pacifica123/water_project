@@ -1,4 +1,3 @@
- // --- NotificationModal.jsx ---
  import React from "react";
  import "../css/NotificationModal.css";
  import { sendNotificationReaction } from "../api/notify_reaction";
@@ -288,8 +287,7 @@
          <button className="modal-close" onClick={onClose}>×</button>
          {
              renderDetails()
-        }
-         <p><small>Дата: {notification.date}</small></p>
+         }
          </div>
          </div>
      );

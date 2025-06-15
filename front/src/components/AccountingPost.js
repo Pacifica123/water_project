@@ -43,15 +43,9 @@ const ForeignKeySelect = ({ field, value, onChange }) => {
             setOptions(field.options);
           } else if (field.referenceTable) {
             // fallback: запросим все записи связанной таблицы
-            let filters = {}
-            if (field.referenceTable === "water_point"){
-              filters = {
-                point_type: 'water_withdrawal'
-              }
-            }
             const records = await fetchSingleTableDataWithFilters(
               field.referenceTable,
-              filters  // можно сюда передать начальные фильтры
+              {}  // можно сюда передать начальные фильтры
             );
             if (!isMounted.current) return;
             // API возвращает массив или { data: [...] }
@@ -256,7 +250,37 @@ const AccountingPost = () => {
   const permissionTypeOptions = [
     { value: "WATER_WITHDRAWAL", label: "Забор" },
     { value: "DISCHARGE", label: "Сброс" },
+    // и т.д. — значения зависят от бэкенда
   ];
+  // const handleExpandLog = async (logId) => {
+  //   if (expandedLogs[logId]) {
+  //     // Закрываем текущий журнал
+  //     setExpandedLogs({});
+  //     setLogDetails((prev) => ({ ...prev, [logId]: null }));
+  //     setExportLogId(null);
+  //   } else {
+  //     // Закрываем все и открываем только выбранный
+  //     try {
+  //       const response = await fetchStructDataWithFilters("log_details", {
+  //         log_id: logId,
+  //       });
+  //       if (response && response.data) {
+  //         setLogDetails({ [logId]: response.data });
+  //         setExportLogId(logId);
+  //       } else {
+  //         setLogDetails({ [logId]: null });
+  //         setExportLogId(null);
+  //       }
+  //     } catch (error) {
+  //       console.error("Ошибка загрузки деталей журнала", error);
+  //       setLogDetails({ [logId]: null });
+  //       setExportLogId(null);
+  //     }
+  //     setExpandedLogs({ [logId]: true });
+  //   }
+  // };
+
+
   const userInfo = JSON.parse(localStorage.getItem("user"));
   const orgData = localStorage.getItem("org");
   let orgInfo = {};
@@ -773,174 +797,182 @@ const AccountingPost = () => {
       </label>
       </center>
       <hr />
-        <div className="label-modal">
-        <label>Водный объект: </label>
-        <ForeignKeySelect
-        field={{ field: 'water_body_id', foreignKey: true, options: [], referenceTable: 'water_object_ref' }}
-        value={formData.water_body_id}
-        onChange={handleFormChange}
+      <div className="label-modal">
+      <label>Водный объект: </label>
+      <ForeignKeySelect
+      field={{ field: 'water_body_id', foreignKey: true, options: [], referenceTable: 'water_object_ref' }}
+      value={formData.water_body_id}
+      onChange={handleFormChange}
+      />
+      </div>
+      <div className="label-modal">
+      <label>Координаты (широта, долгота):</label>
+      <InputMask
+      mask="99°99′99″ с.ш., 99°99′99″ в.д."
+      value={formData.latitude_longitude || "00°00′00″ с.ш., 00°00′00″ в.д."}
+      onChange={handleFormChange}
+      >
+      {(inputProps) => (
+        <input
+        {...inputProps}
+        type="text"
+        name="latitude_longitude"
+        placeholder="55°45′30″ с.ш., 37°36′20″ в.д."
+        className="coordinate-input"
+        style={{
+          fontFamily: "inherit",
+          fontSize: "1rem"
+        }}
         />
-        </div>
-        <div className="label-modal">
-        <label>Координаты (широта, долгота):</label>
-        <InputMask
-        mask="99°99′99″ с.ш., 99°99′99″ в.д."
-        value={formData.latitude_longitude || "00°00′00″ с.ш., 00°00′00″ в.д."}
-        onChange={handleFormChange}
-        >
-        {(inputProps) => (
-          <input
-          {...inputProps}
-          type="text"
-          name="latitude_longitude"
-          placeholder="55°45′30″ с.ш., 37°36′20″ в.д."
-          className="coordinate-input"
-          style={{
-            fontFamily: "inherit",
-            fontSize: "1rem"
-          }}
-          />
-        )}
-        </InputMask>
+      )}
+      </InputMask>
 
-        </div>
-        <div className="label-modal">
-        <label> Тип пункта: </label>
-        <ForeignKeySelect
-        field={{ field: 'point_type', isEnum: true, enumType: 'PermissionType' }}
-        value={formData.point_type}
-        onChange={handleFormChange}
-        />
-        </div>
-        </div>
-        <div className="modal-right">
-        <div className="modal-upper-right">
-        <div className="label-modal">
-        <label>Выбрать существующий прибор: </label>
-        <ForeignKeySelect
-        field={{ field: 'existing_meter_id', foreignKey: true, options: [], referenceTable:"meters" }}
-        value={formData.existing_meter_id}
-        onChange={handleFormChange}
-        />
-        </div>
+      </div>
+      <div className="label-modal">
+      <label> Тип пункта: </label>
+      <ForeignKeySelect
+      field={{ field: 'point_type', isEnum: true, enumType: 'PermissionType' }}
+      value={formData.point_type}
+      onChange={handleFormChange}
+      />
+      </div>
+      </div>
+      <div className="modal-right">
+      <div className="modal-upper-right">
+      <div className="label-modal">
+      <label>Выбрать существующий прибор: </label>
+      <ForeignKeySelect
+      field={{ field: 'existing_meter_id', foreignKey: true, options: [], referenceTable:"meters" }}
+      value={formData.existing_meter_id}
+      onChange={handleFormChange}
+      />
+      </div>
       <hr />
 
       <h4>Ввести новый прибор</h4>
       <div className="new-meter-form">
-          <label>Марка прибора: </label>
-          <ForeignKeySelect
-          field={{ field: 'brand_id', foreignKey: true, options: [], referenceTable:"meters_brand_ref" }}
-          value={newMeterData.brand_id}
-          onChange={handleNewMeterChange}
-          />
-          <div className="label-modal">
-          <label>Серийный номер:</label>
-          <input
-          type="text"
-          name="serial_number"
-          value={newMeterData.serial_number}
-          onChange={handleNewMeterChange}
-          />
-          </div>
-          <label>Дата поверки:</label>
-          <input
-          type="date"
-          name="verification_date"
-          value={newMeterData.verification_date}
-          onChange={handleNewMeterChange}
-          />
+      <label>Марка прибора: </label>
+      <ForeignKeySelect
+      field={{ field: 'brand_id', foreignKey: true, options: [], referenceTable:"meters_brand_ref" }}
+      value={newMeterData.brand_id}
+      onChange={handleNewMeterChange}
+      />
+      <div className="label-modal">
+      <label>Серийный номер:</label>
+      <input
+      type="text"
+      name="serial_number"
+      value={newMeterData.serial_number}
+      onChange={handleNewMeterChange}
+      />
+      </div>
+      <label>Дата поверки:</label>
+      <input
+      type="date"
+      name="verification_date"
+      value={newMeterData.verification_date}
+      onChange={handleNewMeterChange}
+      />
 
-          <label>Интервал поверки (лет):</label>
-          <input
-          type="number"
-          name="verification_interval"
-          value={newMeterData.verification_interval}
-          onChange={handleNewMeterChange}
-          />
+      <label>Интервал поверки (лет):</label>
+      <input
+      type="number"
+      name="verification_interval"
+      value={newMeterData.verification_interval}
+      onChange={handleNewMeterChange}
+      />
 
-          <label>Следующая поверка:</label>
-          <input
-          type="date"
-          name="next_verification_date"
-          value={newMeterData.next_verification_date}
-          readOnly
-          />
-          </div>
+      <label>Следующая поверка:</label>
+      <input
+      type="date"
+      name="next_verification_date"
+      value={newMeterData.next_verification_date}
+      readOnly
+      />
+      </div>
       </div>
       <hr />
       <div className="permission-section">
-        <h4>Разрешение на водопользование</h4>
-        <div className="label-modal">
-            <label>Номер разрешения:</label>
-            <input
-            type="text"
-            name="permission_number"
-            value={permissionData.permission_number}
-            onChange={handlePermissionChange}
-            />
-        </div>
-        <div className="label-modal">
-            <label>Дата регистрации:</label>
-            <input
-            type="date"
-            name="registration_date"
-            value={permissionData.registration_date}
-            onChange={handlePermissionChange}
-            />
-        </div>
-        <div className="label-modal">
-            <label>Дата окончания:</label>
-            <input
-            type="date"
-            name="expiration_date"
-            value={permissionData.expiration_date}
-            onChange={handlePermissionChange}
-            />
-        </div>
-        <div className="label-modal">
-            <label>Тип разрешения: </label>
-            <ForeignKeySelect
-            field={{ field: 'permission_type', isEnum: true, enumType: 'PermissionType' }}
-            value={permissionData.permission_type}
-            onChange={handlePermissionChange}
-            />
-        </div>
+      <h4>Разрешение на водопользование</h4>
+      <div className="label-modal">
+      <label>Номер разрешения:</label>
+      <input
+      type="text"
+      name="permission_number"
+      value={permissionData.permission_number}
+      onChange={handlePermissionChange}
+      />
+      </div>
+      <div className="label-modal">
+      <label>Дата регистрации:</label>
+      <input
+      type="date"
+      name="registration_date"
+      value={permissionData.registration_date}
+      onChange={handlePermissionChange}
+      />
+      </div>
+      <div className="label-modal">
+      <label>Дата окончания:</label>
+      <input
+      type="date"
+      name="expiration_date"
+      value={permissionData.expiration_date}
+      onChange={handlePermissionChange}
+      />
+      </div>
+      <div className="label-modal">
+      <label>Тип разрешения: </label>
+      <ForeignKeySelect
+      field={{ field: 'permission_type', isEnum: true, enumType: 'PermissionType' }}
+      value={permissionData.permission_type}
+      onChange={handlePermissionChange}
+      />
+      </div>
 
-        <div className="label-modal">
-            <label>Разрешённый объём (организации):</label>
-            <input
-            type="number"
-            name="allowed_volume_org"
-            value={permissionData.allowed_volume_org}
-            onChange={handlePermissionChange}
-            step="0.01"
-            />
-        </div>
-        <div className="label-modal">
-            <label>Разрешённый объём (население):</label>
-            <input
-            type="number"
-            name="allowed_volume_pop"
-            value={permissionData.allowed_volume_pop}
-            onChange={handlePermissionChange}
-            step="0.01"
-            />
-        </div>
+      <div className="label-modal">
+      <label>Разрешённый объём (организации):</label>
+      <input
+      type="number"
+      name="allowed_volume_org"
+      value={permissionData.allowed_volume_org}
+      onChange={handlePermissionChange}
+      step="0.01"
+      />
+      </div>
+      <div className="label-modal">
+      <label>Разрешённый объём (население):</label>
+      <input
+      type="number"
+      name="allowed_volume_pop"
+      value={permissionData.allowed_volume_pop}
+      onChange={handlePermissionChange}
+      step="0.01"
+      />
+      </div>
+
+      <div className="label-modal">
+      <label>Выберете метод: </label>
+      <ForeignKeySelect
+      field={{ field: 'method_type', isEnum: true, enumType: 'UpCoefType' }}
+      value={permissionData.method_type}
+      onChange={handlePermissionChange}
+      />
+      </div>
 
 
-
-        <div className="label-modal" style={{marginTop: 10, color: "#888", fontStyle: "italic"}}>
-            <FileUpload
-            label="Скан разрешения"
-            accept="application/pdf"
-            icon="📄"
-            entityType="permission"
-            entityId={permissionData.permission_number}
-            fileType={"PERMISSION_SCAN"}
-            preview={true}
-            onUpload={uploadFileToBackend}
-            />
-        </div>
+      <div className="label-modal" style={{marginTop: 10, color: "#888", fontStyle: "italic"}}>
+      <FileUpload
+      label="Скан разрешения"
+      accept="application/pdf"
+      icon="📄"
+      entityType="permission"
+      entityId={permissionData.permission_number}
+      fileType={"PERMISSION_SCAN"}
+      preview={true}
+      onUpload={uploadFileToBackend}
+      />
+      </div>
       </div>
 
       <div className="modal-actions">
@@ -1175,163 +1207,204 @@ const AccountingPost = () => {
       {Object.entries(expandedLogs).map(([logId, isExpanded]) =>
         isExpanded && logDetails[logId] ? (
           <div key={logId} className="log-details-container">
-            <h3 align="center">Детали журнала (Номер журнала: {logId})</h3>
-            <p align="center" >
-            <strong >Эксплуатирующая организация:</strong>{" "}
-            {logDetails[logId].exploitation_org.organisation_name}
-            </p>
-            <table className="data-table-result">
-            <thead>
-            <tr>
-            <th>Дата измерения</th>
-            <th>Дней эксплуатации</th>
-            <th>Расход воды (м³/день)</th>
-            <th >Подпись лица</th>
-            </tr>
-            </thead>
-            <tbody>
-            {logDetails[logId].wcl_list.map((m) => {
-              // Преобразуем строку даты в объект Date
-              const date = new Date(m.measurement_date);
-              // Форматируем дату в нужный вид, например "дд.мм.гггг"
-              const formattedDate = date.toLocaleDateString('ru-RU', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-              });
+          <h3 align="center">Детали журнала (Номер журнала: {logId})</h3>
+          <p align="center" >
+          <strong >Эксплуатирующая организация:</strong>{" "}
+          {logDetails[logId].exploitation_org.organisation_name}
+          </p>
+          <table className="data-table-result">
+          <thead>
+          <tr>
+          <th>Дата измерения</th>
+          <th>Дней эксплуатации</th>
+          <th>Расход воды (м³/день)</th>
+          <th >Подпись лица</th>
+          </tr>
+          </thead>
+          <tbody>
+          {logDetails[logId].wcl_list.map((m) => {
+            // Преобразуем строку даты в объект Date
+            const date = new Date(m.measurement_date);
+            // Форматируем дату в нужный вид, например "дд.мм.гггг"
+            const formattedDate = date.toLocaleDateString('ru-RU', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            });
 
-              return (
-                <tr key={m.measurement_date}>
-                <td>{formattedDate}</td>
-                <td>{m.operating_time_days}</td>
-                <td>{m.water_consumption_m3_per_day}</td>
-                <td>{m.person_signature}</td>
-                </tr>
-              );
-            })}
-            </tbody>
-
-            </table>
-
-            {["in_progress", "under_correction"].some((s) =>
-              allLogs.find(log => log.id === Number(logId))?.status?.toLowerCase().includes(s)
-            ) ? (
-              <div className="log-files-upload">
-              <h4 style={{ textAlign: "center" }}>Загрузка файлов:</h4>
-                <div className="upload-row">
-                  <FileUpload
-                    label="PDF-скан"
-                    accept="application/pdf"
-                    icon="📄"
-                    entityType="water_consumption_log"
-                    entityId={logId}
-                    fileType="MONTH_CLOSURE_SCAN"
-                    preview={true}
-                    onUpload={async (file) => {
-                      // Передаём file и объект с нужными полями отдельно
-                      await uploadFileToBackend(file, {
-                        entityType: 'water_consumption_log',
-                        entityId: logId,
-                        fileType: 'MONTH_CLOSURE_SCAN'
-                      });
-                      markUploaded(logId, 'pdf');
-                    }}
-                  />
-
-                </div>
-                <div className="upload-row">
-                  <FileUpload
-                    label="Sig-файл подписи"
-                    accept=".sig"
-                    icon="🔏"
-                    entityType="water_consumption_log"
-                    entityId={logId}
-                    fileType="SIGNATURE"
-                    preview={false}
-                    onUpload={async (file) => {
-                      await uploadFileToBackend(file, {
-                        entityType: 'water_consumption_log',
-                        entityId: logId,
-                        fileType: 'SIGNATURE'
-                      });
-                      markUploaded(logId, 'sig');
-                    }}
-                  />
-
-                </div>
-              </div>
-
-
-
-            ) : (
-              <div className="log-files-upload">
-              <h4 style={{ textAlign: "center", color: "gray" }}>Загрузка недоступна</h4>
-              <p style={{ textAlign: "center", color: "#888", fontStyle: "italic" }}>
-              Файлы можно загрузить или заменить только в статусах <b>"На доработке"</b> или <b>"В процессе"</b>
-              </p>
-              </div>
-            )}
-
-            {(() => {
+            return (
+              <tr key={m.measurement_date}>
+              <td>{formattedDate}</td>
+              <td>{m.operating_time_days}</td>
+              <td>{m.water_consumption_m3_per_day}</td>
+              <td>{m.person_signature}</td>
+              </tr>
+            );
+          })}
+          <tr>
+          <td colSpan="4" style={{
+            fontWeight: 'bold',
+            padding: '10px',
+            backgroundColor: (() => {
               const entries = logDetails[logId].wcl_list;
-              if (!entries.length) return null;
+              if (!entries || entries.length === 0) return '#f9f9f9';
 
-              // Определяем месяц и год из первой даты
-              const d0 = new Date(entries[0].measurement_date);
-              const year = d0.getFullYear();
-              const month = d0.getMonth() + 1;
-              const daysInMonth = new Date(year, month, 0).getDate();
+              const firstDate = new Date(entries[0].measurement_date);
+              const year = firstDate.getFullYear();
+              const month = firstDate.getMonth();
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              const filled = entries.filter(e => e.water_consumption_m3_per_day != null && e.person_signature?.trim() !== "").length;
 
-              const allDaysFilled =
-              entries.length === daysInMonth &&
-              entries.every(
-                e =>
-                e.water_consumption_m3_per_day != null &&
-                e.person_signature?.trim() !== ""
-              );
+              return filled === daysInMonth ? '#d4edda' : '#f9f9f9'; // зелёный или серый
+            })(),
+                                           color: (() => {
+                                             const entries = logDetails[logId].wcl_list;
+                                             const firstDate = new Date(entries[0].measurement_date);
+                                             const year = firstDate.getFullYear();
+                                             const month = firstDate.getMonth();
+                                             const daysInMonth = new Date(year, month + 1, 0).getDate();
+                                             const filled = entries.filter(e => e.water_consumption_m3_per_day != null && e.person_signature?.trim() !== "").length;
 
-              const filesOk =
-              uploadStatus[logId]?.pdf === true &&
-              uploadStatus[logId]?.sig === true;
-              console.log("allDaysFilled: ", allDaysFilled);
-              console.log("filesOk: ", filesOk);
-              console.log("uploadStatus:", uploadStatus);
-              console.log(`uploadStatus[${logId}] =`, uploadStatus[logId]);
+                                             return filled === daysInMonth ? '#155724' : '#333';
+                                           })(),
+                                           textAlign: 'center'
+          }}>
+          {(() => {
+            const entries = logDetails[logId].wcl_list;
+            if (!entries || entries.length === 0) return null;
 
-              if (allDaysFilled && filesOk) {
-                return (
-                  <div style={{ textAlign: "center", marginTop: 20 }}>
-                  <button
-                  className="custom-button"
-                  onClick={() =>
-                    handleNotify({
-                      logId: Number(logId),
-                                 pointId: logDetails[logId].point_id,
-                                 water_body_id: logDetails[logId].water_body_id,
-                                 exploitation_org_id:
-                                 logDetails[logId].exploitation_org_id,
-                                 month,
-                                 year,
-                                 fileTypes: ["MONTH_CLOSURE_SCAN", "SIGNATURE"],
-                    })
-                  }
-                  >
-                  Отправить уведомление
-                  </button>
-                  </div>
-                );
-              }
-              return null;
-            })()}
+            const firstDate = new Date(entries[0].measurement_date);
+            const year = firstDate.getFullYear();
+            const month = firstDate.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+            const filledCount = entries.filter(e => e.water_consumption_m3_per_day != null && e.person_signature?.trim() !== "").length;
+            const sum = entries.reduce((acc, e) => acc + (parseFloat(e.water_consumption_m3_per_day) || 0), 0);
+            const avg = filledCount > 0 ? (sum / filledCount).toFixed(2) : 0;
+
+            return `Заполнено: ${filledCount}/${daysInMonth} дней. Среднее: ${avg} м³/день. Всего: ${sum.toFixed(2)} м³`;
+          })()}
+          </td>
+          </tr>
+          </tbody>
+
+          </table>
+
+          {["in_progress", "under_correction"].some((s) =>
+            allLogs.find(log => log.id === Number(logId))?.status?.toLowerCase().includes(s)
+          ) ? (
+            <div className="log-files-upload">
+            <h4 style={{ textAlign: "center" }}>Загрузка файлов:</h4>
+            <div className="upload-row">
+            <FileUpload
+            label="PDF-скан"
+            accept="application/pdf"
+            icon="📄"
+            entityType="water_consumption_log"
+            entityId={logId}
+            fileType="MONTH_CLOSURE_SCAN"
+            preview={true}
+            onUpload={async (file) => {
+              // Передаём file и объект с нужными полями отдельно
+              await uploadFileToBackend(file, {
+                entityType: 'water_consumption_log',
+                entityId: logId,
+                fileType: 'MONTH_CLOSURE_SCAN'
+              });
+              markUploaded(logId, 'pdf');
+            }}
+            />
 
             </div>
-          ) : null
-        )}
+            <div className="upload-row">
+            <FileUpload
+            label="Sig-файл подписи"
+            accept=".sig"
+            icon="🔏"
+            entityType="water_consumption_log"
+            entityId={logId}
+            fileType="SIGNATURE"
+            preview={false}
+            onUpload={async (file) => {
+              await uploadFileToBackend(file, {
+                entityType: 'water_consumption_log',
+                entityId: logId,
+                fileType: 'SIGNATURE'
+              });
+              markUploaded(logId, 'sig');
+            }}
+            />
+
+            </div>
+            </div>
 
 
 
+          ) : (
+            <div className="log-files-upload">
+            <h4 style={{ textAlign: "center", color: "gray" }}>Загрузка недоступна</h4>
+            <p style={{ textAlign: "center", color: "#888", fontStyle: "italic" }}>
+            Файлы можно загрузить или заменить только в статусах <b>"На доработке"</b> или <b>"В процессе"</b>
+            </p>
+            </div>
+          )}
 
+          {(() => {
+            const entries = logDetails[logId].wcl_list;
+            if (!entries.length) return null;
+
+            // Определяем месяц и год из первой даты
+            const d0 = new Date(entries[0].measurement_date);
+            const year = d0.getFullYear();
+            const month = d0.getMonth() + 1;
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            const allDaysFilled =
+            entries.length === daysInMonth &&
+            entries.every(
+              e =>
+              e.water_consumption_m3_per_day != null &&
+              e.person_signature?.trim() !== ""
+            );
+
+            const filesOk =
+            uploadStatus[logId]?.pdf === true &&
+            uploadStatus[logId]?.sig === true;
+            console.log("allDaysFilled: ", allDaysFilled);
+            console.log("filesOk: ", filesOk);
+            console.log("uploadStatus:", uploadStatus);
+            console.log(`uploadStatus[${logId}] =`, uploadStatus[logId]);
+
+            if (allDaysFilled && filesOk) {
+              return (
+                <div style={{ textAlign: "center", marginTop: 20 }}>
+                <button
+                className="custom-button"
+                onClick={() =>
+                  handleNotify({
+                    logId: Number(logId),
+                               pointId: logDetails[logId].point_id,
+                               water_body_id: logDetails[logId].water_body_id,
+                               exploitation_org_id:
+                               logDetails[logId].exploitation_org_id,
+                               month,
+                               year,
+                               fileTypes: ["MONTH_CLOSURE_SCAN", "SIGNATURE"],
+                  })
+                }
+                >
+                Отправить уведомление
+                </button>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+
+          </div>
+        ) : null
+      )}
 
       </div>
     )}
