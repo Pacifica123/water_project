@@ -20,4 +20,14 @@ const isoToRu = iso => {
 };
 
 
-export {convertToDMS, parseDMS, isoToRu}
+// Форматируем дату для отображения "дд.мм.гггг"
+const formatDate = (isoString) => {
+  if (!isoString) return "-";
+  const date = new Date(isoString);
+  if (isNaN(date)) return isoString;
+  return date.toLocaleDateString("ru-RU");
+};
+
+
+
+export {convertToDMS, parseDMS, isoToRu, formatDate}

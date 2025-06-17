@@ -2,6 +2,9 @@
  import "../css/NotificationModal.css";
  import { sendNotificationReaction } from "../api/notify_reaction";
 
+ import {WaterlogCompleteNotification} from "./WaterlogCompleteNotification";
+ import { formatDate } from "../utils/converters";
+
  // Парсим нестандартный JSON: меняем кавычки, конвертируем datetime и Decimal
  function safeParse(rawText) {
      if (!rawText) return null;
@@ -30,13 +33,6 @@
      }
  }
 
- // Форматируем дату для отображения "дд.мм.гггг"
- const formatDate = (isoString) => {
-     if (!isoString) return "-";
-     const date = new Date(isoString);
-     if (isNaN(date)) return isoString;
-     return date.toLocaleDateString("ru-RU");
- };
 
 
  function NotificationModal({ notification, onClose, onReact }) {
@@ -148,35 +144,6 @@
          );
      };
 
-     const renderWaterLogTable = (records) => {
-         if (!Array.isArray(records)) return <p>Нет записей</p>;
-
-
-         return (
-             <table className="water-report-table">
-             <thead>
-             <tr>
-             <th>Дата измерения</th>
-             <th>Дней работы</th>
-             <th>Расход воды (м³/сут)</th>
-             <th>Показания счетчика</th>
-             <th>Подпись</th>
-             </tr>
-             </thead>
-             <tbody>
-             {records.map((rec, idx) => (
-                 <tr key={idx}>
-                 <td>{formatDate(rec.measurement_date)}</td>
-                 <td>{rec.operating_time_days}</td>
-                 <td>{rec.water_consumption_m3_per_day}</td>
-                 <td>{rec.meter_readings}</td>
-                 <td>{rec.person_signature}</td>
-                 </tr>
-             ))}
-             </tbody>
-             </table>
-         );
-     };
 
      const renderDetails = () => {
          if (!parsedContent) {
@@ -206,23 +173,14 @@
 
              case "waterlog_complete":
                  return (
-                     <div>
-                     <h3>{parsedContent.header}</h3>
-                     <p>
-                     Организация: <strong>{parsedContent.organisation_name}</strong><br />
-                     Водообъект: <strong>{parsedContent.water_object_code}</strong><br />
-                     Период: <strong>{parsedContent.month}.{parsedContent.year}</strong>
-                     </p>
-                     {renderWaterLogTable(parsedContent.records)}
+                     <>
+                     <WaterlogCompleteNotification parsedContent={notification.raw} />
                      <div className="action-buttons">
-                     <button className="add-button" onClick={() => handleReactionClick("approve")}>
-                     Принять
-                     </button>
-                     <button className="edit-button" onClick={() => handleReactionClick("revise")}>
-                     На доработку
-                     </button>
+                     <button className="add-button" onClick={() => handleReactionClick("approve")}>Принять</button>
+                     <button className="delete-button" onClick={() => handleReactionClick("revise")}>На доработку</button>
                      </div>
-                     </div>
+                     </>
+
                  );
 
              case "waterreportform":
@@ -235,7 +193,7 @@
                      <button className="add-button" onClick={() => handleReactionClick("approve")}>
                      Принять
                      </button>
-                     <button className="edit-button" onClick={() => handleReactionClick("revise")}>
+                     <button className="delete-button" onClick={() => handleReactionClick("revise")}>
                      На доработку
                      </button>
                      </div>
@@ -255,7 +213,7 @@
                      <button className="add-button" onClick={() => handleReactionClick("approve")}>
                      Принять
                      </button>
-                     <button className="edit-button" onClick={() => handleReactionClick("revise")}>
+                     <button className="delete-button" onClick={() => handleReactionClick("revise")}>
                      На доработку
                      </button>
                      </div>

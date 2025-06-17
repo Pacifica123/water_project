@@ -16,6 +16,9 @@ def create_and_send_notification(username: str, message: str) -> OperationResult
     except (json.JSONDecodeError, TypeError) as e:
         print(f"Ошибка JSONDecode или TypeError - {e}")
         pass
+    except Exception as e:
+        print(f"Другая ошибка: {e}")
+        pass
 
     notif = {
         'username': username,
@@ -25,6 +28,7 @@ def create_and_send_notification(username: str, message: str) -> OperationResult
     }
 
     if not create_record_entity(Notification, notif):
+        print("Не удалось сохранить уведомление в БД")
         return OperationResult(
             status=OperationStatus.DATABASE_ERROR,
             msg="Не удалось сохранить уведомление в БД"

@@ -155,13 +155,17 @@ class Notification(Base):
 
     def get_type_display(self):
         try:
-            import json
-            data = json.loads(self.message)
+            # import json
+            from utils.backend_utils import serialize_to_json
+            data = serialize_to_json(self.message)
             # Предположим, что тип хранится в ключе 'type'
             if isinstance(data, dict) and 'type' in data:
                 return data['type']
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError) as e:
+            print(self.id)
+            print(self.message)
             print(f"не удалось получить тип для Notification")
+            print(e)
         return "Общее"
 
 

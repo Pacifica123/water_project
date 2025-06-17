@@ -7,6 +7,7 @@ from db.models import *
 import sys
 from typing import Any, List, Optional, Dict, Tuple
 import json
+from utils.notify_utils import create_and_send_notification
 
 
 def handle_notification_reaction(notification: dict) -> OperationResult:
@@ -17,6 +18,8 @@ def handle_notification_reaction(notification: dict) -> OperationResult:
     raw = notification.get('raw')
 
     payload_type = raw.get('type') or 'general'
+    if payload_type == 'Общее':
+        payload_type = raw.get("parsed").get("type")
     print(f" === In handle_notification_reaction: type = {payload_type} ===")
     pprint.pprint(raw)
 
@@ -25,28 +28,65 @@ def handle_notification_reaction(notification: dict) -> OperationResult:
             return _handle_payment_form_reaction(notification)
         case 'waterreportform':
             return _handle_water_report_form_reaction(notification)
-        # TODO: add other cases for 'registration', 'report', 'registry', etc.
+        case 'waterlog_complete':
+            return _handle_waterlog_reaction(raw)
         case _:
             print(f"No reaction handler for type: {payload_type}")
-            return OperationResult(status=OperationStatus.VALIDATION_ERROR,
-                                   msg=f"Unsupported notification type: {payload_type}")
+            return OperationResult(
+                status=OperationStatus.VALIDATION_ERROR,
+                msg=f"Unsupported notification type: {payload_type}")
+
+
+def _handle_waterlog_reaction(notification: dict) -> OperationResult:
+    # 1. records -> любое из взять id и по записи найти RecordWCL и через log_id выйти на WaterConsumptionLog
+    # 2. изменить статус: approve -> log_status.CLOSED и revise -> log_status.UNDER_CORRECTION
+    # 3. достать org_id и послать ему уведомление о том что произошло
+    print(notification)
+    return OperationResult(status=OperationStatus.NOT_REALIZED,
+                               msg=f"Пока не реализовано")
 
 
 def _handle_payment_form_reaction(notification: dict) -> OperationResult:
     reaction = notification.get('reaction')
+    msg = ""
+
+    permission_number = notification.get('raw').get("parsed").get("permission_number")
+    p_res = get_all_by_conditions(Permissions, [{"permission_number": permission_number}])
+    print_operation_result(p_res)
+    p = p_res.data[0]
+    pprint.pprint(p)
+    if not int(p.organisation_id):
+        pprint.pprint(p)
+    org = get_record_by_id(Organisations, int(p.organisation_id)).data
+    username = get_all_by_conditions(User, [{"organisation_id": org.id}]).data[0].username
+    print(f"[username]: {username}")
     if reaction == 'revise':
         print(" >> Action: mark water report for revision")
-        return OperationResult(status=OperationStatus.NOT_REALIZED,
-                        msg=f"Пока не реализовано")
-        # TODO: implement actual revision workflow
+        msg = {
+            "header": "Форма оплаты от такого-то числа была отклонена"
+            }
+        # return OperationResult(status=OperationStatus.NOT_REALIZED,
+        #                 msg=f"Пока не реализовано")
     elif reaction == 'approve':
         print(" >> Action: approve water report")
-        return OperationResult(status=OperationStatus.NOT_REALIZED,
-                               msg=f"Пока не реализовано")
-        # TODO: implement approval workflow
+        msg = {
+            "header": "Форма оплаты была успешно принята"
+            }
+        #
+        # return OperationResult(status=OperationStatus.NOT_REALIZED,
+        #                        msg=f"Пока не реализовано")
+    # отправить msg на организацию
     else:
         return OperationResult(status=OperationStatus.VALIDATION_ERROR,
                                msg=f"Unknown reaction for waterreportform: {reaction}")
+    try:
+        print("[debug] зашло в try")
+        return create_and_send_notification(username, msg)
+    except Exception as e:
+        print(e)
+        return OperationResult(
+            OperationStatus.UNDEFINE_ERROR
+            )
 
 
 def _handle_water_report_form_reaction(notification: dict) -> OperationResult:

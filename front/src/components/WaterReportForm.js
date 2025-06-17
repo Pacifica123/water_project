@@ -107,8 +107,8 @@ function WaterReportForm() {
 
           const filteredRecords = allRecords.filter(
             (record) =>
-            record.water_point_id.id === parseInt(selectedWaterObject) &&
-            record.created_at.includes(year) &&
+            Number(record.water_point_id.id) === Number(selectedWaterObject) &&
+            record.year === year &&
             quarterMonths[quarter].includes(record.month)
           );
 
@@ -229,12 +229,13 @@ function WaterReportForm() {
     }
 
     try {
+      const userData = JSON.parse(localStorage.getItem("user"));
       const response = await sendFormData("send_quarter", {
         waterPointId: selectedWaterObject,
         quarter,
         year,
         data,
-        org_id: orgInfo.id
+        org_id: userData?.organisation_id,
       });
       showSuccess();
     } catch (error) {

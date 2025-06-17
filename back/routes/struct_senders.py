@@ -8,6 +8,43 @@ import sys
 from typing import Any, List, Optional, Dict, Tuple
 
 
+def update_water_log_entries(form_data) -> OperationResult:
+    log_id = int(form_data.get('log_id'))
+    updated_entries = form_data.get('updated_entries')
+
+    if not updated_entries:
+        return OperationResult(
+            status=OperationStatus.VALIDATION_ERROR,
+            msg="Нет обновляемых записей."
+        )
+
+    records_data = []
+    for entry in updated_entries:
+        record_data = {
+            'id': entry['id'],  # ID записи для обновления
+            'measurement_date': entry['measurement_date'],
+            'operating_time_days': entry['operating_time_days'],
+            'water_consumption_m3_per_day': float(entry['water_consumption_m3_per_day']),
+            'meter_readings': entry['meter_readings'],
+            'person_signature': entry['person_signature'],
+            'log_id': log_id  # Добавляем log_id
+        }
+        records_data.append(record_data)
+
+    required_fields = [
+        'measurement_date',
+        'operating_time_days',
+        'water_consumption_m3_per_day',
+        'meter_readings',
+        'person_signature',
+        'log_id'
+    ]
+
+    result = bulk_update_records(RecordWCL, records_data, required_fields)
+
+    return result
+
+
 def send_water_comsumption_log_full(form_data: dict) -> OperationResult:
     """
     Отправка полного журнала водопотребления.
@@ -124,14 +161,25 @@ def send_water_comsumption_log_full(form_data: dict) -> OperationResult:
             f"Заполнен журнал водопотребления организации "
             f"{org.organisation_name} за {month}.{year}"
         ),
+        "org_id": org.id,
         "organisation_name": org.organisation_name,
         "water_object_code": f"{code.code_symbol}{code.code_value}",
         "month": month,
         "year": year,
         "records": [r.to_dict() for r in records],
         "file_ids": {
-            "pdf": pdf_ids,
-            "sig": sig_ids
+            "pdf": {
+                "pdf_id": pdf_ids,
+                "entity_type": "water_consumption_log",
+                "entity_id": log_id,
+                "file_type": pdf_type
+            },
+            "sig": {
+                "sig_id": sig_ids,
+                "entity_type": "water_consumption_log",
+                "entity_id": log_id,
+                "file_type": sig_type,
+            }
         }
     }
 

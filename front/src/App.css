@@ -476,6 +476,7 @@ input {
   border: none;
   border-radius: 1vw;
   background-color: #dc3545;
+  font-weight: bold;
   color: white;
   cursor: pointer;
 }

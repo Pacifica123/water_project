@@ -128,6 +128,8 @@ const translations = {
 };
 
 function translate(key) {
+    console.log("до:",  key);
+
     if (typeof key !== 'string') return key;
 
     // Убираем префикс, если есть
@@ -135,6 +137,7 @@ function translate(key) {
 
     // Если ключ целиком есть в словаре — возвращаем перевод сразу
     if (translations.hasOwnProperty(key)) {
+        console.log("после:",  translations[key]);
         return translations[key];
     }
 
@@ -148,7 +151,7 @@ function translate(key) {
             }
         }
     }
-
+    console.log("после:",  key);
     return key;
 }
 
