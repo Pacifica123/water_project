@@ -29,7 +29,7 @@ def handle_notification_reaction(notification: dict) -> OperationResult:
         case 'waterreportform':
             return _handle_water_report_form_reaction(notification)
         case 'waterlog_complete':
-            return _handle_waterlog_reaction(raw)
+            return _handle_waterlog_reaction(raw, str(notification.get('reaction')))
         case _:
             print(f"No reaction handler for type: {payload_type}")
             return OperationResult(
@@ -37,13 +37,94 @@ def handle_notification_reaction(notification: dict) -> OperationResult:
                 msg=f"Unsupported notification type: {payload_type}")
 
 
-def _handle_waterlog_reaction(notification: dict) -> OperationResult:
-    # 1. records -> любое из взять id и по записи найти RecordWCL и через log_id выйти на WaterConsumptionLog
-    # 2. изменить статус: approve -> log_status.CLOSED и revise -> log_status.UNDER_CORRECTION
-    # 3. достать org_id и послать ему уведомление о том что произошло
-    print(notification)
-    return OperationResult(status=OperationStatus.NOT_REALIZED,
-                               msg=f"Пока не реализовано")
+def _handle_waterlog_reaction(notification: dict, reaction: str) -> OperationResult:
+    import re
+    import ast
+    print("--------------------------------------------------------------")
+    text_str = notification.get('text')
+    print(f"type of text: {type(text_str)}")
+    print(text_str)
+
+    # Предобработка строки
+    text_str = re.sub(r"datetime\.datetime\(\s*(\d+),\s*(\d+),\s*(\d+),.*?\)", r"'\1-\2-\3'", text_str)
+    text_str = re.sub(r"Decimal\('([\d\.]+)'\)", r"\1", text_str)
+
+    try:
+        text_dict = ast.literal_eval(text_str)
+    except Exception as e:
+        print(f"Ошибка при разборе строки: {e}")
+        text_dict = {}
+
+    records = text_dict.get('records')
+    print(records)
+    print(reaction)
+
+    if not records or not isinstance(records, list):
+        return OperationResult(status=OperationStatus.VALIDATION_ERROR,
+                               msg="В уведомлении отсутствуют записи для обработки")
+
+    first_record_id = records[0].get('id')
+    if not first_record_id:
+        return OperationResult(status=OperationStatus.VALIDATION_ERROR,
+                               msg="В первой записи отсутствует поле 'id'")
+
+
+
+
+    # Получаем запись RecordWCL по id
+    res_record = get_record_by_id(RecordWCL, first_record_id)
+    if res_record.status != OperationStatus.SUCCESS:
+        return OperationResult(status=res_record.status,
+                               msg=f"Не удалось получить RecordWCL с id={first_record_id}: {res_record.message}")
+
+    record_wcl = res_record.data
+    if not record_wcl:
+        return OperationResult(status=OperationStatus.NOT_REALIZED,
+                               msg="RecordWCL не найден")
+
+    # Получаем связанный WaterConsumptionLog по log_id из RecordWCL
+    log_id = record_wcl.log_id
+    res_log = get_record_by_id(WaterConsumptionLog, log_id)
+    if res_log.status != OperationStatus.SUCCESS:
+        return OperationResult(status=res_log.status,
+                               msg=f"Не удалось получить WaterConsumptionLog с id={log_id}: {res_log.message}")
+
+    water_log = res_log.data
+    if not water_log:
+        return OperationResult(status=OperationStatus.NOT_REALIZED,
+                               msg="WaterConsumptionLog не найден")
+
+    status_map = {
+        'approve': log_status.CLOSED,
+        'revise': log_status.UNDER_CORRECTION
+    }
+    new_status = status_map.get(reaction)
+    if not new_status:
+        return OperationResult(status=OperationStatus.VALIDATION_ERROR,
+                               msg="В уведомлении отсутствует корректный статус ('approve' или 'revise')")
+
+    # Обновляем статус журнала
+    res_update = update_record(WaterConsumptionLog, log_id, {'log_status': new_status})
+    if res_update.status != OperationStatus.SUCCESS:
+        print_operation_result(res_update)
+        return OperationResult(status=res_update.status,
+                               msg=f"Не удалось обновить статус WaterConsumptionLog: {res_update.message}")
+
+    # Извлекаем org_id для уведомления
+    org_id = water_log.exploitation_org_id
+    user = get_all_by_conditions(User, [{'organisation_id': org_id}]).data[0]
+
+    nmsg = ""
+    if new_status == log_status.CLOSED:
+        nmsg = "Отправленный журнал принят и закрыт"
+    else:
+        nmsg = "Отправленный журнал отправлен на доработку"
+    print(nmsg)
+    create_and_send_notification(user.username, nmsg)
+
+    return OperationResult(status=OperationStatus.SUCCESS,
+                           msg=f"Статус журнала водопотребления (id={log_id}) обновлен на {new_status.value}, уведомление отправлено организации id={org_id}")
+
 
 
 def _handle_payment_form_reaction(notification: dict) -> OperationResult:
