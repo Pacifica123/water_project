@@ -4,6 +4,7 @@ from db.models import Notification
 from sqlalchemy.orm import Session
 from datetime import datetime
 from utils.backend_utils import OperationResult, OperationStatus
+import pprint
 
 socketio = None
 user_sessions = {}
@@ -11,6 +12,7 @@ user_sessions = {}
 
 def send_notification(username: str, message: str) -> OperationResult:
     if socketio:
+        pprint.pprint(user_sessions)
         if user_sessions[username] is None:
             return OperationResult(
                 OperationStatus.SUCCESS,

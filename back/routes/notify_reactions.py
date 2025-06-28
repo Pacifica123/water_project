@@ -59,17 +59,21 @@ def _handle_waterlog_reaction(notification: dict, reaction: str) -> OperationRes
     print(records)
     print(reaction)
 
+    print(" -- метка 1 --")
+
     if not records or not isinstance(records, list):
+        print(" -- метка VALIDATION_ERROR1 --")
         return OperationResult(status=OperationStatus.VALIDATION_ERROR,
                                msg="В уведомлении отсутствуют записи для обработки")
 
     first_record_id = records[0].get('id')
     if not first_record_id:
+        print(" -- метка VALIDATION_ERROR2 --")
         return OperationResult(status=OperationStatus.VALIDATION_ERROR,
                                msg="В первой записи отсутствует поле 'id'")
 
 
-
+    print(" -- метка 2 --")
 
     # Получаем запись RecordWCL по id
     res_record = get_record_by_id(RecordWCL, first_record_id)
@@ -78,6 +82,7 @@ def _handle_waterlog_reaction(notification: dict, reaction: str) -> OperationRes
                                msg=f"Не удалось получить RecordWCL с id={first_record_id}: {res_record.message}")
 
     record_wcl = res_record.data
+    print(" -- метка 3 --")
     if not record_wcl:
         return OperationResult(status=OperationStatus.NOT_REALIZED,
                                msg="RecordWCL не найден")
@@ -89,6 +94,7 @@ def _handle_waterlog_reaction(notification: dict, reaction: str) -> OperationRes
         return OperationResult(status=res_log.status,
                                msg=f"Не удалось получить WaterConsumptionLog с id={log_id}: {res_log.message}")
 
+    print(" -- метка 4 --")
     water_log = res_log.data
     if not water_log:
         return OperationResult(status=OperationStatus.NOT_REALIZED,
@@ -103,6 +109,7 @@ def _handle_waterlog_reaction(notification: dict, reaction: str) -> OperationRes
         return OperationResult(status=OperationStatus.VALIDATION_ERROR,
                                msg="В уведомлении отсутствует корректный статус ('approve' или 'revise')")
 
+    print(" -- метка 5 --")
     # Обновляем статус журнала
     res_update = update_record(WaterConsumptionLog, log_id, {'log_status': new_status})
     if res_update.status != OperationStatus.SUCCESS:
@@ -113,6 +120,8 @@ def _handle_waterlog_reaction(notification: dict, reaction: str) -> OperationRes
     # Извлекаем org_id для уведомления
     org_id = water_log.exploitation_org_id
     user = get_all_by_conditions(User, [{'organisation_id': org_id}]).data[0]
+
+    print(" -- метка 6 --")
 
     nmsg = ""
     if new_status == log_status.CLOSED:

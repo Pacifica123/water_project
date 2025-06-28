@@ -42,6 +42,12 @@ function MainNotify() {
 
         const handleNotification = (msg) => {
             console.log("Получено уведомление:", msg);
+            if (Array.isArray(msg.text)) {
+                // Собираем строку из массива символов
+                msg.text = msg.text.join('');
+                console.log("msg.text преобразован в строку:", msg.text);
+            }
+
             setNotifications((prev) => {
                 if (prev.find((x) => x.id === msg.id)) return prev;
 
@@ -76,6 +82,8 @@ function MainNotify() {
             });
         };
 
+
+
         socket.on("notification", handleNotification);
         triggerFetchAllNotify();
 
@@ -97,20 +105,36 @@ function MainNotify() {
 
     const getNotificationTitle = (text) => {
         if (!text) return "Без заголовка";
-        if (typeof text === "object") {
-            return text.header || text.message || "Без заголовка";
+
+        // Проверяем, не является ли text объектом-массивом символов
+        if (typeof text === 'object' && !Array.isArray(text)) {
+            const keys = Object.keys(text).filter(key => !isNaN(key)).sort((a, b) => Number(a) - Number(b));
+            if (keys.length > 0) {
+                // Собираем строку из символов
+                return keys.map(key => text[key]).join('');
+            } else {
+                // Обычный объект
+                return text.header || text.message || "Без заголовка";
+            }
         }
+
+        if (Array.isArray(text)) {
+            return text.join('');
+        }
+
         if (typeof text === "string") {
             try {
                 const fixedText = cleanPythonDictString(text);
                 const parsed = JSON.parse(fixedText);
-                return parsed.header || parsed.message || "Без заголовка";
+                return parsed.header || parsed.message || text;
             } catch {
                 return text;
             }
         }
+
         return "Без заголовка";
     };
+
 
     const handleSort = (key) => {
         setSortConfig((prev) => {
