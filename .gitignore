@@ -16,5 +16,4 @@ front/node_modules/.cache/
 *.pdf
 
 # Другие временные/кэшированные файлы
-*.json
 
