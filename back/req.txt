@@ -26,3 +26,5 @@ Werkzeug==3.0.3
 flask_socketio
 flask_mail
 eventlet
+pandas
+psycopg2
