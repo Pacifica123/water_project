@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:17-bookworm
+    container_name: water_postgres17
+    environment:
+      POSTGRES_DB: test_practic
+      POSTGRES_USER: noir_psql
+      POSTGRES_PASSWORD: Noir_Tea
+    ports: ["5432:5432"]
+    security_opt: [seccomp:unconfined, apparmor:unconfined]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    networks: [water_net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noir_psql -d test_practic"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  flask:
+    build: .
+    container_name: water_flask
+    ports: ["5000:5000"]
+    env_file: [.env.debug]
+    environment:
+      - FLASK_SECRET_KEY=water_project_secret_2025_noir_astra_linux_1234567890abcdef
+    depends_on:
+      postgres:
+        condition: service_healthy
+    security_opt: [seccomp:unconfined, apparmor:unconfined]
+    networks: [water_net]
+
+volumes:
+  postgres_data:
+
+networks:
+  water_net:
+    driver: bridge

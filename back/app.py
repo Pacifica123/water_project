@@ -28,8 +28,8 @@ def load_from_stub():
 
 def create_app(delete_db=False):
     app = Flask(__name__)
-    app.secret_key = LONG_KEY
-    CORS(app, supports_credentials=True)
+    app.secret_key = os.environ.get('FLASK_SECRET_KEY') or LONG_KEY
+    CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
     app.config['SESSION_TYPE'] = 'filesystem'
     # ─── Конфиг Flask-Mail ─────────────────────────────────────────────
     app.config['MAIL_SERVER'] = "smtp.yandex.ru"
@@ -41,7 +41,7 @@ def create_app(delete_db=False):
     mail.init_app(app)
     # ─────────────────────────────────────────────────────────────────
     engine = setup_database(delete_db=delete_db)
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+    socketio = SocketIO(app, cors_allowed_origins=["http://localhost:3000"], async_mode='eventlet')
 
     # Глобальный обработчик ошибок
     import traceback
@@ -74,4 +74,4 @@ if __name__ == '__main__':
     delete_db_flag = os.getenv('DELETE_DB', 'False') == 'True'
     app, socketio = create_app(delete_db_flag)
     # app.run(debug=True)
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', debug=True, allow_unsafe_werkzeug=True)

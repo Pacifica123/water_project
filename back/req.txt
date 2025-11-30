@@ -26,5 +26,5 @@ Werkzeug==3.0.3
 flask_socketio
 flask_mail
 eventlet
+psycopg2-binary
 pandas
-psycopg2
