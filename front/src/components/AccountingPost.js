@@ -35,18 +35,7 @@ const ForeignKeySelect = ({ field, value, onChange }) => {
         if (field.isEnum) {
           const response = await fetchStructureData("enum_" + field.enumType);
           if (!isMounted.current) return;
-
-          // Транслируем метки для enum
-          const items = response.data || [];
-          setOptions(
-            items.map(item => {
-              const lbl = translate(getStringFieldsLabel(item));
-              return {
-                value: item.id,
-                label: lbl
-              };
-            })
-          );
+          setOptions(response.data || []);
         }
         else if (field.foreignKey) {
           // если уже передали готовые опции
@@ -60,16 +49,15 @@ const ForeignKeySelect = ({ field, value, onChange }) => {
             );
             if (!isMounted.current) return;
             // API возвращает массив или { data: [...] }
-            const items = Array.isArray(records) ? records : records?.data || [];
-
+            const items = Array.isArray(records)
+            ? records
+            : records?.data || [];
             setOptions(
-              items.map(item => {
-                const lbl = translate(getStringFieldsLabel(item));
-                return {
-                  value: item.id,
-                  label: lbl
-                };
-              })
+              items.map(item => ({
+                value: item.id,
+                label: getStringFieldsLabel(item)
+                // label: item.name || item.serial_number || String(item.id)
+              }))
             );
           } else {
             setOptions([]);
@@ -155,43 +143,43 @@ const AccountingPost = () => {
     closed: true,
   });
 
-  const [editableLogs, setEditableLogs] = useState({});
+const [editableLogs, setEditableLogs] = useState({});
 
-  const updateEditableField = (logId, index, field, value) => {
-    setEditableLogs((prev) => {
-      const updated = [...(prev[logId] || logDetails[logId].wcl_list)];
-      updated[index] = { ...updated[index], [field]: value };
-      return { ...prev, [logId]: updated };
-    });
-  };
+const updateEditableField = (logId, index, field, value) => {
+  setEditableLogs((prev) => {
+    const updated = [...(prev[logId] || logDetails[logId].wcl_list)];
+    updated[index] = { ...updated[index], [field]: value };
+    return { ...prev, [logId]: updated };
+  });
+};
 
-  const saveUpdatedLog = async (logId) => {
+const saveUpdatedLog = async (logId) => {
+  
+  try {
+    const payload = {
+      log_id: logId,
+      updated_entries: editableLogs[logId],
+    };
+    const result = await sendFormData("update_water_log_entries", payload);
 
-    try {
-      const payload = {
-        log_id: logId,
-        updated_entries: editableLogs[logId],
-      };
-      const result = await sendFormData("update_water_log_entries", payload);
-
-      if (result.status === "SUCCESS") {
-        showSuccess("Изменения сохранены.");
-        setLogDetails((prev) => ({
-          ...prev,
-          [logId]: {
-            ...prev[logId],
-            wcl_list: editableLogs[logId],
-          },
-        }));
-        setEditableLogs((prev) => ({ ...prev, [logId]: undefined }));
-      } else {
-        showError("Ошибка при сохранении: " + result.msg);
-      }
-    } catch (e) {
-      console.error(e);
-      showError("Не удалось сохранить изменения");
+    if (result.status === "SUCCESS") {
+      showSuccess("Изменения сохранены.");
+      setLogDetails((prev) => ({
+        ...prev,
+        [logId]: {
+          ...prev[logId],
+          wcl_list: editableLogs[logId],
+        },
+      }));
+      setEditableLogs((prev) => ({ ...prev, [logId]: undefined }));
+    } else {
+      showError("Ошибка при сохранении: " + result.msg);
     }
-  };
+  } catch (e) {
+    console.error(e);
+    showError("Не удалось сохранить изменения");
+  }
+};
 
 
 
@@ -945,9 +933,9 @@ const AccountingPost = () => {
       </div>
       <hr />
       <div className="permission-section">
-      <h4>Договор на водопользование</h4>
+      <h4>Разрешение на водопользование</h4>
       <div className="label-modal">
-      <label>Номер договора:</label>
+      <label>Номер разрешения:</label>
       <input
       type="text"
       name="permission_number"
@@ -973,6 +961,14 @@ const AccountingPost = () => {
       onChange={handlePermissionChange}
       />
       </div>
+      <div className="label-modal">
+      <label>Тип разрешения: </label>
+      <ForeignKeySelect
+      field={{ field: 'permission_type', isEnum: true, enumType: 'PermissionType' }}
+      value={permissionData.permission_type}
+      onChange={handlePermissionChange}
+      />
+      </div>
 
       <div className="label-modal">
       <label>Разрешённый объём (организации):</label>
@@ -995,6 +991,14 @@ const AccountingPost = () => {
       />
       </div>
 
+      <div className="label-modal">
+      <label>Выберете метод: </label>
+      <ForeignKeySelect
+      field={{ field: 'method_type', isEnum: true, enumType: 'UpCoefType' }}
+      value={permissionData.method_type}
+      onChange={handlePermissionChange}
+      />
+      </div>
 
 
       <div className="label-modal" style={{marginTop: 10, color: "#888", fontStyle: "italic"}}>
@@ -1243,269 +1247,276 @@ const AccountingPost = () => {
       {Object.entries(expandedLogs).map(([logId, isExpanded]) =>
         isExpanded && logDetails[logId] ? (
           <div key={logId} className="log-details-container">
-          <h3 align="center">Детали журнала (Номер журнала: {logId})</h3>
-          <p align="center" >
-          <strong >Эксплуатирующая организация:</strong>{" "}
-          {logDetails[logId].exploitation_org.organisation_name}
-          </p>
-          <table className="data-table-result">
-          <thead>
-          <tr>
-          <th>Дата измерения</th>
-          <th>Дней эксплуатации</th>
-          <th>Расход воды (м³/день)</th>
-          <th >Подпись лица</th>
-          </tr>
-          </thead>
-          <tbody>
-          {logDetails[logId].wcl_list.map((m, i) => {
-            const date = new Date(m.measurement_date);
-            const formattedDate = date.toLocaleDateString('ru-RU', {
-              day: '2-digit', month: '2-digit', year: 'numeric'
-            });
-
-            const logStatus = allLogs.find((log) => log.id === Number(logId))?.status?.toLowerCase();
-            const editable = ["in_progress", "under_correction"].includes(logStatus);
-            const currentEntry = editableLogs[logId]?.[i] || m;
-
-            return (
-              <tr key={m.measurement_date}>
-              <td>{formattedDate}</td>
-              <td>
-              {editable ? (
-                <input
-                className="narrow-input"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={currentEntry.operating_time_days ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "") {
-                    updateEditableField(logId, i, "operating_time_days", "");
-                  } else if (/^\d+$/.test(val)) {
-                    const num = parseInt(val, 10);
-                    if (num <= 24) {
-                      updateEditableField(logId, i, "operating_time_days", num);
-                    }
-                  }
-                }}
-                />
-              ) : (
-                m.operating_time_days
-              )}
-              </td>
-              <td>
-              {editable ? (
-                <input
-                className="narrow-input"
-                type="text"
-                inputMode="decimal"
-                value={currentEntry.water_consumption_m3_per_day ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value.replace(",", ".");
-                  if (
-                    val === "" ||
-                    /^(\d+(\.\d{0,3})?)?$/.test(val)
-                  ) {
-                    updateEditableField(logId, i, "water_consumption_m3_per_day", val);
-                  }
-                }}
-                />
-              ) : (
-                m.water_consumption_m3_per_day
-              )}
-              </td>
-              <td>
-              {editable ? (
-                <input
-                className="narrow-input"
-                type="text"
-                value={currentEntry.person_signature || ""}
-                onChange={(e) =>
-                  updateEditableField(logId, i, "person_signature", e.target.value)
-                }
-                />
-              ) : (
-                m.person_signature
-              )}
-              </td>
-              </tr>
-            );
-          })}
-
-          <tr>
-          <td colSpan="4" style={{
-            fontWeight: 'bold',
-            padding: '10px',
-            backgroundColor: (() => {
-              const entries = logDetails[logId].wcl_list;
-              if (!entries || entries.length === 0) return '#f9f9f9';
-
-              const firstDate = new Date(entries[0].measurement_date);
-              const year = firstDate.getFullYear();
-              const month = firstDate.getMonth();
-              const daysInMonth = new Date(year, month + 1, 0).getDate();
-              const filled = entries.filter(e => e.water_consumption_m3_per_day != null && e.person_signature?.trim() !== "").length;
-
-              return filled === daysInMonth ? '#d4edda' : '#f9f9f9'; // зелёный или серый
-            })(),
-                                           color: (() => {
-                                             const entries = logDetails[logId].wcl_list;
-                                             const firstDate = new Date(entries[0].measurement_date);
-                                             const year = firstDate.getFullYear();
-                                             const month = firstDate.getMonth();
-                                             const daysInMonth = new Date(year, month + 1, 0).getDate();
-                                             const filled = entries.filter(e => e.water_consumption_m3_per_day != null && e.person_signature?.trim() !== "").length;
-
-                                             return filled === daysInMonth ? '#155724' : '#333';
-                                           })(),
-                                           textAlign: 'center'
-          }}>
-          {(() => {
-            const entries = logDetails[logId].wcl_list;
-            if (!entries || entries.length === 0) return null;
-
-            const firstDate = new Date(entries[0].measurement_date);
-            const year = firstDate.getFullYear();
-            const month = firstDate.getMonth();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            const filledCount = entries.filter(e => e.water_consumption_m3_per_day != null && e.person_signature?.trim() !== "").length;
-            const sum = entries.reduce((acc, e) => acc + (parseFloat(e.water_consumption_m3_per_day) || 0), 0);
-            const avg = filledCount > 0 ? (sum / filledCount).toFixed(2) : 0;
-
-            return `Заполнено: ${filledCount}/${daysInMonth} дней. Среднее: ${avg} м³/день. Всего: ${sum.toFixed(2)} м³`;
-          })()}
-          </td>
-          </tr>
-          </tbody>
-
-          </table>
-          {["in_progress", "under_correction"].includes(
-            allLogs.find((log) => log.id === Number(logId))?.status?.toLowerCase()
-          ) && (
-            <div style={{ textAlign: "center", marginTop: 10 }}>
-            <button className="custom-button" onClick={() => saveUpdatedLog(logId)}>
-            Сохранить изменения
-            </button>
-            </div>
-          )}
-          {["in_progress", "under_correction"].some((s) =>
-            allLogs.find(log => log.id === Number(logId))?.status?.toLowerCase().includes(s)
-          ) ? (
-            <div className="log-files-upload">
-            <h4 style={{ textAlign: "center" }}>Загрузка файлов:</h4>
-            <div className="upload-row">
-            <FileUpload
-            label="PDF-скан"
-            accept="application/pdf"
-            icon="📄"
-            entityType="water_consumption_log"
-            entityId={logId}
-            fileType="MONTH_CLOSURE_SCAN"
-            preview={true}
-            onUpload={async (file) => {
-              // Передаём file и объект с нужными полями отдельно
-              await uploadFileToBackend(file, {
-                entityType: 'water_consumption_log',
-                entityId: logId,
-                fileType: 'MONTH_CLOSURE_SCAN'
-              });
-              markUploaded(logId, 'pdf');
-            }}
-            />
-
-            </div>
-            <div className="upload-row">
-            <FileUpload
-            label="Sig-файл подписи"
-            accept=".sig"
-            icon="🔏"
-            entityType="water_consumption_log"
-            entityId={logId}
-            fileType="SIGNATURE"
-            preview={false}
-            onUpload={async (file) => {
-              await uploadFileToBackend(file, {
-                entityType: 'water_consumption_log',
-                entityId: logId,
-                fileType: 'SIGNATURE'
-              });
-              markUploaded(logId, 'sig');
-            }}
-            />
-
-            </div>
-            </div>
-
-
-
-          ) : (
-            <div className="log-files-upload">
-            <h4 style={{ textAlign: "center", color: "gray" }}>Загрузка недоступна</h4>
-            <p style={{ textAlign: "center", color: "#888", fontStyle: "italic" }}>
-            Файлы можно загрузить или заменить только в статусах <b>"На доработке"</b> или <b>"В процессе"</b>
+            <h3 align="center">Детали журнала (Номер журнала: {logId})</h3>
+            <p align="center" >
+            <strong >Эксплуатирующая организация:</strong>{" "}
+            {logDetails[logId].exploitation_org.organisation_name}
             </p>
-            </div>
-          )}
+            <table className="data-table-result">
+            <thead>
+            <tr>
+            <th>Дата измерения</th>
+            <th>Дней эксплуатации</th>
+            <th>Расход воды (м³/день)</th>
+            <th >Подпись лица</th>
+            </tr>
+            </thead>
+            <tbody>
+{(logDetails[logId]?.wcl_list || []).map((m, i) => {
+  const date = new Date(m.measurement_date);
+  const formattedDate = date.toLocaleDateString('ru-RU', {
+    day: '2-digit', month: '2-digit', year: 'numeric'
+  });
 
-          {(() => {
-            const entries = logDetails[logId].wcl_list;
-            if (!entries.length) return null;
+  const logStatus = allLogs.find((log) => log.id === Number(logId))?.status?.toLowerCase();
+  const editable = ["in_progress", "under_correction"].includes(logStatus);
+  const currentEntry = editableLogs[logId]?.[i] || m;
 
-            // Определяем месяц и год из первой даты
-            const d0 = new Date(entries[0].measurement_date);
-            const year = d0.getFullYear();
-            const month = d0.getMonth() + 1;
-            const daysInMonth = new Date(year, month, 0).getDate();
-
-            const allDaysFilled =
-            entries.length === daysInMonth &&
-            entries.every(
-              e =>
-              e.water_consumption_m3_per_day != null &&
-              e.person_signature?.trim() !== ""
-            );
-
-            const filesOk =
-            uploadStatus[logId]?.pdf === true &&
-            uploadStatus[logId]?.sig === true;
-            console.log("allDaysFilled: ", allDaysFilled);
-            console.log("filesOk: ", filesOk);
-            console.log("uploadStatus:", uploadStatus);
-            console.log(`uploadStatus[${logId}] =`, uploadStatus[logId]);
-
-            if (allDaysFilled && filesOk) {
-              return (
-                <div style={{ textAlign: "center", marginTop: 20 }}>
-                <button
-                className="custom-button"
-                onClick={() =>
-                  handleNotify({
-                    logId: Number(logId),
-                               pointId: logDetails[logId].point_id,
-                               water_body_id: logDetails[logId].water_body_id,
-                               exploitation_org_id:
-                               logDetails[logId].exploitation_org_id,
-                               month,
-                               year,
-                               fileTypes: ["MONTH_CLOSURE_SCAN", "SIGNATURE"],
-                  })
-                }
-                >
-                Отправить уведомление
-                </button>
-                </div>
-              );
+  return (
+    <tr key={m.measurement_date}>
+      <td>{formattedDate}</td>
+      <td>
+        {editable ? (
+<input
+            className="narrow-input"
+type="text"
+  inputMode="numeric"
+  pattern="[0-9]*"
+  value={currentEntry.operating_time_days ?? ""}
+  onChange={(e) => {
+    const val = e.target.value;
+    if (val === "") {
+      updateEditableField(logId, i, "operating_time_days", "");
+    } else if (/^\d+$/.test(val)) {
+      const num = parseInt(val, 10);
+      if (num <= 24) {
+        updateEditableField(logId, i, "operating_time_days", num);
+      }
+    }
+  }}
+/>
+        ) : (
+          m.operating_time_days
+        )}
+      </td>
+      <td>
+        {editable ? (
+<input
+ className="narrow-input"
+  type="text"
+  inputMode="decimal"
+  value={currentEntry.water_consumption_m3_per_day ?? ""}
+  onChange={(e) => {
+    const val = e.target.value.replace(",", "."); 
+    if (
+      val === "" ||
+      /^(\d+(\.\d{0,3})?)?$/.test(val)    
+    ) {
+      updateEditableField(logId, i, "water_consumption_m3_per_day", val);
+    }
+  }}
+/>
+        ) : (
+          m.water_consumption_m3_per_day
+        )}
+      </td>
+      <td>
+        {editable ? (
+          <input
+           className="narrow-input"
+            type="text"
+            value={currentEntry.person_signature || ""}
+            onChange={(e) =>
+              updateEditableField(logId, i, "person_signature", e.target.value)
             }
-            return null;
-          })()}
+          />
+        ) : (
+          m.person_signature
+        )}
+      </td>
+    </tr>
+  );
+})}
+
+            <tr>
+             <td colSpan="4" style={{
+      fontWeight: 'bold',
+      padding: '10px',
+      backgroundColor: (() => {
+        const entries = logDetails[logId].wcl_list;
+        if (!entries || entries.length === 0) return '#f9f9f9';
+
+        const firstDate = new Date(entries[0].measurement_date);
+        const year = firstDate.getFullYear();
+        const month = firstDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const filled = entries.filter(e => e.water_consumption_m3_per_day != null && e.person_signature?.trim() !== "").length;
+
+        return filled === daysInMonth ? '#d4edda' : '#f9f9f9'; // зелёный или серый
+      })(),
+ color: (() => {
+      const entries = logDetails[logId]?.wcl_list || [];
+      if (entries.length === 0) return '#333';
+
+      const first = entries[0];
+      if (!first || !first.measurement_date) return '#333';
+
+      const firstDate = new Date(first.measurement_date);
+      const year = firstDate.getFullYear();
+      const month = firstDate.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const filled = entries.filter(e =>
+        e.water_consumption_m3_per_day != null &&
+        e.person_signature?.trim() !== ""
+      ).length;
+
+      return filled === daysInMonth ? '#155724' : '#333';
+    })()
+  }}>
+      {(() => {
+        const entries = logDetails[logId].wcl_list;
+        if (!entries || entries.length === 0) return null;
+
+        const firstDate = new Date(entries[0].measurement_date);
+        const year = firstDate.getFullYear();
+        const month = firstDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const filledCount = entries.filter(e => e.water_consumption_m3_per_day != null && e.person_signature?.trim() !== "").length;
+        const sum = entries.reduce((acc, e) => acc + (parseFloat(e.water_consumption_m3_per_day) || 0), 0);
+        const avg = filledCount > 0 ? (sum / filledCount).toFixed(2) : 0;
+
+        return `Заполнено: ${filledCount}/${daysInMonth} дней. Среднее: ${avg} м³/день. Всего: ${sum.toFixed(2)} м³`;
+      })()}
+    </td>
+    </tr>
+            </tbody>
+            
+            </table>
+{["in_progress", "under_correction"].includes(
+  allLogs.find((log) => log.id === Number(logId))?.status?.toLowerCase()
+) && (
+  <div style={{ textAlign: "center", marginTop: 10 }}>
+    <button className="custom-button" onClick={() => saveUpdatedLog(logId)}>
+      Сохранить изменения
+    </button>
+  </div>
+)}
+            {["in_progress", "under_correction"].some((s) =>
+              allLogs.find(log => log.id === Number(logId))?.status?.toLowerCase().includes(s)
+            ) ? (
+              <div className="log-files-upload">
+              <h4 style={{ textAlign: "center" }}>Загрузка файлов:</h4>
+                <div className="upload-row">
+                  <FileUpload
+                    label="PDF-скан"
+                    accept="application/pdf"
+                    icon="📄"
+                    entityType="water_consumption_log"
+                    entityId={logId}
+                    fileType="MONTH_CLOSURE_SCAN"
+                    preview={true}
+                    onUpload={async (file) => {
+                      // Передаём file и объект с нужными полями отдельно
+                      await uploadFileToBackend(file, {
+                        entityType: 'water_consumption_log',
+                        entityId: logId,
+                        fileType: 'MONTH_CLOSURE_SCAN'
+                      });
+                      markUploaded(logId, 'pdf');
+                    }}
+                  />
+
+                </div>
+                <div className="upload-row">
+                  <FileUpload
+                    label="Sig-файл подписи"
+                    accept=".sig"
+                    icon="🔏"
+                    entityType="water_consumption_log"
+                    entityId={logId}
+                    fileType="SIGNATURE"
+                    preview={false}
+                    onUpload={async (file) => {
+                      await uploadFileToBackend(file, {
+                        entityType: 'water_consumption_log',
+                        entityId: logId,
+                        fileType: 'SIGNATURE'
+                      });
+                      markUploaded(logId, 'sig');
+                    }}
+                  />
+
+                </div>
+              </div>
 
 
-          </div>
-        ) : null
-      )}
+
+            ) : (
+              <div className="log-files-upload">
+              <h4 style={{ textAlign: "center", color: "gray" }}>Загрузка недоступна</h4>
+              <p style={{ textAlign: "center", color: "#888", fontStyle: "italic" }}>
+              Файлы можно загрузить или заменить только в статусах <b>"На доработке"</b> или <b>"В процессе"</b>
+              </p>
+              </div>
+            )}
+
+            {(() => {
+              const entries = logDetails[logId].wcl_list;
+              if (!entries.length) return null;
+
+              // Определяем месяц и год из первой даты
+              const d0 = new Date(entries[0].measurement_date);
+              const year = d0.getFullYear();
+              const month = d0.getMonth() + 1;
+              const daysInMonth = new Date(year, month, 0).getDate();
+
+              const allDaysFilled =
+              entries.length === daysInMonth &&
+              entries.every(
+                e =>
+                e.water_consumption_m3_per_day != null &&
+                e.person_signature?.trim() !== ""
+              );
+
+              const filesOk =
+              uploadStatus[logId]?.pdf === true &&
+              uploadStatus[logId]?.sig === true;
+              console.log("allDaysFilled: ", allDaysFilled);
+              console.log("filesOk: ", filesOk);
+              console.log("uploadStatus:", uploadStatus);
+              console.log(`uploadStatus[${logId}] =`, uploadStatus[logId]);
+
+              if (allDaysFilled && filesOk) {
+                return (
+                  <div style={{ textAlign: "center", marginTop: 20 }}>
+                  <button
+                  className="custom-button"
+                  onClick={() =>
+                    handleNotify({
+                      logId: Number(logId),
+                                 pointId: logDetails[logId].point_id,
+                                 water_body_id: logDetails[logId].water_body_id,
+                                 exploitation_org_id:
+                                 logDetails[logId].exploitation_org_id,
+                                 month,
+                                 year,
+                                 fileTypes: ["MONTH_CLOSURE_SCAN", "SIGNATURE"],
+                    })
+                  }
+                  >
+                  Отправить уведомление
+                  </button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+
+            </div>
+          ) : null
+        )}
 
       </div>
     )}

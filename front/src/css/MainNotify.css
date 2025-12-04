@@ -20,7 +20,7 @@
 
 .notify-tabs {
     display: flex;
-    /*  border-bottom: 1px solid #ccc; */
+  /*  border-bottom: 1px solid #ccc; */
     margin-top: 12px;
 }
 
@@ -145,11 +145,11 @@
 
 .select{
     width: 100px;
-}
+  } 
 
-tr.unviewed {
+  tr.unviewed {
     background-color: #fffbe6; /* нежно-жёлтый *    background-color: #fffbe6; /* нежно-жёлтый */
-
+    
     font-weight: bold;
 }
 

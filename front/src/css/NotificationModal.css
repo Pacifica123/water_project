@@ -64,28 +64,28 @@
     cursor: pointer;
     font-size: inherit;
     text-align: center;
-}
+  }
 
 
 
-.action-buttons{
+  .action-buttons{
     margin-top: 1vh;
-}
+  }
 
 
-.payment-table {
+  .payment-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
-}
-
-.payment-table th, .payment-table td {
+  }
+  
+  .payment-table th, .payment-table td {
     border: 1px solid #ccc;
     padding: 6px 10px;
     text-align: center;
-}
-
-.payment-table th {
+  }
+  
+  .payment-table th {
     background-color: #f0f0f0;
     font-weight: bold;
-}
+  }

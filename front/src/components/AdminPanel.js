@@ -34,12 +34,12 @@ const AdminPanel = () => {
 
   const [selectedCategory, setSelectedCategory] = useState(null);
   const tableCategories = {
-    "Пользователи и Организации": ["users", "organisations","permissions"],
+    "Пользователи и организации": ["users", "organisations","permissions"],
     "Приборы": ["meters_brand_ref", "meters"],
     "Локации и объекты":["water_area_ref","water_object_ref","water_pool_ref","water_point","sampling_location"],
     "Журналы и записи":["water_consumption_log","record_wcl","wcl_category","wcl_31","wcl_32"],
-    "Все об веществах":["concentrates","substances_ref","chemical_analysis_protocol","standarts_ref"],
-    "Другое":["codes","file_records", "notifications"],
+    "О веществах":["concentrates","substances_ref","chemical_analysis_protocol","standarts_ref"],
+    "Другое":["codes","file_records"],
     // Добавляй категории по необходимости
   };
 

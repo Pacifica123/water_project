@@ -9,7 +9,7 @@ display: flex;
 flex-direction: column;
 background: #f4f4f9;
 font-family: Arial, sans-serif;
-width: -moz-available;
+    width: -webkit-fill-available;
 `;
 
 const ContentWrapper = styled.div`
@@ -356,4 +356,3 @@ background-color: ${(props) =>
     };
 
     export default DGisMap;
-

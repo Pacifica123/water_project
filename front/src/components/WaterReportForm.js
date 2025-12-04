@@ -14,23 +14,26 @@ function WaterReportForm() {
     3: ["июль", "август", "сентябрь"],
     4: ["октябрь", "ноябрь", "декабрь"],
   };
-  // Текущий год и квартал по дате
+
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth(); // 0-11
+  const currentMonth = currentDate.getMonth();
   const currentQuarter = Math.floor(currentMonth / 3) + 1;
 
-  const [year, setYear] = useState(currentYear);
+  // --- SAFE QUARTER CHECK ---
+  const safeQuarterMonths = quarters[currentQuarter] || [];
 
+  const [year, setYear] = useState(currentYear);
   const [quarter, setQuarter] = useState(currentQuarter);
   const [data, setData] = useState(
-    quarters[currentQuarter].map((month) => ({
+    safeQuarterMonths.map((month) => ({
       month,
       fact: 0,
       population: 0,
       other: 0,
     }))
   );
+
   const [waterObjects, setWaterObjects] = useState([]);
   const [selectedWaterObject, setSelectedWaterObject] = useState(null);
   const [role, setRole] = useState(null);
@@ -39,40 +42,23 @@ function WaterReportForm() {
 
   const showAlert = () => {
     setAlertVisible(true);
-    setTimeout(() => {
-      setAlertVisible(false);
-    }, 20000);
+    setTimeout(() => setAlertVisible(false), 20000);
   };
 
-
-  // Генерация списка годов от текущего до 1991
   const yearsList = Array.from(
     { length: currentYear - 1990 },
     (_, i) => currentYear - i
   );
 
-
-  const orgData = localStorage.getItem("org");
-  let orgInfo = {};
-
-  if (orgData) {
-    try {
-      orgInfo = JSON.parse(orgData);
-    } catch (error) {
-      console.error("Ошибка парсинга org:", error);
-    }
-  }
-
+  // ---------------- ROLE + OBJECTS ----------------
   useEffect(() => {
-
-
     const checkRole = async () => {
       try {
         const userData = JSON.parse(localStorage.getItem("user"));
-        const userRole = userData?.role.replace("UserRoles.", "");
+        const userRole = userData?.role?.replace("UserRoles.", "") || null;
         setRole(userRole);
       } catch (error) {
-        console.error("Ошибка при проверке роли пользователя", error);
+        console.error("Ошибка при проверке роли", error);
       }
     };
 
@@ -80,56 +66,75 @@ function WaterReportForm() {
 
     const loadWaterObjects = async () => {
       try {
+        if (!role) return;
+        if (role !== "EMPLOYEE" && role !== "ORG_ADMIN") return;
+
         const objects = await fetchWaterObjects(role);
-        setWaterObjects(objects);
+        setWaterObjects(Array.isArray(objects) ? objects : []);
       } catch (error) {
         console.error("Ошибка загрузки водных объектов", error);
       }
     };
 
-    if (role === "EMPLOYEE" || role === "ORG_ADMIN") {
-      loadWaterObjects();
-    }
+    loadWaterObjects();
   }, [role]);
 
+  // ---------------- LOAD QUARTER DATA ----------------
   useEffect(() => {
     const loadReportData = async () => {
       try {
+        if (!selectedWaterObject || !quarter || !year) return;
+
         const allRecords = await fetchSingleTableData("wcl_category");
 
-        if (selectedWaterObject && year && quarter) {
-          const quarterMonths = {
-            1: ["JANUARY", "FEBRUARY", "MARCH"],
-            2: ["APRIL", "MAY", "JUNE"],
-            3: ["JULY", "AUGUST", "SEPTEMBER"],
-            4: ["OCTOBER", "NOVEMBER", "DECEMBER"],
-          };
-
-          const filteredRecords = allRecords.filter(
-            (record) =>
-            Number(record.water_point_id.id) === Number(selectedWaterObject) &&
-            record.year === year &&
-            quarterMonths[quarter].includes(record.month)
-          );
-
-          const groupedData = filteredRecords.reduce((acc, record) => {
-            const month = record.month;
-            if (!acc[month]) {
-              acc[month] = { month, fact: 0, population: 0, other: 0 };
-            }
-
-            if (record.category === "ACTUAL") acc[month].fact += record.value;
-            if (record.category === "POPULATION") acc[month].population += record.value;
-            if (record.category === "OTHER") acc[month].other += record.value;
-
-            return acc;
-          }, {});
-
-          const updatedData = Object.values(groupedData);
-          setData(updatedData);
+        if (!Array.isArray(allRecords)) {
+          console.error("Некорректные данные из API");
+          return;
         }
+
+        const quarterMonths = {
+          1: ["JANUARY", "FEBRUARY", "MARCH"],
+          2: ["APRIL", "MAY", "JUNE"],
+          3: ["JULY", "AUGUST", "SEPTEMBER"],
+          4: ["OCTOBER", "NOVEMBER", "DECEMBER"],
+        };
+
+        const qMonths = quarterMonths[quarter] || [];
+
+        const filteredRecords = allRecords.filter(
+          (record) =>
+            record?.water_point_id?.id === parseInt(selectedWaterObject) &&
+            record.year === year &&
+            qMonths.includes(record.month)
+        );
+
+        const groupedData = filteredRecords.reduce((acc, record) => {
+          const month = record.month;
+          if (!acc[month]) {
+            acc[month] = { month, fact: 0, population: 0, other: 0 };
+          }
+
+          if (record.category === "ACTUAL") acc[month].fact += record.value;
+          if (record.category === "POPULATION") acc[month].population += record.value;
+          if (record.category === "OTHER") acc[month].other += record.value;
+
+          return acc;
+        }, {});
+
+        // Если данных нет, показываем пустые строки
+        const updatedData =
+          Object.values(groupedData).length > 0
+            ? Object.values(groupedData)
+            : (quarters[quarter] || []).map((m) => ({
+                month: m,
+                fact: 0,
+                population: 0,
+                other: 0,
+              }));
+
+        setData(updatedData);
       } catch (error) {
-        console.error("Ошибка загрузки данных отчета:", error);
+        console.error("Ошибка загрузки данных отчёта:", error);
       }
     };
 
@@ -138,16 +143,22 @@ function WaterReportForm() {
     }
   }, [selectedWaterObject, year, quarter, role]);
 
+  // ---------------- CHANGE QUARTER ----------------
   const handleQuarterChange = (event) => {
     const selectedQuarter = parseInt(event.target.value);
 
-    // Если выбран текущий год, запретить выбирать будущий квартал
+    if (!quarters[selectedQuarter]) {
+      showError("Ошибка: выбран некорректный квартал");
+      return;
+    }
+
     if (year === currentYear && selectedQuarter > currentQuarter) {
-      showError(`❌ Нельзя выбрать квартал больше текущего (${currentQuarter}) в текущем году`);
+      showError(`❌ Нельзя выбрать будущий квартал (${currentQuarter})`);
       return;
     }
 
     setQuarter(selectedQuarter);
+
     setData(
       quarters[selectedQuarter].map((month) => ({
         month,
@@ -158,25 +169,31 @@ function WaterReportForm() {
     );
   };
 
+  // ---------------- CHANGE YEAR ----------------
   const handleYearChange = (event) => {
     const selectedYear = parseInt(event.target.value);
     setYear(selectedYear);
 
-    // При смене года если выбран текущий, проверяем квартал
+    // если выбран текущий год — корректируем квартал
     if (selectedYear === currentYear && quarter > currentQuarter) {
       setQuarter(currentQuarter);
+
+      const safeMonths = quarters[currentQuarter] || [];
+
       setData(
-        quarters[currentQuarter].map((month) => ({
+        safeMonths.map((month) => ({
           month,
           fact: 0,
           population: 0,
           other: 0,
         }))
       );
-      showError(`❗ Квартал изменён на текущий (${currentQuarter}) для выбранного текущего года.`);
+
+      showError(`❗ Квартал изменён на текущий (${currentQuarter})`);
     }
   };
 
+  // ---------------- VALIDATION ----------------
   const handleInputChange = (index, field, value) => {
     let sanitized = value.replace(/[^0-9.]/g, "");
     sanitized = sanitized.replace(/^0+(?=\d)/, "");
@@ -186,16 +203,17 @@ function WaterReportForm() {
     const currentRow = updatedData[index];
 
     const fact = field === "fact" ? parseFloat(newValue) : parseFloat(currentRow.fact);
-    const population = field === "population" ? parseFloat(newValue) : parseFloat(currentRow.population);
+    const population =
+      field === "population" ? parseFloat(newValue) : parseFloat(currentRow.population);
     const other = field === "other" ? parseFloat(newValue) : parseFloat(currentRow.other);
 
-    if ((field === "population" || field === "other") && (population + other > fact)) {
-      showError("❗️ Сумма 'Население' и 'Прочее' не может превышать значение 'Факт'.");
+    if ((field === "population" || field === "other") && population + other > fact) {
+      showError("❗ 'Население' + 'Прочее' не могут превышать 'Факт'");
       return;
     }
 
-    if (field === "fact" && (population + other > parseFloat(newValue))) {
-      showError("❗️ 'Факт' не может быть меньше суммы 'Население' и 'Прочее'.");
+    if (field === "fact" && population + other > parseFloat(newValue)) {
+      showError("❗ 'Факт' не может быть меньше суммы 'Население' + 'Прочее'");
       return;
     }
 
@@ -203,34 +221,35 @@ function WaterReportForm() {
     setData(updatedData);
   };
 
-  const calculateTotals = () => {
-    return data.reduce(
+  // ---------------- SEND ----------------
+  const userData = JSON.parse(localStorage.getItem("user")) || {};
+
+  const calculateTotals = () =>
+    data.reduce(
       (totals, row) => ({
         fact: totals.fact + parseFloat(row.fact || 0),
-                        population: totals.population + parseFloat(row.population || 0),
-                        other: totals.other + parseFloat(row.other || 0),
+        population: totals.population + parseFloat(row.population || 0),
+        other: totals.other + parseFloat(row.other || 0),
       }),
       { fact: 0, population: 0, other: 0 }
     );
-  };
 
   const handleSubmit = async () => {
     if (!selectedWaterObject) {
-      showError("❗️ Пожалуйста, выберите точку забора.");
+      showError("❗ Выберите точку забора");
       return;
     }
     if (year > currentYear) {
-      showError("❌ Нельзя выбрать будущий год.");
+      showError("❌ Нельзя выбрать будущий год");
       return;
     }
     if (year === currentYear && quarter > currentQuarter) {
-      showError("❌ Нельзя выбрать будущий квартал в текущем году.");
+      showError("❌ Нельзя выбрать будущий квартал");
       return;
     }
 
     try {
-      const userData = JSON.parse(localStorage.getItem("user"));
-      const response = await sendFormData("send_quarter", {
+      await sendFormData("send_quarter", {
         waterPointId: selectedWaterObject,
         quarter,
         year,
@@ -238,253 +257,151 @@ function WaterReportForm() {
         org_id: userData?.organisation_id,
       });
       showSuccess();
+      showAlert();
     } catch (error) {
-      showError();
-      console.error("Ошибка при отправке данных", error.message);
+      showError("Ошибка отправки");
     }
   };
 
   const totals = calculateTotals();
 
+  // ---------- RENDER ----------
   return (
     <div className="water-report-form">
-    <div className="content-container_waterReropt">
-    <h2 align="center">
-    {role === "EMPLOYEE"
-      ? 'Ввод показаний "Забор поверхностной воды за квартал"'
-      : 'Просмотр данных "Забор поверхностной воды за квартал"'}
-      </h2>
+      <div className="content-container_waterReropt">
+        <h2 align="center">
+          {role === "EMPLOYEE"
+            ? 'Ввод показаний "Забор поверхностной воды за квартал"'
+            : 'Просмотр данных "Забор поверхностной воды за квартал"'}
+        </h2>
 
-      {role === "EMPLOYEE" ? (
-        <>
+        {/* --- SELECTORS --- */}
         <div className="selectors">
-        <div className="selector-row">
-        <label>Выберите точку забора:</label>
-        <select
-        className="custom-select"
-        value={selectedWaterObject || ""}
-        onChange={(e) => setSelectedWaterObject(e.target.value)}
-        >
-        <option value="">Выберите точку забора/сброса</option>
-        {waterObjects.map((obj) => (
-          <option
-          key={obj.id}
-          value={obj.water_body_id.id}
-          >
-          {obj.water_body_id.code_obj.code_value} - {obj.water_body_id.code_obj.code_symbol}
-          </option>
-        ))}
-        </select>
+          <div className="selector-row">
+            <label>Выберите точку забора:</label>
+            <select
+              className="custom-select"
+              value={selectedWaterObject || ""}
+              onChange={(e) => setSelectedWaterObject(e.target.value)}
+            >
+              <option value="">Выберите точку</option>
+              {waterObjects.map((obj) => (
+                <option key={obj.id} value={obj.water_body_id.id}>
+                  {obj.water_body_id.code_obj.code_value} -{" "}
+                  {obj.water_body_id.code_obj.code_symbol}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="selector-row">
+            <label>Выберите квартал:</label>
+            <select className="custom-select" value={quarter} onChange={handleQuarterChange}>
+              {[1, 2, 3, 4].map((q) => (
+                <option key={q} value={q}>
+                  {q} квартал
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="selector-row">
+            <label>Выберите год:</label>
+            <select className="custom-select" value={year} onChange={handleYearChange}>
+              {yearsList.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="selector-row">
-        <label>Выберите квартал:</label>
-        <select
-        className="custom-select"
-        value={quarter}
-        onChange={handleQuarterChange}
-        >
-        {[1, 2, 3, 4].map((q) => (
-          <option
-          key={q}
-          value={q}
-          disabled={year === currentYear && q > currentQuarter}
-          >
-          {q} квартал
-          </option>
-        ))}
-        </select>
-        </div>
-
-        <div className="selector-row">
-        <label>Выберите год:</label>
-        <select
-        className="custom-select"
-        value={year}
-        onChange={handleYearChange}
-        >
-        {yearsList.map((y) => (
-          <option key={y} value={y}>
-          {y}
-          </option>
-        ))}
-        </select>
-        </div>
-
-        </div>
-
+        {/* --- TABLES --- */}
         <table className="data-table-result">
-        <thead>
-        <tr>
-        <th>Дата</th>
-        <th>Факт, тыс. м3</th>
-        <th>Население, тыс. м3</th>
-        <th>Прочее, тыс. м3</th>
-        </tr>
-        </thead>
-        <tbody>
-        {data.map((row, index) => (
-          <tr key={index}>
-          <td>{translate(row.month)}</td>
-          <td>
-          <input
-          type="number"
-          className="narrow-input"
-          value={row.fact}
-          onChange={(e) => handleInputChange(index, "fact", e.target.value)}
-          />
-          </td>
-          <td>
-          <input
-          type="number"
-          className="narrow-input"
-          value={row.population}
-          onChange={(e) => handleInputChange(index, "population", e.target.value)}
-          />
-          </td>
-          <td>
-          <input
-          type="number"
-          className="narrow-input"
-          value={row.other}
-          onChange={(e) => handleInputChange(index, "other", e.target.value)}
-          />
-          </td>
-          </tr>
-        ))}
-        </tbody>
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Факт</th>
+              <th>Население</th>
+              <th>Прочее</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, index) => (
+              <tr key={index}>
+                <td>{translate(row.month)}</td>
+                <td>
+                  {role === "EMPLOYEE" ? (
+                    <input
+                      type="number"
+                      className="narrow-input"
+                      value={row.fact}
+                      onChange={(e) => handleInputChange(index, "fact", e.target.value)}
+                    />
+                  ) : (
+                    row.fact
+                  )}
+                </td>
+                <td>
+                  {role === "EMPLOYEE" ? (
+                    <input
+                      type="number"
+                      className="narrow-input"
+                      value={row.population}
+                      onChange={(e) => handleInputChange(index, "population", e.target.value)}
+                    />
+                  ) : (
+                    row.population
+                  )}
+                </td>
+                <td>
+                  {role === "EMPLOYEE" ? (
+                    <input
+                      type="number"
+                      className="narrow-input"
+                      value={row.other}
+                      onChange={(e) => handleInputChange(index, "other", e.target.value)}
+                    />
+                  ) : (
+                    row.other
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
 
+        {/* --- TOTALS --- */}
         <table className="data-table-result">
-        <thead>
-        <tr>
-        <th colSpan="3">Итого</th>
-        </tr>
-        <tr>
-        <th>Факт, тыс. м3</th>
-        <th>Население, тыс. м3</th>
-        <th>Прочее, тыс. м3</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr>
-        <td>{totals.fact}</td>
-        <td>{totals.population}</td>
-        <td>{totals.other}</td>
-        </tr>
-        </tbody>
+          <thead>
+            <tr>
+              <th colSpan="3">Итого</th>
+            </tr>
+            <tr>
+              <th>Факт</th>
+              <th>Население</th>
+              <th>Прочее</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{totals.fact}</td>
+              <td>{totals.population}</td>
+              <td>{totals.other}</td>
+            </tr>
+          </tbody>
         </table>
 
-        {alertVisible && (
-          <div className="custom-alert">✅ Данные успешно отправлены!</div>
+        {alertVisible && <div className="custom-alert">✅ Данные успешно отправлены!</div>}
+
+        {role === "EMPLOYEE" && (
+          <button className="btn btn-success" onClick={handleSubmit}>
+            Отправить
+          </button>
         )}
-
-        <button className="btn btn-success" onClick={handleSubmit}>
-        Отправить
-        </button>
-        </>
-      ) : (
-        <>
-        <div className="selectors">
-        <div className="selector-row">
-        <label>Выберите точку забора:</label>
-        <select
-        className="custom-select"
-        value={selectedWaterObject || ""}
-        onChange={(e) => setSelectedWaterObject(e.target.value)}
-        >
-        <option value="">Выберите точку забора/сброса</option>
-        {waterObjects.map((obj) => (
-          <option
-          key={obj.id}
-          value={obj.water_body_id.id}
-          >
-          {obj.water_body_id.code_obj.code_value} - {obj.water_body_id.code_obj.code_symbol}
-          </option>
-        ))}
-        </select>
-        </div>
-
-        <div className="selector-row">
-        <label>Выберите квартал:</label>
-        <select
-        className="custom-select"
-        value={quarter}
-        onChange={handleQuarterChange}
-        >
-        {[1, 2, 3, 4].map((q) => (
-          <option
-          key={q}
-          value={q}
-          disabled={year === currentYear && q > currentQuarter}
-          >
-          {q} квартал
-          </option>
-        ))}
-        </select>
-        </div>
-
-        <div className="selector-row">
-        <label>Выберите год:</label>
-        <select
-        className="custom-select"
-        value={year}
-        onChange={handleYearChange}
-        >
-        {yearsList.map((y) => (
-          <option key={y} value={y}>
-          {y}
-          </option>
-        ))}
-        </select>
-        </div>
-        </div>
-
-        <table className="data-table-result">
-        <thead>
-        <tr>
-        <th>Дата</th>
-        <th>Факт, тыс. м3</th>
-        <th>Население, тыс. м3</th>
-        <th>Прочее, тыс. м3</th>
-        </tr>
-        </thead>
-        <tbody>
-        {data.map((row, index) => (
-          <tr key={index}>
-          <td>{translate(row.month)}</td>
-          <td>{row.fact}</td>
-          <td>{row.population}</td>
-          <td>{row.other}</td>
-          </tr>
-        ))}
-        </tbody>
-        </table>
-
-        <table className="data-table-result">
-        <thead>
-        <tr>
-        <th colSpan="3">Итого</th>
-        </tr>
-        <tr>
-        <th>Факт, тыс. м3</th>
-        <th>Население, тыс. м3</th>
-        <th>Прочее, тыс. м3</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr>
-        <td>{totals.fact}</td>
-        <td>{totals.population}</td>
-        <td>{totals.other}</td>
-        </tr>
-        </tbody>
-        </table>
-        </>
-      )}
-
       </div>
-      </div>
+    </div>
   );
 }
 

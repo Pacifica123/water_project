@@ -11,6 +11,7 @@ function App() {
   // Создаем экземпляр axios
   const axiosInstance = axios.create({
     baseURL: "http://127.0.0.1:5000/api",
+    // baseURL: "http://192.168.0.106:5000/api",
   });
 
   // Интерцепторы запросов (добавление токена)

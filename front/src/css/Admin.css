@@ -26,7 +26,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     border-bottom: 1px solid #ddd;
-    max-width: 150px;
+  
     padding: 20px 30px;
   }
 
@@ -48,4 +48,47 @@
   }
 
 
+  .select {
+    width: 174px;
+  }
+
+
+
+  .table-scroll-wrapper {
+    border-radius: 20px;
+    overflow-x: auto; /* Горизонтальный скролл при необходимости */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    padding: 10px;
+    max-width: 100%;
+    margin: 0 auto; /* Центрируем wrapper */
+  }
+  
+  /* Таблица не будет растягиваться по ширине, но займет только нужное */
+  .data-table-admin {
+    width: fit-content;
+    max-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0 auto; /* Центрируем таблицу */
+  }
+  
+  /* Заголовок таблицы */
+  .data-table-admin thead {
+    font-size: 1.2rem;
+  }
+  
+  /* Скругления углов таблицы */
+  .data-table-admin thead tr:first-child th:first-child {
+    border-top-left-radius: 20px;
+  }
+  .data-table-admin thead tr:first-child th:last-child {
+    border-top-right-radius: 20px;
+  }
+  .data-table-admin tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 20px;
+  }
+  .data-table-admin tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 20px;
+  }
+  
   

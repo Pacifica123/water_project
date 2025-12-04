@@ -117,7 +117,7 @@ const Water = () => {
         if (resp?.data) {
           const allowedStatuses = ["IN_PROGRESS", "UNDER_CORRECTION"];
           logsForPoint = resp.data.filter(log =>
-          log.point_id?.latitude_longitude === val && allowedStatuses.includes(log.log_status)
+            log.point_id?.latitude_longitude === val && allowedStatuses.includes(log.log_status)
           );
           setAvailableLogs(logsForPoint);
         }
@@ -152,8 +152,8 @@ const Water = () => {
       updatedFormData.latitude_longitude = val;
       updatedFormData.coordinates = waterPoints[val] || "";
       updatedFormData.deviceNumber = selected?.meter_id?.brand?.brand_name && selected?.meter_id?.serial_number
-      ? `${selected.meter_id.brand.brand_name} - ${selected.meter_id.serial_number}`
-      : "";
+        ? `${selected.meter_id.brand.brand_name} - ${selected.meter_id.serial_number}`
+        : "";
       updatedFormData.waterSource = selected?.water_body_id?.code_obj?.code_symbol || "";
     }
 
@@ -244,178 +244,178 @@ const Water = () => {
 
   return (
     <div className="water-container">
-    <div className="form-container">
-    <center><h2>Журнал учета водопотребления</h2></center>
-    <div className="steps">
-    {[1, 2].map((step) => (
-      <div
-      key={step}
-      className={`step ${completedSteps[step === 1 ? "section1_2" : "section4"] ? "completed" : ""} ${activeSection === step ? "active" : ""}`}
-      onClick={() => handleStepClick(step)}
-      >
-      {step}
-      </div>
-    ))}
-    </div>
-
-    {activeSection === 1 && (
-      <div className="form-step">
-      <div className="input-group">
-      <label>Наименование организации: {formData.organisationName || "Без организации"}</label>
-      </div>
-      <div className="input-group">
-      <label>
-      Наименование организации (забор воды):
-      <select name="waterOrg" value={formData.waterOrg} onChange={handleChange}>
-      <option value="">Выбрать организацию</option>
-      {Orgs.map((obj) => (
-        <option key={obj.organization_code.code_symbol} value={obj.organisation_name}>
-        {obj.organization_code.code_value} - {obj.organisation_name}
-        </option>
-      ))}
-      </select>
-      </label>
-      </div>
-      <div className="input-group">
-      <label>
-      Наименование пункта учета:
-      <select name="controlPoint" value={formData.controlPoint} onChange={handleChange}>
-      <option value="">Выбрать пункт учета</option>
-      {Points.map((obj) => (
-        <option key={obj.id} value={obj.latitude_longitude}>
-        {obj.water_body_id.code_obj.code_symbol} - {obj.latitude_longitude} ({translate(obj.point_type)})
-        </option>
-      ))}
-      </select>
-      </label>
-      </div>
-      <div className="input-group">
-      <label>Координаты пункта: {formData.coordinates}</label>
-      </div>
-      </div>
-    )}
-
-    {activeSection === 2 && (
-      <div className="form-step">
-      {availableLogs.length > 1 && (
-        <div className="input-group">
-        <label>
-        Выберите журнал:
-        <select
-        value={selectedLog?.id || ""}
-        onChange={async (e) => {
-          const journal = availableLogs.find(log => log.id.toString() === e.target.value);
-          setSelectedLog(journal);
-          if (journal?.start_date) {
-            const dateObj = new Date(journal.start_date);
-            const today = new Date();
-            const maxDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
-            const safeDay = Math.min(today.getDate(), maxDay);
-            const autoDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), safeDay);
-            const formattedDate = formatLocalDate(autoDate);
-            setFormData(prev => ({
-              ...prev,
-              measurementDate: formattedDate
-            }));
-
-            if (formData.controlPoint) {
-              const exists = await checkDateAlreadyFilled(formData.controlPoint, formattedDate);
-              setDateAlreadyExists(exists);
-            }
-          }
-        }}
-        >
-        <option value="">Выберите журнал</option>
-        {availableLogs.map((log) => {
-          const date = new Date(log.start_date);
-          const formatted = date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
-          return (
-            <option key={log.id} value={log.id}>
-            {formatted} — статус: {translate(log.log_status)}
-            </option>
-          );
-        })}
-        </select>
-        </label>
+      <div className="form-container">
+        <center><h2>Журнал учета водопотребления</h2></center>
+        <div className="steps">
+          {[1, 2].map((step) => (
+            <div
+              key={step}
+              className={`step ${completedSteps[step === 1 ? "section1_2" : "section4"] ? "completed" : ""} ${activeSection === step ? "active" : ""}`}
+              onClick={() => handleStepClick(step)}
+            >
+              {step}
+            </div>
+          ))}
         </div>
-      )}
 
-      <h2>Данные измерений</h2>
+        {activeSection === 1 && (
+          <div className="form-step">
+            <div className="input-group">
+              <label>Наименование организации: {formData.organisationName || "Без организации"}</label>
+            </div>
+            <div className="input-group">
+              <label>
+                Наименование организации (забор воды):
+                <select name="waterOrg" value={formData.waterOrg} onChange={handleChange}>
+                  <option value="">Выбрать организацию</option>
+                  {Orgs.map((obj) => (
+                    <option key={obj.organization_code.code_symbol} value={obj.organisation_name}>
+                      {obj.organization_code.code_value} - {obj.organisation_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="input-group">
+              <label>
+                Наименование пункта учета:
+                <select name="controlPoint" value={formData.controlPoint} onChange={handleChange}>
+                  <option value="">Выбрать пункт учета</option>
+                  {Points.map((obj) => (
+                    <option key={obj.id} value={obj.latitude_longitude}>
+                      {obj.water_body_id.code_obj.code_symbol} - {obj.latitude_longitude} ({translate(obj.point_type)})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="input-group">
+              <label>Координаты пункта: {formData.latitude_longitude}</label>
+            </div>
+          </div>
+        )}
 
-      <div className="input-group">
-      <label>
-      Измерительный прибор №:
-      <input
-      type="text"
-      name="deviceNumber"
-      value={formData.deviceNumber}
-      onChange={handleChange}
-      />
-      </label>
-      </div>
-      <div className="input-group">
-      <label>
-      Дата измерения:
-      <input
-      type="date"
-      name="measurementDate"
-      value={formData.measurementDate}
-      max={formatLocalDate(new Date())}
-      onChange={handleChange}
-      />
-      </label>
-      </div>
-      <div className="input-group">
-      <label>
-      Время работы (сут.):
-      <input
-      type="number"
-      min="0"
-      max="24"
-      name="workingTime"
-      value={formData.workingTime || ""}
-      onChange={handleChange}
-      />
-      </label>
-      </div>
-      <div className="input-group">
-      <label>
-      Расход воды (м³/сут.):
-      <input
-      type="number"
-      min="0"
-      name="waterUsage"
-      value={formData.waterUsage || ""}
-      onChange={handleChange}
-      />
-      </label>
-      </div>
-      <div className="input-group">
-      <label>
-      ФИО осуществляющего учет:
-      <input
-      type="text"
-      name="personSignature"
-      value={formData.personSignature}
-      onChange={handleChange}
-      />
-      </label>
-      </div>
+        {activeSection === 2 && (
+          <div className="form-step">
+            {availableLogs.length > 1 && (
+              <div className="input-group">
+                <label>
+                  Выберите журнал:
+                  <select
+                    value={selectedLog?.id || ""}
+                    onChange={async (e) => {
+                      const journal = availableLogs.find(log => log.id.toString() === e.target.value);
+                      setSelectedLog(journal);
+                      if (journal?.start_date) {
+                        const dateObj = new Date(journal.start_date);
+                        const today = new Date();
+                        const maxDay = new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0).getDate();
+                        const safeDay = Math.min(today.getDate(), maxDay);
+                        const autoDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), safeDay);
+                        const formattedDate = formatLocalDate(autoDate);
+                        setFormData(prev => ({
+                          ...prev,
+                          measurementDate: formattedDate
+                        }));
 
-      {dateAlreadyExists && (
-        <div style={{ color: "red", marginBottom: "10px", textAlign: "center" }}>
-        🚫 Запись за выбранную дату уже существует. Повторная отправка невозможна.
-        </div>
-      )}
+                        if (formData.controlPoint) {
+                          const exists = await checkDateAlreadyFilled(formData.controlPoint, formattedDate);
+                          setDateAlreadyExists(exists);
+                        }
+                      }
+                    }}
+                  >
+                    <option value="">Выберите журнал</option>
+                    {availableLogs.map((log) => {
+                      const date = new Date(log.start_date);
+                      const formatted = date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+                      return (
+                        <option key={log.id} value={log.id}>
+                          {formatted} — статус: {translate(log.log_status)}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              </div>
+            )}
 
-      <div style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
-      <button className="submit-button-water" onClick={handleSubmit} disabled={dateAlreadyExists}>
-      Отправить
-      </button>
+            <h2>Данные измерений</h2>
+
+            <div className="input-group">
+              <label>
+                Измерительный прибор №:
+                <input
+                  type="text"
+                  name="deviceNumber"
+                  value={formData.deviceNumber}
+                  onChange={handleChange}
+                />
+              </label>
+            </div>
+            <div className="input-group">
+              <label>
+                Дата измерения:
+                <input
+                  type="date"
+                  name="measurementDate"
+                  value={formData.measurementDate}
+                  max={formatLocalDate(new Date())}
+                  onChange={handleChange}
+                />
+              </label>
+            </div>
+            <div className="input-group">
+              <label>
+                Время работы (сут.):
+                <input
+                  type="number"
+                  min="0"
+                  max="24"
+                  name="workingTime"
+                  value={formData.workingTime || ""}
+                  onChange={handleChange}
+                />
+              </label>
+            </div>
+            <div className="input-group">
+              <label>
+                Расход воды (м³/сут.):
+                <input
+                  type="number"
+                  min="0"
+                  name="waterUsage"
+                  value={formData.waterUsage || ""}
+                  onChange={handleChange}
+                />
+              </label>
+            </div>
+            <div className="input-group">
+              <label>
+                ФИО осуществляющего учет:
+                <input
+                  type="text"
+                  name="personSignature"
+                  value={formData.personSignature}
+                  onChange={handleChange}
+                />
+              </label>
+            </div>
+
+            {dateAlreadyExists && (
+              <div style={{ color: "red", marginBottom: "10px", textAlign: "center" }}>
+                🚫 Запись за выбранную дату уже существует. Повторная отправка невозможна.
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
+              <button className="submit-button-water" onClick={handleSubmit} disabled={dateAlreadyExists}>
+                Отправить
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-      </div>
-    )}
-    </div>
     </div>
   );
 };

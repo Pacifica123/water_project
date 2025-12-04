@@ -23,11 +23,11 @@ const PaymentCalculationForm = () => {
           is_other_method: isOtherMethod,
         });
         console.log("Fetched ratesData:", data);
-        setRatesData(data);
+        setRatesData(data || {});
       } catch (err) {
         console.error("Ошибка при получении ставок и коэф.:", err);
         setRatesError(err.message || "Неизвестная ошибка при получении ставок");
-        setRatesData(null);
+        setRatesData({});
       } finally {
         setLoadingRates(false);
       }
@@ -41,59 +41,59 @@ const PaymentCalculationForm = () => {
     fetchActualVolumes();
   };
   const updateRates = (filteredRates) => {
-    setRows((prevRows) => {
-      const updated = prevRows.rates.map((rateRow) => {
-        let val;
-        // 2.1 Население или OTHER_POPULATION
-        if (rateRow.id === "2.1") {
-          // console.log(filteredRates);
-          // val = filteredRates.rates[
-          //   isOtherMethod ? "POPULATION" : "POPULATION"
-          // ]?.value || 0;
+  if (!filteredRates) return;
+  setRows((prevRows) => {
+    // защита: убедимся, что prevRows.rates — массив
+    const prevRates = Array.isArray(prevRows.rates) ? prevRows.rates : [];
+    const updated = prevRates.map((rateRow) => {
+      let val = 0;
 
-          val = filteredRates.rates.population?.value || 0
-        }
-        // 2.2 Предприятия или OTHER_ORG
-        else if (rateRow.id === "2.2") {
-          val = filteredRates.rates.org?.value || 0
-        }
-        // 2.3 Повышающий коэффициент
-        else if (rateRow.id === "2.3") {
-          val = 1;
-          if (isOtherMethod===true) {val = filteredRates["other_method"]?.value}
-          else {val = 1};
+      // безопасно получаем значения из filteredRates
+      const frRates = filteredRates.rates || {};
+      const otherMethodVal = filteredRates?.other_method?.value;
+      const outPermVal = filteredRates?.out_permission?.value;
 
-          let val_out = filteredRates["out_permission"]?.value || 5;
-          return {
-            ...rateRow,
-            establishedVolume: val,
-            actualVolume: val,
-            withinLimitsVolume: val,
-            exceededVolume: val_out,
-          };
-        } else {
-          return rateRow;
-        }
+      if (rateRow.id === "2.1") {
+        val = Number(frRates.population?.value) || 0;
+      }
+      else if (rateRow.id === "2.2") {
+        val = Number(frRates.org?.value) || 0;
+      }
+      else if (rateRow.id === "2.3") {
+        // устанавливаем коэффициент: если other_method задан — используем, иначе 1
+        val = isOtherMethod ? (Number(otherMethodVal) || 1) : 1;
 
+        const val_out = Number(outPermVal) || 5;
         return {
           ...rateRow,
           establishedVolume: val,
           actualVolume: val,
           withinLimitsVolume: val,
-          exceededVolume: val,
+          exceededVolume: val_out,
         };
-      });
-      return { ...prevRows, rates: updated };
+      } else {
+        return rateRow;
+      }
+
+      return {
+        ...rateRow,
+        establishedVolume: val,
+        actualVolume: val,
+        withinLimitsVolume: val,
+        exceededVolume: val,
+      };
     });
-  };
+    return { ...prevRows, rates: updated };
+  });
+};
+
 
 
   useEffect(() => {
-    if (Object.keys(ratesData).length > 0) {
-      updateRates(ratesData);
-    }
-  }, [ratesData]);
-
+  if (ratesData && Object.keys(ratesData).length > 0) {
+    updateRates(ratesData);
+  }
+}, [ratesData]);
   // ======== 2) ФЕТЧИМ РАЗРЕШЕНИЯ (Permissions) ========
   const [permissionPointLink, setPPL] = useState({});
   const orgData = JSON.parse(localStorage.getItem("org"));

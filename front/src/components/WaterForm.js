@@ -85,7 +85,7 @@ const EditableWaterReport = () => {
   const [org, setOrg] = useState({});
   const [records, setRecords] = useState([]);
   const [months, setMonths] = useState({});
-  const [excelData, setExcelData] = useState([]);
+  const [excelData, setExcelData] = useState({rows: [], merges: {} });
   const [fileReady, setFileReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [resultMsg, setResultMsg] = useState("");
@@ -114,13 +114,41 @@ const EditableWaterReport = () => {
 
   const handleExcelUpload = async (file) => {
     const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data, { type: "array" });
-    const sheet = workbook.Sheets[workbook.SheetNames[2]];
+    const workbook = XLSX.read(data, { type: "array", cellDates: true });
+  
+    const sheet = workbook.Sheets[workbook.SheetNames[1]];
+    const merges = sheet["!merges"] || [];
+    const mergeMeta = {};
+  
+    // Обработка объединённых ячеек
+    merges.forEach(({ s, e }) => {
+      const startCell = XLSX.utils.encode_cell(s);
+      const value = sheet[startCell]?.v;
+      const rowSpan = e.r - s.r + 1;
+      const colSpan = e.c - s.c + 1;
+  
+      mergeMeta[`${s.r},${s.c}`] = { rowSpan, colSpan };
+  
+      for (let r = s.r; r <= e.r; ++r) {
+        for (let c = s.c; c <= e.c; ++c) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (!sheet[ref]) sheet[ref] = {};
+          sheet[ref].v = value;
+  
+          if (r !== s.r || c !== s.c) {
+            mergeMeta[`${r},${c}`] = "skip";
+          }
+        }
+      }
+    });
+  
     const parsedData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
     console.log(parsedData);
-    setExcelData(parsedData);
+  
+    setExcelData({ rows: parsedData, merges: mergeMeta });
     setFileReady(true);
   };
+  
 
   const handleSubmit = async () => {
     if (!fileReady) return;
@@ -129,7 +157,7 @@ const EditableWaterReport = () => {
     try {
       // TODO : передовать f31 либо f32 в зависимости от того какая страница выбрана в SheetNames[i]
       // где i = 1 это форма 3.1 и i = 2 соответственно форма 3.2
-      const resp = await sendFormData("f32", excelData);
+      const resp = await sendFormData("f31", excelData);
       if (resp.status === "success") {
         setResultMsg(`Успех: ${resp.message || "Форма отправлена"}`);
       } else {
@@ -151,7 +179,7 @@ const EditableWaterReport = () => {
     <div className="form-container">
     <h2>Сведения по водопользованию (Форма 3.1)</h2>
 
-    <GeneralInfoSection org={org} warea={warea} />
+
 
     <FileUpload
     label="Excel файл"
@@ -166,19 +194,45 @@ const EditableWaterReport = () => {
       <>
       <div style={{ display: "flex", gap: "40px", marginTop: "20px" }}>
       <table className="data-table">
-      <thead>
-      <tr>
-      {excelData[0].map((cell, idx) => <th key={idx}>{cell}</th>)}
+  <thead>
+    <tr>
+      {excelData.rows[0]?.map((cell, cIdx) => {
+        const meta = excelData.merges?.[`0,${cIdx}`];
+        if (meta === "skip") return null;
+        const thProps = {};
+        if (meta?.rowSpan) thProps.rowSpan = meta.rowSpan;
+        if (meta?.colSpan) thProps.colSpan = meta.colSpan;
+        return (
+          <th key={cIdx} {...thProps}>
+            {cell instanceof Date ? cell.toLocaleDateString("ru-RU") : cell}
+          </th>
+        );
+      })}
+    </tr>
+  </thead>
+  <tbody>
+    {excelData.rows.slice(1).map((row, rIdx) => (
+      <tr key={rIdx}>
+        {row.map((cell, cIdx) => {
+          const absRow = rIdx + 1;
+          const meta = excelData.merges?.[`${absRow},${cIdx}`];
+          if (meta === "skip") return null;
+
+          const tdProps = {};
+          if (meta?.rowSpan) tdProps.rowSpan = meta.rowSpan;
+          if (meta?.colSpan) tdProps.colSpan = meta.colSpan;
+
+          return (
+            <td key={cIdx} {...tdProps}>
+              {cell instanceof Date ? cell.toLocaleDateString("ru-RU") : cell}
+            </td>
+          );
+        })}
       </tr>
-      </thead>
-      <tbody>
-      {excelData.slice(1).map((row, rIdx) => (
-        <tr key={rIdx}>
-        {row.map((cell, cIdx) => <td key={cIdx}>{cell}</td>)}
-        </tr>
-      ))}
-      </tbody>
-      </table>
+    ))}
+  </tbody>
+</table>
+
 
       <div style={{ flex: 1 }}>
       <WaterPointsSection

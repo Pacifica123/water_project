@@ -74,4 +74,4 @@ if __name__ == '__main__':
     delete_db_flag = os.getenv('DELETE_DB', 'False') == 'True'
     app, socketio = create_app(delete_db_flag)
     # app.run(debug=True)
-    socketio.run(app, host='0.0.0.0', debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host="0.0.0.0",  port=5000, debug=True, allow_unsafe_werkzeug=True, use_reloader=False)

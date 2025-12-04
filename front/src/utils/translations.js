@@ -14,7 +14,8 @@ const translations = {
     "STANDARD_MECHANICAL": "Нормативно очищенных механически",
     "ADMIN": "Админ",    "ORG_ADMIN": "Менеджер по заявкам",
     "REPORT_ADMIN": "Менеджер по отчетам",    "EMPLOYEE": "Организация",
-    "ACTUAL": "Фактическое",    "POPULATION": "Население",
+    "ACTUAL": "Фактическое",    "POPULATION": "Население","ORG":"Организация",
+    "allowed_volume":"Разрешенный объем", "method_type": "Тип метода",
     "IS_DONE": "Подписан",    "SENT": "Отправлен",
     "UNDER_WATCH": "На рассмотрении",
     "UNDER_CORRECTION": "На доработке",    "CLOSED": "Закрыт",
@@ -120,16 +121,32 @@ const translations = {
     "organization_code": "Код организации",
     "water_consumption_m3_per_day": "Расход воды м3/сут (тыс.м3)",
     "person_signature": "Подпись лица осуществляющего учет",
-    "waterreportform": "ЗАБОР ПОВЕРХНОСТНОЙ ВОДЫ",
-    "paymentform": "РАСЧЕТ ОПЛАТЫ",
-    "waterlog_complete": "ЖУРНАЛ ВОДОПОТРЕБЛЕНИЕ",
-
-    // "шаблон": "шаблон",
+    "category_quality": "Категория качества",
+    "total":"суммарный", "without_cleaning":"без очистки",
+    "not_suff_cleaned":"недостаточно очищено",
+    "standard_without_cleaning":"нормативный без очистки",
+    "standard_biological":"нормативный биологический",
+    "standard_physico_chemical":"нормативный физико-химический",
+    "standard_mechanical":"нормативный механический",
+    "other":"другое",
+    "signed_by":"подписано",
+    "filename":"имя файла",
+    "file_type":"тип файла",
+    "content":"содержимое",
+   "mimetype":"тип MIME",
+   "description":"описание",
+   "entity_type":"тип объекта",
+   "entity_id":"ID объекта",
+   "file_records":"Записи файлов",
+   "WATER_WITHDRAWAL":"забор воды",
+    "DISCHARGE":"сброс",
+    "OTHER":"другое",  "OTHER_METHOD":"другой метод",
+    "OUT_PERMISSION":"разрешение на выброс"
+// "шаблон": "шаблон",
 };
 
-function translate(key) {
-    console.log("до:",  key);
 
+function translate(key) {
     if (typeof key !== 'string') return key;
 
     // Убираем префикс, если есть
@@ -137,7 +154,6 @@ function translate(key) {
 
     // Если ключ целиком есть в словаре — возвращаем перевод сразу
     if (translations.hasOwnProperty(key)) {
-        console.log("после:",  translations[key]);
         return translations[key];
     }
 
@@ -151,7 +167,7 @@ function translate(key) {
             }
         }
     }
-    console.log("после:",  key);
+
     return key;
 }
 
