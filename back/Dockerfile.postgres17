@@ -1,0 +1,27 @@
+FROM postgres:17
+
+# Astra Linux: seccomp/AppArmor fix + права
+USER root
+
+# Обновить БЕЗ очистки cache (фикс APT error)
+RUN apt-get update && \
+    apt-get install -y locales && \
+    apt-get clean
+
+# Локали для Astra + права PostgreSQL
+RUN sed -i 's/#ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen && \
+    locale-gen ru_RU.UTF-8 && \
+    update-locale LANG=ru_RU.UTF-8
+
+# Фикс директорий PostgreSQL для Astra SELinux
+RUN mkdir -p /var/run/postgresql && \
+    chown -R postgres:postgres /var/run/postgresql /var/lib/postgresql && \
+    chmod 755 /var/run/postgresql /var/lib/postgresql/data
+
+USER postgres
+ENV POSTGRES_DB=test_practic
+ENV POSTGRES_USER=noir_psql
+ENV POSTGRES_PASSWORD=Noir_Tea
+ENV LANG=ru_RU.UTF-8
+EXPOSE 5432
+CMD ["postgres"]

@@ -1,0 +1,21 @@
+# ОС: Debian 12 Bookworm (ПРАВИЛЬНЫЙ тег)
+FROM python:3.12-bookworm
+
+WORKDIR /app
+
+COPY req.txt .
+
+# pip без threading проблем Astra Linux
+RUN pip install --quiet --no-cache-dir --disable-pip-version-check \
+    psycopg2-binary pandas && \
+    pip install --quiet --no-cache-dir --disable-pip-version-check -r req.txt
+
+# OpenBLAS threading fix для Astra
+ENV OPENBLAS_NUM_THREADS=1
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+ENV PYTHONUNBUFFERED=1
+
+COPY . .
+EXPOSE 5000
+CMD ["python", "app.py"]

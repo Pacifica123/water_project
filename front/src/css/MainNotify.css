@@ -1,0 +1,159 @@
+.notify-page {
+    font-family: sans-serif;
+    padding: 20px;
+    max-width: 1000px;
+    margin: auto;
+}
+
+.notify-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 16px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 8px;
+}
+
+.notify-dates {
+    color: #007bff;
+}
+
+.notify-tabs {
+    display: flex;
+  /*  border-bottom: 1px solid #ccc; */
+    margin-top: 12px;
+}
+
+.tab {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 2px solid transparent;
+}
+
+.tab.active {
+    border-color: #00bcd4;
+    color: #00bcd4;
+}
+
+.notify-table-wrapper {
+    margin-top: 16px;
+    border: 1px solid #252525;
+    border-radius: 2vh ;
+    overflow-x: auto;
+}
+
+.notify-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.notify-table th,
+.notify-table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    font-size: 14px;
+}
+
+.notify-table th {
+    background-color: #f5f5f5;
+}
+
+.empty {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+    font-style: italic;
+}
+
+.notify-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 16px;
+}
+
+.show-count select {
+    margin-left: 8px;
+    font-size: 1.25rem;
+    border-radius: 2vh;
+    border: 1px;
+    text-align: center;
+}
+
+.pagination {
+    display: flex;
+    gap: 6px;
+}
+
+.pagination button {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    border-radius: 2vh;
+}
+
+.pagination .current {
+    padding: 4px 8px;
+    border: 1px solid #00bcd4;
+    color: #00bcd4;
+    border-radius: 2vh;
+}
+
+
+
+.large-notify {
+    padding: 20px;
+    max-width: 100%;
+    margin: 0 auto;
+    background-color: #f9f9f9;
+    zoom: 1.2;
+    width: 1200px;
+    overflow: auto;
+    box-sizing: border-box;
+    border-radius: 3vh;
+}
+
+.notify-date-selectors {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.notify-date-selectors input {
+    padding: 0.7vh;
+    font-size: 0.85rem;
+    border-radius: 2vh;
+    border: 1px;
+    background: #e9e9ed;
+}
+
+.notify-tabs .tab {
+    cursor: pointer;
+}
+
+.notify-tabs .tab.active {
+    font-weight: bold;
+    color: #fff;
+    background-color: #007bff;
+    border-radius: 2vh;
+}
+
+
+.select{
+    width: 100px;
+  } 
+
+  tr.unviewed {
+    background-color: #fffbe6; /* нежно-жёлтый *    background-color: #fffbe6; /* нежно-жёлтый */
+    
+    font-weight: bold;
+}
+
+tr.viewed {
+    background-color: #f9f9f9;
+    color: #888;
+}

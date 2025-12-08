@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  frontend:
+    image: front-frontend
+    build:
+      context: .
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - back_water_net
+    environment:
+      - BACKEND_URL=http://water_flask:5000
+    ports:
+      - "3000:3000" # Если нужно пробросить порт наружу
+
+networks:
+  back_water_net:
+    external: true
+    name: back_water_net

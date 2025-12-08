@@ -1,0 +1,10 @@
+{
+  "send_form": "water_consumption_single",
+  "measurement_date": "2025-04-12",
+  "operating_time_days": 30,
+  "water_consumption_m3_per_day": 15.5,
+  "meter_readings": "123456789",
+  "water_point_id":   "1°",
+  "person_signature": "Ivan Ivanov"
+}
+

@@ -1,0 +1,19 @@
+# Виртуальное окружение Python
+back/linuxvenv/
+
+# Кэш Python
+*.pyc
+__pycache__/
+
+# Node.js модули и кэш
+front/node_modules/
+front/node_modules/.cache/
+
+# Логи, временные файлы
+*.log
+
+# Документы и большие файлы, если не нужны в репозитории
+*.pdf
+
+# Другие временные/кэшированные файлы
+

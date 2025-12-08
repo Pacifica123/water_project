@@ -1,0 +1,94 @@
+.content-container-admin {
+    background-color: #f9f9f9; /* Светлый фон */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Тень */
+    width: 100%; /* Опциональная ширина */
+    max-width: 500px; /* Максимальная ширина */
+    margin:auto;
+    text-align: center;
+  }
+
+  .admin-content-container {
+    background-color: #f9f9f9; /* Светлый фон */
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Тень */
+    max-width: 1200px; /* Максимальная ширина */
+  }
+  
+  .data-table-admin {
+    width: fit-content; /* или min-width: 100% */
+    border-collapse: collapse;
+    min-width: fit-content;
+  }
+  .data-table-admin th {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid #ddd;
+  
+    padding: 20px 30px;
+  }
+
+  .coordinate-group {
+    margin-bottom: 1rem;
+  }
+  
+  .coordinate-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  
+  .coordinate-row input {
+    width: 60px;
+    padding: 4px;
+    text-align: center;
+  }
+
+
+  .select {
+    width: 174px;
+  }
+
+
+
+  .table-scroll-wrapper {
+    border-radius: 20px;
+    overflow-x: auto; /* Горизонтальный скролл при необходимости */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    padding: 10px;
+    max-width: 100%;
+    margin: 0 auto; /* Центрируем wrapper */
+  }
+  
+  /* Таблица не будет растягиваться по ширине, но займет только нужное */
+  .data-table-admin {
+    width: fit-content;
+    max-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 0 auto; /* Центрируем таблицу */
+  }
+  
+  /* Заголовок таблицы */
+  .data-table-admin thead {
+    font-size: 1.2rem;
+  }
+  
+  /* Скругления углов таблицы */
+  .data-table-admin thead tr:first-child th:first-child {
+    border-top-left-radius: 20px;
+  }
+  .data-table-admin thead tr:first-child th:last-child {
+    border-top-right-radius: 20px;
+  }
+  .data-table-admin tbody tr:last-child td:first-child {
+    border-bottom-left-radius: 20px;
+  }
+  .data-table-admin tbody tr:last-child td:last-child {
+    border-bottom-right-radius: 20px;
+  }
+  
+  
